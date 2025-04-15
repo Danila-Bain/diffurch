@@ -47,6 +47,12 @@ fn main() {
 }
 ```
 
+State interface:
+`
+|s| (s.t, s.x, s.y, s.prev.t, s.prev.x, s.eval.x(s.t - 1), s.eval<1>.x(s.t));
+state!{(t,x,y,prev.t,prev.x,x(t-1),x'(t))};
+`
+
 Event types:
 ```
 enum Event {
