@@ -169,6 +169,7 @@ pub trait RungeKuttaTable<const S: usize> {
 
 pub mod dp54;
 pub mod euler;
+pub mod rk2;
 pub mod rk4;
 pub mod rk98;
 pub mod rktp64;
@@ -179,38 +180,52 @@ mod runge_kutta_tests {
 
     #[test]
     fn runge_kutta_interpolation_continuity() {
-        assert!(rk4::RK4::interpolation_continuity_error() < 1e-15);
-        assert!(rk4::RK43::interpolation_continuity_error() < 1e-15);
+        assert!(rk4::Classic::interpolation_continuity_error() < 1e-15);
+        assert!(rk4::ClassicDense::interpolation_continuity_error() < 1e-15);
         assert!(euler::Euler::interpolation_continuity_error() < 1e-15);
-        assert!(euler::HeunEuler::interpolation_continuity_error() < 1e-15);
+        assert!(rk2::HeunEuler::interpolation_continuity_error() < 1e-15);
+        assert!(rk2::Heun::interpolation_continuity_error() < 1e-15);
+        assert!(rk2::Midpoint::interpolation_continuity_error() < 1e-15);
         assert!(rk98::RK98::interpolation_continuity_error() < 1e-11);
     }
 
 
     #[test]
     fn runge_kutta_a_has_correct_size() {
-        rk4::RK4::assert_a_has_correct_sizes();
-        rk4::RK43::assert_a_has_correct_sizes();
-        euler::Euler::assert_a_has_correct_sizes();
-        euler::HeunEuler::assert_a_has_correct_sizes();
-        rk98::RK98::assert_a_has_correct_sizes();
+        euler::Euler::c_is_sum_of_a_error();
+        rk2::HeunEuler::c_is_sum_of_a_error();
+        rk2::Heun::c_is_sum_of_a_error();
+        rk2::Midpoint::c_is_sum_of_a_error();
+        rk2::Ralston::c_is_sum_of_a_error();
+        rk4::Classic::assert_a_has_correct_sizes();
+        rk4::ClassicDense::assert_a_has_correct_sizes();
+        rktp64::RKTP64::c_is_sum_of_a_error();
+        rk98::RK98::c_is_sum_of_a_error();
     }
 
     #[test]
     fn runge_kutta_c_vs_a_consistency() {
-        assert!(rk4::RK4::c_is_sum_of_a_error() < 1e-15);
-        assert!(rk4::RK43::c_is_sum_of_a_error() < 1e-15);
         assert!(euler::Euler::c_is_sum_of_a_error() < 1e-15);
-        assert!(euler::HeunEuler::c_is_sum_of_a_error() < 1e-15);
+        assert!(rk2::HeunEuler::c_is_sum_of_a_error() < 1e-15);
+        assert!(rk2::Heun::c_is_sum_of_a_error() < 1e-15);
+        assert!(rk2::Midpoint::c_is_sum_of_a_error() < 1e-15);
+        assert!(rk2::Ralston::c_is_sum_of_a_error() < 1e-15);
+        assert!(rk4::Classic::c_is_sum_of_a_error() < 1e-15);
+        assert!(rk4::ClassicDense::c_is_sum_of_a_error() < 1e-15);
+        assert!(rktp64::RKTP64::c_is_sum_of_a_error() < 1e-15);
         assert!(rk98::RK98::c_is_sum_of_a_error() < 1e-11);
     }
 
     #[test]
     fn runge_kutta_order_conditions() {
-        assert!(rk4::RK4::order_conditions_error() < 1e-15);
-        assert!(rk4::RK43::order_conditions_error() < 1e-15);
         assert!(euler::Euler::order_conditions_error() == 0.);
-        assert!(euler::HeunEuler::order_conditions_error() == 0.);
+        assert!(rk2::HeunEuler::order_conditions_error() == 0.);
+        assert!(rk2::Heun::order_conditions_error() == 0.);
+        assert!(rk2::Midpoint::order_conditions_error() == 0.);
+        assert!(rk2::Ralston::order_conditions_error() == 0.);
+        assert!(rk4::Classic::order_conditions_error() < 1e-15);
+        assert!(rk4::ClassicDense::order_conditions_error() < 1e-15);
+        assert!(rktp64::RKTP64::order_conditions_error() < 1e-15);
     }
 
     #[test]

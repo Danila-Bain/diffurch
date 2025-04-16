@@ -1,8 +1,8 @@
 use crate::polynomial;
 use crate::polynomial_body;
 
-pub struct RK4;
-impl crate::rk_table::RungeKuttaTable<4> for RK4 {
+pub struct Classic;
+impl crate::rk_table::RungeKuttaTable<4> for Classic {
      const ORDER: usize = 4;
      const ORDER_EMBEDDED: usize = 2;
      const ORDER_INTERPOLANT: usize = 3;
@@ -18,8 +18,8 @@ impl crate::rk_table::RungeKuttaTable<4> for RK4 {
      ];
 }
 
-pub struct RK43;
-impl crate::rk_table::RungeKuttaTable<5> for RK43 {
+pub struct ClassicDense;
+impl crate::rk_table::RungeKuttaTable<5> for ClassicDense {
      const ORDER: usize = 4;
      const ORDER_EMBEDDED: usize = 3;
      const ORDER_INTERPOLANT: usize = 3;
