@@ -1,25 +1,13 @@
 use crate::polynomial;
 use crate::polynomial_body;
 
-pub struct HeunEuler;
-impl crate::rk_table::RungeKuttaTable<2> for HeunEuler {
-    const ORDER: usize = 2;
-    const ORDER_EMBEDDED: usize = 1;
-    const ORDER_INTERPOLANT: usize = 2;
-    const A: [&[f64]; 2] = [&[], &[1.]];
-    const B: [f64; 2] = [0.5, 0.5];
-    const B2: [f64; 2] = [1., 0.];
-    const C: [f64; 2] = [0., 1.];
-    const BI: [fn(f64) -> f64; 2] = [polynomial![0., 0.5], polynomial![0., 0.5]];
-}
-
 macro_rules! generic_rk_order2 {
     ($TypeName:ident, $alpha:expr) => {
         pub struct $TypeName;
         impl crate::rk_table::RungeKuttaTable<2> for $TypeName {
             const ORDER: usize = 2;
             const ORDER_EMBEDDED: usize = 1;
-            const ORDER_INTERPOLANT: usize = 2;
+            const ORDER_INTERPOLANT: usize = 1;
             const A: [&[f64]; 2] = [&[], &[$alpha]];
             const B: [f64; 2] = [1. - 0.5/$alpha, 0.5/$alpha];
             const B2: [f64; 2] = [1., 0.];

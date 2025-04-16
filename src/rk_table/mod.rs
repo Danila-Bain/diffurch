@@ -12,7 +12,6 @@ pub trait RungeKuttaTable<const S: usize> {
 
     const BI: [fn(f64) -> f64; S];
 
-
     #[cfg(test)]
     fn assert_a_has_correct_sizes() {
         for i in 0..S {
@@ -170,71 +169,51 @@ pub trait RungeKuttaTable<const S: usize> {
 pub mod dp54;
 pub mod euler;
 pub mod rk2;
+pub mod rk3;
 pub mod rk4;
 pub mod rk98;
 pub mod rktp64;
+
+macro_rules! fn_rk_tests {
+    ($name:ident, $RK:path, $tolerance:expr) => {
+        #[test]
+        fn $name() {
+            <$RK>::assert_a_has_correct_sizes();
+            assert!(<$RK>::interpolation_continuity_error() < $tolerance);
+            assert!(<$RK>::c_is_sum_of_a_error() < $tolerance);
+            assert!(<$RK>::order_conditions_error() < $tolerance);
+        }
+    };
+}
 
 #[cfg(test)]
 mod runge_kutta_tests {
     use super::*;
 
-    #[test]
-    fn runge_kutta_interpolation_continuity() {
-        assert!(rk4::Classic::interpolation_continuity_error() < 1e-15);
-        assert!(rk4::ClassicDense::interpolation_continuity_error() < 1e-15);
-        assert!(euler::Euler::interpolation_continuity_error() < 1e-15);
-        assert!(rk2::HeunEuler::interpolation_continuity_error() < 1e-15);
-        assert!(rk2::Heun::interpolation_continuity_error() < 1e-15);
-        assert!(rk2::Midpoint::interpolation_continuity_error() < 1e-15);
-        assert!(rk98::RK98::interpolation_continuity_error() < 1e-11);
-    }
+    fn_rk_tests!(euler, euler::Euler, 1e-15);
 
+    fn_rk_tests!(rk2_heun, rk2::Heun, 1e-15);
+    fn_rk_tests!(rk2_ralston, rk2::Ralston, 1e-15);
+    fn_rk_tests!(rk2_midpoint, rk2::Midpoint, 1e-15);
 
-    #[test]
-    fn runge_kutta_a_has_correct_size() {
-        euler::Euler::c_is_sum_of_a_error();
-        rk2::HeunEuler::c_is_sum_of_a_error();
-        rk2::Heun::c_is_sum_of_a_error();
-        rk2::Midpoint::c_is_sum_of_a_error();
-        rk2::Ralston::c_is_sum_of_a_error();
-        rk4::Classic::assert_a_has_correct_sizes();
-        rk4::ClassicDense::assert_a_has_correct_sizes();
-        rktp64::RKTP64::c_is_sum_of_a_error();
-        rk98::RK98::c_is_sum_of_a_error();
-    }
+    fn_rk_tests!(rk3_ssp, rk3::SSP, 1e-15);
+    fn_rk_tests!(rk3_heun, rk3::Heun, 1e-15);
+    fn_rk_tests!(rk3_wray, rk3::Wray, 1e-15);
+    fn_rk_tests!(rk3_kutta, rk3::Kutta, 1e-15);
+    fn_rk_tests!(rk3_ralston, rk3::Ralston, 1e-15);
 
-    #[test]
-    fn runge_kutta_c_vs_a_consistency() {
-        assert!(euler::Euler::c_is_sum_of_a_error() < 1e-15);
-        assert!(rk2::HeunEuler::c_is_sum_of_a_error() < 1e-15);
-        assert!(rk2::Heun::c_is_sum_of_a_error() < 1e-15);
-        assert!(rk2::Midpoint::c_is_sum_of_a_error() < 1e-15);
-        assert!(rk2::Ralston::c_is_sum_of_a_error() < 1e-15);
-        assert!(rk4::Classic::c_is_sum_of_a_error() < 1e-15);
-        assert!(rk4::ClassicDense::c_is_sum_of_a_error() < 1e-15);
-        assert!(rktp64::RKTP64::c_is_sum_of_a_error() < 1e-15);
-        assert!(rk98::RK98::c_is_sum_of_a_error() < 1e-11);
-    }
+    fn_rk_tests!(rk4_classic, rk4::Classic, 1e-15);
+    fn_rk_tests!(rk4_classic_dense, rk4::ClassicDense, 1e-15);
 
-    #[test]
-    fn runge_kutta_order_conditions() {
-        assert!(euler::Euler::order_conditions_error() == 0.);
-        assert!(rk2::HeunEuler::order_conditions_error() == 0.);
-        assert!(rk2::Heun::order_conditions_error() == 0.);
-        assert!(rk2::Midpoint::order_conditions_error() == 0.);
-        assert!(rk2::Ralston::order_conditions_error() == 0.);
-        assert!(rk4::Classic::order_conditions_error() < 1e-15);
-        assert!(rk4::ClassicDense::order_conditions_error() < 1e-15);
-        assert!(rktp64::RKTP64::order_conditions_error() < 1e-15);
-    }
+    fn_rk_tests!(rktp64, rktp64::RKTP64, 1e-15);
 
     #[test]
     #[ignore]
-    fn runge_kutta_order_conditions_rk98() {
-        // to get to complete 8th order it took 1 hour 55 minutes
-        // overall errors are good (around 1e-15),
-        // but very ocasionally, it gets to 1e-9, 1e-6, or even 1e-4 (for 7th order)
-        assert!(rk98::RK98::order_conditions_error() < 1e-8); // will fail
+    fn rk98() {
+        <rk98::RK98>::assert_a_has_correct_sizes();
+        assert!(<rk98::RK98>::interpolation_continuity_error() < 1e-15);
+        assert!(<rk98::RK98>::c_is_sum_of_a_error() < 1e-15);
+        assert!(<rk98::RK98>::order_conditions_error() < 1e-15);
     }
-    // fn test_order_conditions<RK: RungeKuttaTable<S>, const S: usize>() {}
+
 }
