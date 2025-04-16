@@ -12,7 +12,7 @@ macro_rules! generic_rk_order2 {
             const B: [f64; 2] = [1. - 0.5/$alpha, 0.5/$alpha];
             const B2: [f64; 2] = [1., 0.];
             const C: [f64; 2] = [0., $alpha];
-            const BI: [fn(f64) -> f64; 2] = [polynomial![0., 1. - 0.5/$alpha], polynomial![0., 0.5/$alpha]];
+            const BI: [fn(f64) -> f64; 2] = [polynomial![0., Self::B[0]], polynomial![0., Self::B[1]]]; // linear interpolation
         }
     };
 }

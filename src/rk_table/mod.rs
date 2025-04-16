@@ -166,13 +166,13 @@ pub trait RungeKuttaTable<const S: usize> {
     }
 }
 
-pub mod dp54;
-pub mod euler;
+pub mod rk1;
 pub mod rk2;
 pub mod rk3;
 pub mod rk4;
+pub mod rk5;
 pub mod rk98;
-pub mod rktp64;
+pub mod rk6;
 
 macro_rules! fn_rk_tests {
     ($name:ident, $RK:path, $tolerance:expr) => {
@@ -190,7 +190,7 @@ macro_rules! fn_rk_tests {
 mod runge_kutta_tests {
     use super::*;
 
-    fn_rk_tests!(euler, euler::Euler, 1e-15);
+    fn_rk_tests!(euler, rk1::Euler, 1e-15);
 
     fn_rk_tests!(rk2_heun, rk2::Heun, 1e-15);
     fn_rk_tests!(rk2_ralston, rk2::Ralston, 1e-15);
@@ -205,7 +205,9 @@ mod runge_kutta_tests {
     fn_rk_tests!(rk4_classic, rk4::Classic, 1e-15);
     fn_rk_tests!(rk4_classic_dense, rk4::ClassicDense, 1e-15);
 
-    fn_rk_tests!(rktp64, rktp64::RKTP64, 1e-15);
+    fn_rk_tests!(dormand_prince, rk5::DormandPrince, 1e-11);
+    
+    fn_rk_tests!(rktp64, rk6::RKTP64, 1e-15);
 
     #[test]
     #[ignore]
