@@ -17,7 +17,6 @@ macro_rules! polynomial {
     };
 }
 
-
 #[cfg(test)]
 mod tests {
     // use super::*;
@@ -42,5 +41,21 @@ mod tests {
         assert_eq!(p(0.), -1.);
         assert_eq!(p(-1.), 0.);
         assert_eq!(p(1.), 0.);
+    }
+
+    #[test]
+    fn geometric_sum() {
+        let geometric_series = polynomial![
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+        ];
+
+        assert_eq!(geometric_series(1./2.), 1./(1. - 1./2.));
+        assert_eq!(geometric_series(1./3.), 1.5);
+        assert_eq!(geometric_series(1./4.), 1./(1. - 1./4.));
+        assert_eq!(geometric_series(1./5.), 1./(1. - 1./5.));
+        assert_eq!(geometric_series(1./6.), 1./(1. - 1./6.));
     }
 }

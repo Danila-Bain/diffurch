@@ -121,7 +121,7 @@ pub trait RungeKuttaTable<const S: usize> {
                 let mut b_phi_sum = 0.;
                 let mut b_phi_sum_embedded = 0.;
 
-                println!("{:?}", tree);
+                println!("{:?}", &tree[..order]);
                 for j in indexes[0]..Self::S {
                     // j = 0 => sums are empty
                     indexes.fill(0);
