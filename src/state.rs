@@ -13,9 +13,9 @@ pub trait State<const N: usize> {
     fn eval_nth_derivative<const ORDER: usize>(&self, t: f64) -> [f64; N];
 }
 
-pub struct RKState<const N: usize, RK, const S: usize>
+pub struct RKState<const N: usize, RK>
 where
-    RK: RungeKuttaTable<S>,
+    RK: RungeKuttaTable,
     [(); RK::S]:,
 {
     t: f64,
@@ -35,9 +35,9 @@ where
     k_seq: VecDeque<[[f64; N]; RK::S]>,
 }
 
-impl<const N: usize, const S: usize, RK> RKState<N, RK, S>
+impl<const N: usize, RK> RKState<N, RK>
 where
-    RK: RungeKuttaTable<S>,
+    RK: RungeKuttaTable,
     [(); RK::S]:,
 {
     fn new(t_init: f64, x_init: fn(f64) -> [f64; N]) -> Self {
@@ -63,9 +63,9 @@ where
     }
 }
 
-impl<const N: usize, const S: usize, RK> State<N> for RKState<N, RK, S>
+impl<const N: usize, RK> State<N> for RKState<N, RK>
 where
-    RK: RungeKuttaTable<S>,
+    RK: RungeKuttaTable,
     [(); RK::S]:,
 {
     fn t(&self) -> f64 {

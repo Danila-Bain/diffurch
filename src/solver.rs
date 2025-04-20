@@ -4,7 +4,7 @@ use crate::state::*;
 trait DifferentialEquation<const N: usize> {
     fn f(&self, s: &impl State<N>) -> [f64; N];
 
-    fn solution<RK: RungeKuttaTable<S>, const S: usize>(
+    fn solution<RK: RungeKuttaTable> (
         &self,
         interval: std::ops::Range<f64>,
         initial_function: &impl Fn(f64) -> [f64; N],
@@ -29,7 +29,7 @@ mod test_solver {
     fn test_solution() {
         let eq = HarmonicOscillator { w: 1. };
 
-        let res = eq.solution::<rk1::Euler, 1>(0.0..10.0, &|t: f64| {
+        let res = eq.solution::<rk1::Euler>(0.0..10.0, &|t: f64| {
             [(eq.w * t).sin(), eq.w * (eq.w * t).cos()]
         });
 

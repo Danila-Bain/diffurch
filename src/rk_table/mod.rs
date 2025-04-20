@@ -1,37 +1,46 @@
-pub trait RungeKuttaTable<const S: usize> {
-    const S: usize = S;
+pub trait RungeKuttaTable {
+    const S: usize;
 
     const ORDER: usize;
     const ORDER_EMBEDDED: usize;
     const ORDER_INTERPOLANT: usize;
 
-    const A: [&[f64]; S];
-    const B: [f64; S];
-    const B2: [f64; S];
-    const C: [f64; S];
+    const A: [&[f64]; Self::S] where [(); Self::S]:;
+    const B: [f64; Self::S] where [(); Self::S]:;
+    const B2: [f64; Self::S] where [(); Self::S]:;
+    const C: [f64; Self::S] where [(); Self::S]:;
 
-    const BI: [fn(f64) -> f64; S];
+    const BI: [fn(f64) -> f64; Self::S] where [(); Self::S]:;
 
     #[cfg(test)]
-    fn assert_a_has_correct_sizes() {
-        for i in 0..S {
+    fn assert_a_has_correct_sizes()
+    where
+        [(); Self::S]:,
+    {
+        for i in 0..Self::S {
             assert_eq!(Self::A[i].len(), i);
         }
     }
 
     #[cfg(test)]
-    fn interpolation_continuity_error() -> f64 {
+    fn interpolation_continuity_error() -> f64
+    where
+        [(); Self::S]:,
+    {
         let mut max = 0f64;
-        for i in 0..S {
+        for i in 0..Self::S {
             max = max.max((Self::B[i] - Self::BI[i](1.)).abs());
         }
         max
     }
 
     #[cfg(test)]
-    fn c_is_sum_of_a_error() -> f64 {
+    fn c_is_sum_of_a_error() -> f64
+    where
+        [(); Self::S]:,
+    {
         let mut max = 0f64;
-        for i in 0..S {
+        for i in 0..Self::S {
             let sum = Self::A[i].iter().sum::<f64>();
             let diff = (Self::C[i] - sum).abs();
             max = f64::max(max, diff);
@@ -42,6 +51,7 @@ pub trait RungeKuttaTable<const S: usize> {
     #[cfg(test)]
     fn order_conditions_error() -> f64
     where
+        [(); Self::S]:,
         [(); Self::ORDER]:,
     {
         // On derivation and formulas for order conditions, see
@@ -171,8 +181,8 @@ pub mod rk2;
 pub mod rk3;
 pub mod rk4;
 pub mod rk5;
-pub mod rk98;
 pub mod rk6;
+pub mod rk98;
 
 macro_rules! fn_rk_tests {
     ($name:ident, $RK:path, $tolerance:expr) => {
@@ -206,7 +216,7 @@ mod runge_kutta_tests {
     fn_rk_tests!(rk4_classic_dense, rk4::ClassicDense, 1e-15);
 
     fn_rk_tests!(dormand_prince, rk5::DormandPrince, 1e-11);
-    
+
     fn_rk_tests!(rktp64, rk6::RKTP64, 1e-15);
 
     #[test]
@@ -217,5 +227,4 @@ mod runge_kutta_tests {
         assert!(<rk98::RK98>::c_is_sum_of_a_error() < 1e-15);
         assert!(<rk98::RK98>::order_conditions_error() < 1e-15);
     }
-
 }

@@ -2,7 +2,8 @@ use crate::polynomial;
 use crate::polynomial_body;
 
 pub struct RK98;
-impl crate::rk_table::RungeKuttaTable<26> for RK98 {
+impl crate::rk_table::RungeKuttaTable for RK98 {
+    const S: usize = 26;
     const ORDER: usize = 9;
     const ORDER_EMBEDDED: usize = 8;
     const ORDER_INTERPOLANT: usize = 9;
@@ -155,7 +156,7 @@ impl crate::rk_table::RungeKuttaTable<26> for RK98 {
             1.30616301842220047563298585480401671671773488342750,
             -0.25285618808937955976690569433069974710150241616240,
             0.38099910799663987066763679926508552013153084035240,
-            0.
+            0.,
         ],
         &[
             0.01490902081978461022483617102382552714139242858034,
@@ -302,7 +303,7 @@ impl crate::rk_table::RungeKuttaTable<26> for RK98 {
             0.46777943183166745833381467641314459026710282830244,
             0.40340308656988142553355663504942481574534292202827,
             -0.01490120806800580627232607108523829069098665393440,
-            0.
+            0.,
         ],
         &[
             0.01071645645556208366068447871756749021881341530816,

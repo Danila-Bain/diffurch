@@ -2,7 +2,8 @@ use crate::polynomial;
 use crate::polynomial_body;
 
 pub struct DormandPrince;
-impl crate::rk_table::RungeKuttaTable<7> for DormandPrince {
+impl crate::rk_table::RungeKuttaTable for DormandPrince {
+    const S: usize = 7;
     const ORDER: usize = 5;
     const ORDER_EMBEDDED: usize = 4;
     const ORDER_INTERPOLANT: usize = 4;

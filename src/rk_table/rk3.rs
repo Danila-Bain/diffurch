@@ -4,7 +4,8 @@ use crate::polynomial_body;
 macro_rules! generic_rk_order3 {
     ($TypeName:ident, $alpha:expr, $beta:expr) => {
         pub struct $TypeName;
-        impl crate::rk_table::RungeKuttaTable<3> for $TypeName {
+        impl crate::rk_table::RungeKuttaTable for $TypeName {
+            const S: usize = 3;
             const ORDER: usize = 3;
             const ORDER_EMBEDDED: usize = 2;
             const ORDER_INTERPOLANT: usize = 1; // could be better

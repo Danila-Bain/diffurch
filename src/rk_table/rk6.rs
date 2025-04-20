@@ -2,7 +2,8 @@ use crate::polynomial;
 use crate::polynomial_body;
 
 pub struct RKTP64;
-impl crate::rk_table::RungeKuttaTable<7> for RKTP64 {
+impl crate::rk_table::RungeKuttaTable for RKTP64 {
+     const S: usize = 7;
     const ORDER: usize = 6;
     const ORDER_EMBEDDED: usize = 4;
     const ORDER_INTERPOLANT: usize = 4;
