@@ -1,6 +1,6 @@
 # Diffurch-rc
 
-This is not-yet-started project that implements numerical methods for various kinds of differential equations, including ordinary, delay, and discontinuous differential equations.
+This is a just-started project that implements numerical methods for various kinds of differential equations, including ordinary, delay, and discontinuous differential equations.
 
 Sketch usage:
 ```rust
@@ -20,25 +20,41 @@ equation!{
     }
 }
 
+struct HarmonicOscillator {
+    w: f64,
+}
+impl Equation for HarmonicOscillator {
+    fn rhs (&self, s: impl State<2>) {
+        let [x, Dx] = &s.x;
+        [
+            Dx,
+            -self.w.pow(2)*x,
+        ] 
+    }
+
+    fn ic(&self, t: f64) {
+        [(t*w).sin(), (t*w).cos()*w] 
+    }
+}
 
 
 fn main() {
 
     let eq = Lorenz { sigma: 10., rho: 28., beta: 8./3. };
 
-    let sol = eq.solution(
+    let sol = eq.solution<rk4::Classic>(
                 || [0.1, 0.2, 0.3], 
                 0..10, 
                 (Event::Step::new().save(|s| (s.t, s.x, s.y, s.z)), )
               );
 
-    let (t, x, y, z) = eq.solution(
+    let (t, x, y, z) = eq.solution<rk98::RK98>(
                             |t| [sin(t), 0.2, 0.3], 
                             0..100,
                             (Event::Stop::new().save(|s| (s.t, s.x, s.y, s.z)), )
                         );
 
-    let t = eq.solution(
+    let t = eq.solution<rk1::euler>(
         |t| [sin(t), 0.2, 0.3], 
 0..100,
 (Event::Stop::new().save(|s| (s.t, s.x, s.y, s.z)), )
