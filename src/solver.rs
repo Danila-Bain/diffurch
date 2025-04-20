@@ -1,21 +1,24 @@
 use crate::rk_table::*;
 use crate::state::*;
 
-trait DifferentialEquation<const N: usize> {
-    fn f(&self, s: &impl State<N>) -> [f64; N];
+trait DifferentialEquation {
+    const N: usize;
 
-    fn solution<RK: RungeKuttaTable> (
+    fn f(&self, s: &impl State<{Self::N}>) -> [f64; Self::N] where [(); Self::N]:,;
+
+    fn solve<RK: RungeKuttaTable>(
         &self,
         interval: std::ops::Range<f64>,
-        initial_function: &impl Fn(f64) -> [f64; N],
+        initial_function: &impl Fn(f64) -> [f64; Self::N],
     ) {
     }
 }
 struct HarmonicOscillator {
     w: f64,
 }
-impl DifferentialEquation<2> for HarmonicOscillator {
-    fn f(&self, s: &impl State<2>) -> [f64; 2] {
+impl DifferentialEquation for HarmonicOscillator {
+    const N: usize = 2;
+    fn f(&self, s: &impl State<{Self::N}>) -> [f64; Self::N] {
         let [x, dx] = s.x();
         [dx, -(self.w).powi(2) * x]
     }
@@ -29,40 +32,14 @@ mod test_solver {
     fn test_solution() {
         let eq = HarmonicOscillator { w: 1. };
 
-        let res = eq.solution::<rk1::Euler>(0.0..10.0, &|t: f64| {
+        let _res = eq.solve::<rk1::Euler>(0. ..f64::NAN, &|t: f64| {
             [(eq.w * t).sin(), eq.w * (eq.w * t).cos()]
         });
 
+        let range = 0. ..10.;
+        let initial_condition = |t: f64| [(eq.w * t).sin(), eq.w * (eq.w * t).cos()];
+        let _res = eq.solve::<rk1::Euler>(range, &initial_condition);
 
-        // doesn't compile
-        // let res = eq.solution::<rk1::Euler>(0.0..10.0, &|t: f64| {
-        //     [(eq.w * t).sin(), eq.w * (eq.w * t).cos()]
-        // });
     }
 }
 
-// pub trait Solve<const N: usize> {
-// fn rhs<State, RK, const S: usize>(self: &Self, s: State) -> [f64; N];
-// fn ic(t: f64) -> [f64; N];
-// fn solve();
-// }
-
-// struct Oscillator {
-//     w: f64,
-// }
-
-// impl Oscillator {
-//     fn rhs<STATE>(&self, s: STATE) -> [f64; 2] {
-//         [s.x[1], - w * w * s.x[0]]
-//     }
-//     fn ic(&self, t: f64) -> [f64; 2] {
-//         [(self.w * t).sin(), self.w * (self.w * t).cos()]
-//     }
-// }
-
-// impl Solver<2, rk1::Euler, 1> for Oscillator {
-//
-//     fn rhs(&self, s: State<2,rk1::Euler,1>) -> [f64; 2] {
-//         return [s.x[1], -self.k*self.k*s.x[0]];
-//     }
-// }
