@@ -2,7 +2,18 @@ use crate::rk_table::*;
 
 use std::collections::VecDeque;
 
-pub struct State<const N: usize, RK, const S: usize>
+pub trait State<const N: usize> {
+    fn t(&self) -> f64;
+    fn x(&self) -> [f64; N];
+    fn push_current(&mut self);
+    fn make_step(&mut self, rhs: &impl Fn(&Self) -> [f64; N]);
+    fn make_zero_step(&mut self);
+    fn eval(&self, t: f64) -> [f64; N];
+    fn eval_derivative(&self, t: f64) -> [f64; N];
+    fn eval_nth_derivative<const ORDER: usize>(&self, t: f64) -> [f64; N];
+}
+
+pub struct RKState<const N: usize, RK, const S: usize>
 where
     RK: RungeKuttaTable<S>,
     [(); RK::S]:,
@@ -14,7 +25,7 @@ where
     t_span: f64,
     t_seq: VecDeque<f64>,
 
-    x: [f64; N],
+    pub x: [f64; N],
     x_init: fn(f64) -> [f64; N],
     x_prev: [f64; N],
     x_err: [f64; N],
@@ -24,7 +35,7 @@ where
     k_seq: VecDeque<[[f64; N]; RK::S]>,
 }
 
-impl<const N: usize, const S: usize, RK> State<N, RK, S>
+impl<const N: usize, const S: usize, RK> RKState<N, RK, S>
 where
     RK: RungeKuttaTable<S>,
     [(); RK::S]:,
@@ -50,6 +61,19 @@ where
             k_seq: VecDeque::new(),
         }
     }
+}
+
+impl<const N: usize, const S: usize, RK> State<N> for RKState<N, RK, S>
+where
+    RK: RungeKuttaTable<S>,
+    [(); RK::S]:,
+{
+    fn t(&self) -> f64 {
+        self.t
+    }
+    fn x(&self) -> [f64; N] {
+        self.x
+    }
 
     fn push_current(&mut self) {
         self.t_seq.push_back(self.t);
@@ -67,10 +91,7 @@ where
         }
     }
 
-    fn make_step<F>(&mut self, rhs: &F)
-    where
-        F: Fn(&Self) -> [f64; N],
-    {
+    fn make_step(&mut self, rhs: &impl Fn(&Self) -> [f64; N]) {
         for i in 0..RK::S {
             self.t = self.t_prev + RK::C[i] * self.t_step;
 
@@ -107,8 +128,8 @@ where
 
             let x_prev = &self.x_seq[i - 1];
             let k = &self.k_seq[i - 1];
-            let t_prev = self.t_seq[i-1];
-            let t_next = self.t_seq[i-1];
+            let t_prev = self.t_seq[i - 1];
+            let t_next = self.t_seq[i - 1];
             let t_step = t_prev - t_next;
             let theta = (t - t_prev) / t_step;
 
@@ -116,5 +137,13 @@ where
                 x_prev[i] + t_step * (0..RK::S).fold(0., |acc, j| acc + RK::BI[j](theta) * k[j][i])
             });
         }
+    }
+
+    fn eval_derivative(&self, t: f64) -> [f64; N] {
+        todo!()
+    }
+
+    fn eval_nth_derivative<const ORDER: usize>(&self, t: f64) -> [f64; N] {
+        todo!()
     }
 }
