@@ -113,6 +113,8 @@ Filters:
 ```
 .times(3..10)
 .once()
+.every(10)
+.spaced_by(0.5)
 .which(|s| s.x > 0)
 .except(|s| s.x > 0)
 .while(|s| s.x > 0)
