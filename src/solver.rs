@@ -1,4 +1,3 @@
-#![feature(const_trait_impl, const_fn_trait_bound)]
 use crate::rk_table::*;
 use crate::state::*;
 pub trait DifferentialEquation {
