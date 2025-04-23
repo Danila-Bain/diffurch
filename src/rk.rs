@@ -2,17 +2,17 @@ use crate::polynomial;
 use crate::polynomial_body;
 
 pub struct RungeKuttaTable<'a, const S: usize> {
-    order: usize,
-    order_embedded: usize,
-    order_interpolant: usize,
-    a: [&'a [f64]; S],
-    b: [f64; S],
-    b2: [f64; S],
-    c: [f64; S],
-    bi: [fn(f64) -> f64; S],
+    pub order: usize,
+    pub order_embedded: usize,
+    pub order_interpolant: usize,
+    pub a: [&'a [f64]; S],
+    pub b: [f64; S],
+    pub b2: [f64; S],
+    pub c: [f64; S],
+    pub bi: [fn(f64) -> f64; S],
 }
 
-pub const EULER: RungeKuttaTable<1> = RungeKuttaTable {
+pub static EULER: RungeKuttaTable<1> = RungeKuttaTable {
     order: 1,
     order_embedded: 0,
     order_interpolant: 0,
@@ -25,7 +25,7 @@ pub const EULER: RungeKuttaTable<1> = RungeKuttaTable {
 
 macro_rules! generic_rk_order2 {
     ($TypeName:ident, $alpha:expr) => {
-        pub const $TypeName: RungeKuttaTable<2> = RungeKuttaTable {
+        pub static $TypeName: RungeKuttaTable<2> = RungeKuttaTable {
             order: 2,
             order_embedded: 1,
             order_interpolant: 1,
@@ -46,7 +46,7 @@ generic_rk_order2!(RALSTON2, 2. / 3.);
 
 macro_rules! generic_rk_order3 {
     ($TypeName:ident, $alpha:expr, $beta:expr) => {
-        pub const $TypeName: RungeKuttaTable<3> = RungeKuttaTable {
+        pub static $TypeName: RungeKuttaTable<3> = RungeKuttaTable {
             order: 3,
             order_embedded: 2,
             order_interpolant: 1,
@@ -82,7 +82,7 @@ generic_rk_order3!(RALSTON3, 1. / 2., 3. / 4.); // also used in the embedded Bog
 generic_rk_order3!(WRAY3, 8. / 15., 2. / 3.);
 generic_rk_order3!(SSP3, 1., 1. / 2.); // strong stability preserving
 
-pub const CLASSIC4: RungeKuttaTable<4> = RungeKuttaTable {
+pub static CLASSIC4: RungeKuttaTable<4> = RungeKuttaTable {
     order: 4,
     order_embedded: 2,
     order_interpolant: 3,
@@ -98,7 +98,7 @@ pub const CLASSIC4: RungeKuttaTable<4> = RungeKuttaTable {
     ],
 };
 
-pub const CLASSIC423: RungeKuttaTable<5> = RungeKuttaTable {
+pub static CLASSIC423: RungeKuttaTable<5> = RungeKuttaTable {
     order: 4,
     order_embedded: 2,
     order_interpolant: 3,
@@ -121,7 +121,7 @@ pub const CLASSIC423: RungeKuttaTable<5> = RungeKuttaTable {
     ],
 };
 
-pub const DP544: RungeKuttaTable<7> = RungeKuttaTable {
+pub static DP544: RungeKuttaTable<7> = RungeKuttaTable {
     order: 5,
     order_embedded: 4,
     order_interpolant: 4,
@@ -239,7 +239,7 @@ pub const DP544: RungeKuttaTable<7> = RungeKuttaTable {
     ],
 };
 
-pub const RKTP64: RungeKuttaTable<7> = RungeKuttaTable {
+pub static RKTP64: RungeKuttaTable<7> = RungeKuttaTable {
     order: 6,
     order_embedded: 4,
     order_interpolant: 4,
@@ -351,7 +351,7 @@ pub const RKTP64: RungeKuttaTable<7> = RungeKuttaTable {
     ],
 };
 
-pub const RK98: RungeKuttaTable<26> = RungeKuttaTable {
+pub static RK98: RungeKuttaTable<26> = RungeKuttaTable {
     order: 9,
     order_embedded: 8,
     order_interpolant: 9,

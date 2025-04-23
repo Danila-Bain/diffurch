@@ -1,4 +1,4 @@
-use crate::rk_table::*;
+use crate::rk::*;
 
 use std::collections::VecDeque;
 
@@ -15,11 +15,7 @@ pub trait State<const N: usize> {
     fn eval_nth_derivative<const ORDER: usize>(&self, t: f64) -> [f64; N];
 }
 
-pub struct RKState<const N: usize, RK, F: Fn(f64) -> [f64; N]>
-where
-    RK: RungeKuttaTable,
-    [(); RK::S]:,
-{
+pub struct RKState<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> {
     pub t: f64,
     pub t_init: f64,
     pub t_prev: f64,
@@ -33,26 +29,21 @@ where
     pub x_err: [f64; N],
     pub x_seq: VecDeque<[f64; N]>,
 
-    k: [[f64; N]; RK::S],
-    k_seq: VecDeque<[[f64; N]; RK::S]>,
+    k: [[f64; N]; S],
+    k_seq: VecDeque<[[f64; N]; S]>,
+
+    rk: &'static RungeKuttaTable<'static, S>,
 }
 
-impl<const N: usize, RK, F: Fn(f64) -> [f64; N]> std::fmt::Debug for RKState<N, RK, F>
-where
-    RK: RungeKuttaTable,
-    [(); RK::S]:,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "State {{t: {:?}, x: {:?}, t_prev: {:?}, x_prev: {:?}}}", self.t, self.x, self.t_prev, self.x_prev)
-    }
-}
+// impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> std::fmt::Debug for RKState<N, RK, F>
+// {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         write!(f, "State {{t: {:?}, x: {:?}, t_prev: {:?}, x_prev: {:?}}}", self.t, self.x, self.t_prev, self.x_prev)
+//     }
+// }
 
-impl<const N: usize, RK, F: Fn(f64) -> [f64; N]> RKState<N, RK, F>
-where
-    RK: RungeKuttaTable,
-    [(); RK::S]:,
-{
-    pub fn new(t_init: f64, x_init: F) -> Self {
+impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> RKState<N, S, F> {
+    pub fn new(t_init: f64, x_init: F, rk: &'static RungeKuttaTable<S>) -> Self {
         let x = x_init(t_init);
 
         Self {
@@ -69,17 +60,15 @@ where
             x_err: [0.; N],
             x_seq: VecDeque::from([x.clone()]),
 
-            k: [[0.; N]; RK::S],
+            k: [[0.; N]; S],
             k_seq: VecDeque::new(),
+
+            rk: &rk,
         }
     }
 }
 
-impl<const N: usize, RK, F: Fn(f64) -> [f64; N]> State<N> for RKState<N, RK, F>
-where
-    RK: RungeKuttaTable,
-    [(); RK::S]:,
-{
+impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N> for RKState<N, S, F> {
     fn t(&self) -> f64 {
         self.t
     }
@@ -102,25 +91,24 @@ where
             self.k_seq.pop_front();
         }
     }
-    
 
     fn make_step(&mut self, rhs: &impl Fn(&Self) -> [f64; N]) {
         self.t_prev = self.t;
         self.x_prev = self.x;
 
-        for i in 0..RK::S {
-            self.t = self.t_prev + RK::C[i] * self.t_step;
+        for i in 0..S {
+            self.t = self.t_prev + self.rk.c[i] * self.t_step;
 
             self.x = std::array::from_fn(|k| {
                 self.x_prev[k]
-                    + self.t_step * (0..i).fold(0., |acc, j| acc + RK::A[i][j] * self.k[j][k])
+                    + self.t_step * (0..i).fold(0., |acc, j| acc + self.rk.a[i][j] * self.k[j][k])
             });
             self.k[i] = rhs(&self);
         }
 
         self.x = std::array::from_fn(|k| {
             self.x_prev[k]
-                + self.t_step * (0..RK::S).fold(0., |acc, j| acc + RK::B[j] * self.k[j][k])
+                + self.t_step * (0..S).fold(0., |acc, j| acc + self.rk.b[j] * self.k[j][k])
         });
         self.t = self.t_prev + self.t_step;
     }
@@ -128,7 +116,7 @@ where
     fn make_zero_step(&mut self) {
         self.t_prev = self.t;
         self.x_prev = self.x;
-        self.k = [[0.; N]; RK::S];
+        self.k = [[0.; N]; S];
         self.push_current();
     }
 
@@ -151,7 +139,7 @@ where
             let theta = (t - t_prev) / t_step;
 
             return std::array::from_fn(|i| {
-                x_prev[i] + t_step * (0..RK::S).fold(0., |acc, j| acc + RK::BI[j](theta) * k[j][i])
+                x_prev[i] + t_step * (0..S).fold(0., |acc, j| acc + self.rk.bi[j](theta) * k[j][i])
             });
         }
     }

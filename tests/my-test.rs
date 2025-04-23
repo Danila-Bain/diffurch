@@ -1,11 +1,10 @@
-use diffurch::polynomial;
-use diffurch::polynomial_body;
+#[test]
+fn const_parameter_inference() {
+    fn make_array<const N: usize>() -> [u8; N] {
+        [0; N]
+    }
 
-// #[test]
-// fn it_adds_two() {
-//     let geometric_sum = polynomial![1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.];
-//
-//     let geometric_sum = geometric_sum(0.5);
-//
-//     println!("{geometric_sum}");
-// }
+    let arr: [u8; 7] = make_array(); // the size is inferred
+    // println!("{:?}", arr);
+    // panic!();
+}

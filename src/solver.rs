@@ -1,54 +1,51 @@
-use crate::rk_table::*;
-use crate::state::*;
-pub trait DifferentialEquation {
-    const N: usize;
+use crate::rk::*;
 
-    fn f(&self, s: &impl State<{ Self::N }>) -> [f64; Self::N]
-    where
-        [(); Self::N]:;
+pub struct Solver<const S: usize = 26, StepEvents = ()> {
+    rk: &'static RungeKuttaTable<'static, S>,
+    stepsize: f64,
+    step_events: StepEvents,
+}
 
-    fn solve<RK, F>(
-        &self,
-        interval: std::ops::Range<f64>,
-        initial_function: F,
-        _rk: RK,
-        stepsize: f64,
-    ) -> std::collections::VecDeque<[f64; Self::N]>
-    where
-        [(); RK::S]:, RK: RungeKuttaTable, F: Fn(f64) -> [f64; Self::N]
-    {
-        /* initializations */
-        let mut state = RKState::<{ Self::N }, RK, F>::new(interval.start, initial_function);
-
-        state.t_step = stepsize;
-        state.t_span = f64::NAN;
-        /* start event */
-        /* step event */
-
-        // interval.end can be NAN, meaning no end
-        while !(state.t() >= interval.end) {
-            state.make_step(&|s| self.f(s));
-            state.push_current();
-
-            /* step event */
-
-            // state.t_step = std::min(state.t_step, final_time - state.t_curr);
-            //
-            // if (reject_step) {
-            //     events.reject_events(state);
-            //     state.remake_step(&|s| self.f(s))
-            //     continue;
-            // }
+impl Solver {
+    fn new() -> Self {
+        Self {
+            rk: &RK98,
+            stepsize: 0.05,
+            step_events: (),
         }
+    }
+}
 
-        state.x_seq
+impl<const S: usize, StepEvents> Solver<S, StepEvents> {
+
+    fn with_rk<const S_NEW: usize>(
+        self,
+        rk: &'static RungeKuttaTable<'static, S_NEW>,
+    ) -> Solver<S_NEW, StepEvents> {
+        Solver::<S_NEW, StepEvents> {
+            rk,
+            stepsize: self.stepsize,
+            step_events: self.step_events,
+        }
+    }
+
+    fn with_stepsize(self, stepsize: f64) -> Self {
+        Self {
+            rk: self.rk,
+            stepsize,
+            step_events: self.step_events,
+        }
     }
 }
 
 #[cfg(test)]
-mod test_solver {
+mod tests {
     use super::*;
 
+    #[test]
+    fn solver() {
+        let solver = Solver::new();
+        let solver = Solver::new().with_rk(&RK98).with_stepsize(0.2);
+        let solver = Solver::new().with_rk(&DP544).with_stepsize(0.1);
+    }
 }
-
-

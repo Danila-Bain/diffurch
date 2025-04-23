@@ -142,3 +142,41 @@ There are several components, that contribute to the desired output: the data of
     - stepsize controller
     - saving events
 
+
+# Solver Interface:
+
+```rust
+let solver = Solver::new()
+    .with_rk(rk::CLASSIC4)
+    .with_stepsize(0.001)
+    .add_step_event(
+        Event::save(|s| {
+            let t = s.t();      // this makes me upset
+            let [x,y,z] = s.x(); // and this
+            [t, x, y, z]
+        })
+        .spaced_by(0.1)
+        .to_csv("datapoints.csv")?
+    )
+    .add_step_event(
+        Event::save(|s| {
+            let [x,y,z] = s.x();
+            x*x + y*y + z*z
+        })
+        .every(100)
+        .to_std()
+    )
+```
+
+# Event Interface:
+
+```rust
+let event = Event::save(|s| {
+        let [x, dx] = s.x();
+        x*x + dx*dx
+        })
+
+
+let event = event_save_xyz!{[t, x, y, z]};
+let event = event_save_x1!{[t, ]};
+```
