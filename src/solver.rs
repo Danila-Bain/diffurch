@@ -1,26 +1,48 @@
+#![feature(const_trait_impl, const_fn_trait_bound)]
 use crate::rk_table::*;
 use crate::state::*;
-
-trait DifferentialEquation {
+pub trait DifferentialEquation {
     const N: usize;
 
-    fn f(&self, s: &impl State<{Self::N}>) -> [f64; Self::N] where [(); Self::N]:,;
+    fn f(&self, s: &impl State<{ Self::N }>) -> [f64; Self::N]
+    where
+        [(); Self::N]:;
 
-    fn solve<RK: RungeKuttaTable>(
+    fn solve<RK, F>(
         &self,
         interval: std::ops::Range<f64>,
-        initial_function: &impl Fn(f64) -> [f64; Self::N],
-    ) {
-    }
-}
-struct HarmonicOscillator {
-    w: f64,
-}
-impl DifferentialEquation for HarmonicOscillator {
-    const N: usize = 2;
-    fn f(&self, s: &impl State<{Self::N}>) -> [f64; Self::N] {
-        let [x, dx] = s.x();
-        [dx, -(self.w).powi(2) * x]
+        initial_function: F,
+        _rk: RK,
+        stepsize: f64,
+    ) -> std::collections::VecDeque<[f64; Self::N]>
+    where
+        [(); RK::S]:, RK: RungeKuttaTable, F: Fn(f64) -> [f64; Self::N]
+    {
+        /* initializations */
+        let mut state = RKState::<{ Self::N }, RK, F>::new(interval.start, initial_function);
+
+        state.t_step = stepsize;
+        state.t_span = f64::NAN;
+        /* start event */
+        /* step event */
+
+        // interval.end can be NAN, meaning no end
+        while !(state.t() >= interval.end) {
+            state.make_step(&|s| self.f(s));
+            state.push_current();
+
+            /* step event */
+
+            // state.t_step = std::min(state.t_step, final_time - state.t_curr);
+            //
+            // if (reject_step) {
+            //     events.reject_events(state);
+            //     state.remake_step(&|s| self.f(s))
+            //     continue;
+            // }
+        }
+
+        state.x_seq
     }
 }
 
@@ -28,18 +50,6 @@ impl DifferentialEquation for HarmonicOscillator {
 mod test_solver {
     use super::*;
 
-    #[test]
-    fn test_solution() {
-        let eq = HarmonicOscillator { w: 1. };
-
-        let _res = eq.solve::<rk1::Euler>(0. ..f64::NAN, &|t: f64| {
-            [(eq.w * t).sin(), eq.w * (eq.w * t).cos()]
-        });
-
-        let range = 0. ..10.;
-        let initial_condition = |t: f64| [(eq.w * t).sin(), eq.w * (eq.w * t).cos()];
-        let _res = eq.solve::<rk1::Euler>(range, &initial_condition);
-
-    }
 }
+
 

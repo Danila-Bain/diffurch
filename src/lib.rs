@@ -1,12 +1,13 @@
 #![feature(generic_const_exprs)]
 #![feature(generic_const_items)]
 
-mod util;
-mod rk_table;
-mod state;
-mod solver;
-mod events;
-// mod equation;
+pub mod util;
+pub mod rk_table;
+pub mod state;
+pub mod solver;
+pub mod events;
+pub mod stepsize;
+pub mod equation;
 //
 //
 //

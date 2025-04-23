@@ -5,42 +5,54 @@ use std::collections::VecDeque;
 pub trait State<const N: usize> {
     fn t(&self) -> f64;
     fn x(&self) -> [f64; N];
+
     fn push_current(&mut self);
     fn make_step(&mut self, rhs: &impl Fn(&Self) -> [f64; N]);
     fn make_zero_step(&mut self);
+
     fn eval(&self, t: f64) -> [f64; N];
     fn eval_derivative(&self, t: f64) -> [f64; N];
     fn eval_nth_derivative<const ORDER: usize>(&self, t: f64) -> [f64; N];
 }
 
-pub struct RKState<const N: usize, RK>
+pub struct RKState<const N: usize, RK, F: Fn(f64) -> [f64; N]>
 where
     RK: RungeKuttaTable,
     [(); RK::S]:,
 {
-    t: f64,
-    t_init: f64,
-    t_prev: f64,
-    t_step: f64,
-    t_span: f64,
-    t_seq: VecDeque<f64>,
+    pub t: f64,
+    pub t_init: f64,
+    pub t_prev: f64,
+    pub t_step: f64,
+    pub t_span: f64,
+    pub t_seq: VecDeque<f64>,
 
     pub x: [f64; N],
-    x_init: fn(f64) -> [f64; N],
-    x_prev: [f64; N],
-    x_err: [f64; N],
-    x_seq: VecDeque<[f64; N]>,
+    pub x_init: F,
+    pub x_prev: [f64; N],
+    pub x_err: [f64; N],
+    pub x_seq: VecDeque<[f64; N]>,
 
     k: [[f64; N]; RK::S],
     k_seq: VecDeque<[[f64; N]; RK::S]>,
 }
 
-impl<const N: usize, RK> RKState<N, RK>
+impl<const N: usize, RK, F: Fn(f64) -> [f64; N]> std::fmt::Debug for RKState<N, RK, F>
 where
     RK: RungeKuttaTable,
     [(); RK::S]:,
 {
-    fn new(t_init: f64, x_init: fn(f64) -> [f64; N]) -> Self {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "State {{t: {:?}, x: {:?}, t_prev: {:?}, x_prev: {:?}}}", self.t, self.x, self.t_prev, self.x_prev)
+    }
+}
+
+impl<const N: usize, RK, F: Fn(f64) -> [f64; N]> RKState<N, RK, F>
+where
+    RK: RungeKuttaTable,
+    [(); RK::S]:,
+{
+    pub fn new(t_init: f64, x_init: F) -> Self {
         let x = x_init(t_init);
 
         Self {
@@ -63,7 +75,7 @@ where
     }
 }
 
-impl<const N: usize, RK> State<N> for RKState<N, RK>
+impl<const N: usize, RK, F: Fn(f64) -> [f64; N]> State<N> for RKState<N, RK, F>
 where
     RK: RungeKuttaTable,
     [(); RK::S]:,
@@ -90,8 +102,12 @@ where
             self.k_seq.pop_front();
         }
     }
+    
 
     fn make_step(&mut self, rhs: &impl Fn(&Self) -> [f64; N]) {
+        self.t_prev = self.t;
+        self.x_prev = self.x;
+
         for i in 0..RK::S {
             self.t = self.t_prev + RK::C[i] * self.t_step;
 
@@ -106,6 +122,7 @@ where
             self.x_prev[k]
                 + self.t_step * (0..RK::S).fold(0., |acc, j| acc + RK::B[j] * self.k[j][k])
         });
+        self.t = self.t_prev + self.t_step;
     }
 
     fn make_zero_step(&mut self) {

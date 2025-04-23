@@ -128,3 +128,17 @@ change saving destination:
 .to_csv(&mut stream) ???
 .to_hist(&mut histogram_handler)
 ```
+
+
+# Structure of the project
+
+There are several components, that contribute to the desired output: the data of the numerical solution provided in some form. From the perspective of the interface, it is
+- The equation itself (determines the mathematical part)
+    - right-hand side
+    - intrusive events
+    - initial conditions
+- The solver (determines the technical realization part)
+    - runge kutta scheme
+    - stepsize controller
+    - saving events
+
