@@ -64,11 +64,11 @@ impl<Args: Tuple, const N: usize, Callback: Fn<Args, Output=[f64; N]>> Event<Arg
         })
     }
 
-    pub fn to_csv(self, filename: &str) 
-        // -> Event<Args, [f64; N], Callback, impl FnMut([f64; N])> 
-        {
-        todo!();
-    }
+    // pub fn to_csv(self, filename: &str) 
+    //     // -> Event<Args, [f64; N], Callback, impl FnMut([f64; N])> 
+    //     {
+    //     todo!();
+    // }
 }
 
 impl<Args: Tuple, Output, Callback: Fn<Args, Output = Output>, Stream: FnMut(Output)> Event<Args, Output, Callback, Stream> {

@@ -83,6 +83,15 @@ impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<(f64,
 }
 
 
+impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<([f64; N], )>
+    for &RKState<N, S, F>
+{
+    fn state_into(self) -> ([f64; N], ) {
+        (self.x, )
+    }
+}
+
+
 impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<(f64, [f64; N])>
     for (&RKState<N, S, F>, )
 {

@@ -45,15 +45,17 @@ impl<const S: usize, StepEvents> Solver<S, StepEvents> {
 }
 
 impl<const S: usize, StepEvents> Solver<S, StepEvents> {
-    pub fn run<const N: usize, RHS, EquationEvents, IC>(
+    pub fn run<const N: usize, RHS, EquationEvents, IC, EquationArgs>(
         &mut self,
         equation: Equation<N, RHS, EquationEvents>,
         initial_function: IC,
         interval: std::ops::Range<f64>,
     ) where
         IC: Fn(f64) -> [f64; N],
-        StepEvents: for<'a> CallEventTower<(&'a RKState<N, S, IC>, )>,
-        RHS: Fn(f64, [f64; N]) -> [f64; N],
+        StepEvents: for<'a> CallEventTower<(&'a RKState<N, S, IC>,)>,
+        RHS: Fn<EquationArgs, Output = [f64; N]>,
+        for<'a> &'a RKState<N, S, IC>: StateInto<EquationArgs>,
+        EquationArgs: std::marker::Tuple,
     {
         /* initializations */
         let mut state = RKState::new(interval.start, initial_function, self.rk);
@@ -93,16 +95,16 @@ mod tests {
 
     #[test]
     fn solver() {
-        let solver = Solver::new();
-        let solver = Solver::new().rk(&RK98).stepsize(0.2);
-        let solver = Solver::new().rk(&DP544).stepsize(0.1);
+        let _solver = Solver::new();
+        let _solver = Solver::new().rk(&RK98).stepsize(0.2);
+        let _solver = Solver::new().rk(&DP544).stepsize(0.1);
 
-        let solver = Solver {
+        let _solver = Solver {
             rk: &HEUN3,
             stepsize: 0.05,
             step_events: (),
         };
-        let solver = Solver {
+        let _solver = Solver {
             rk: &RKTP64,
             stepsize: 0.05,
             step_events: (),
