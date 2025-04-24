@@ -197,7 +197,3 @@ For the Hutchinson equaiton, this closure will be called internally like `closur
 
 Exept for the detection events, all events have specific callbacks times, and only the callbacks need to be specified. In that callback, some state variables can be modified directly.
 
-
-
-
-For eventi

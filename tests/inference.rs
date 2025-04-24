@@ -33,7 +33,7 @@ fn closure_array_dispatch_type_inferred() {
 
 #[test]
 fn closure_mut_array_dispatch() {
-    let f = |t: &mut f64, [x, y, z]: &mut [i32; 3]| {
+    let f = |t: &mut f64, [_, _, z]: &mut [i32; 3]| {
         *t += 1.;
         *z += 2;
     };
@@ -57,7 +57,7 @@ fn closure_mut_array_dispatch_type_inference() {
     }
 
     assert_eq!(
-        expects_mut_array_closure(&|[x, y, z]| {
+        expects_mut_array_closure(&|[_, _, z]| {
             *z += 2;
         }),
         [0, 0, 4]

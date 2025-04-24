@@ -1,4 +1,7 @@
+use crate::equation::*;
+use crate::event::*;
 use crate::rk::*;
+use crate::state::*;
 
 pub struct Solver<const S: usize = 26, StepEvents = ()> {
     rk: &'static RungeKuttaTable<'static, S>,
@@ -7,7 +10,7 @@ pub struct Solver<const S: usize = 26, StepEvents = ()> {
 }
 
 impl Solver {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             rk: &RK98,
             stepsize: 0.05,
@@ -17,8 +20,7 @@ impl Solver {
 }
 
 impl<const S: usize, StepEvents> Solver<S, StepEvents> {
-
-    fn with_rk<const S_NEW: usize>(
+    pub fn rk<const S_NEW: usize>(
         self,
         rk: &'static RungeKuttaTable<'static, S_NEW>,
     ) -> Solver<S_NEW, StepEvents> {
@@ -29,10 +31,58 @@ impl<const S: usize, StepEvents> Solver<S, StepEvents> {
         }
     }
 
-    fn with_stepsize(self, stepsize: f64) -> Self {
-        Self {
+    pub fn stepsize(self, stepsize: f64) -> Self {
+        Self { stepsize, ..self }
+    }
+
+    pub fn on_step<E>(self, event: E) -> Solver<S, (E, StepEvents)> {
+        Solver::<S, (E, StepEvents)> {
             rk: self.rk,
-            ..self
+            stepsize: self.stepsize,
+            step_events: (event, self.step_events),
+        }
+    }
+}
+
+impl<const S: usize, StepEvents> Solver<S, StepEvents> {
+    pub fn run<const N: usize, RHS, EquationEvents, IC>(
+        &mut self,
+        equation: Equation<N, RHS, EquationEvents>,
+        initial_function: IC,
+        interval: std::ops::Range<f64>,
+    ) where
+        IC: Fn(f64) -> [f64; N],
+        StepEvents: for<'a> CallEventTower<(&'a RKState<N, S, IC>, )>,
+        RHS: Fn(f64, [f64; N]) -> [f64; N],
+    {
+        /* initializations */
+        let mut state = RKState::new(interval.start, initial_function, self.rk);
+        state.t_step = self.stepsize;
+        state.t_span = f64::NAN;
+
+        // let rhs = to_state_function(equation.rhs);
+        let _equation_events = equation.events;
+
+        /* start event */
+        /* step event */
+
+        // interval.end can be NAN, meaning no end
+        while !(*state.t() >= interval.end) {
+            state.make_step(&equation.rhs);
+            state.push_current();
+
+            self.step_events.call_event_tower((&state,));
+            // call_event_tower(self.step_events, (&state,));
+
+            /* step event */
+
+            // state.t_step = std::min(state.t_step, final_time - state.t_curr);
+            //
+            // if (reject_step) {
+            //     events.reject_events(state);
+            //     state.remake_step(&|s| self.f(s))
+            //     continue;
+            // }
         }
     }
 }
@@ -44,11 +94,19 @@ mod tests {
     #[test]
     fn solver() {
         let solver = Solver::new();
-        let solver = Solver::new().with_rk(&RK98).with_stepsize(0.2);
-        let solver = Solver::new().with_rk(&DP544).with_stepsize(0.1);
+        let solver = Solver::new().rk(&RK98).stepsize(0.2);
+        let solver = Solver::new().rk(&DP544).stepsize(0.1);
 
-        let solver = Solver { rk: &HEUN3, stepsize: 0.05, step_events: ()};
-        let solver = Solver { rk: &RKTP64, stepsize: 0.05, step_events: ()};
+        let solver = Solver {
+            rk: &HEUN3,
+            stepsize: 0.05,
+            step_events: (),
+        };
+        let solver = Solver {
+            rk: &RKTP64,
+            stepsize: 0.05,
+            step_events: (),
+        };
 
         // let solver = Solver { rk: &RKTP64, step_events: (), ..};
     }

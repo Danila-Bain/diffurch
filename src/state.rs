@@ -3,17 +3,56 @@ use crate::rk::*;
 use std::collections::VecDeque;
 
 pub trait State<const N: usize> {
-    fn t(&self) -> f64;
-    fn x(&self) -> [f64; N];
+    const N: usize = N;
+    fn t(&self) -> &f64;
+    fn x(&self) -> &[f64; N];
 
     fn push_current(&mut self);
-    fn make_step(&mut self, rhs: &impl Fn(&Self) -> [f64; N]);
+    fn make_step<Args, RHS>(&mut self, rhs: &RHS)
+    where
+        Args: std::marker::Tuple,
+        RHS: Fn<Args, Output = [f64; N]>,
+        for<'a> &'a Self: StateInto<Args>;
     fn make_zero_step(&mut self);
 
     fn eval(&self, t: f64) -> [f64; N];
     fn eval_derivative(&self, t: f64) -> [f64; N];
     fn eval_nth_derivative<const ORDER: usize>(&self, t: f64) -> [f64; N];
 }
+
+pub trait StateInto<T> {
+    fn state_into(self) -> T;
+}
+
+// impl<'a, T> StateInto<&'a T> for &'a T {
+//     fn state_into(self) -> Self {
+//         self
+//     }
+// }
+//
+// impl<'a, T> StateInto<(&'a T,)> for &'a T {
+//     fn state_into(self) -> (Self,) {
+//         (self,)
+//     }
+// }
+//
+// impl<'a, T, const N: usize> StateInto<(&'a f64, &'a [f64; N])> for &'a T
+// where
+//     T: State<N>,
+// {
+//     fn state_into(self) -> (&'a f64, &'a [f64; N]) {
+//         (self.t(), self.x())
+//     }
+// }
+//
+// impl<'a, T, const N: usize> StateInto<(&'a f64, &'a [f64; N])> for &'a mut T
+// where
+//     T: State<N>,
+// {
+//     fn state_into(self) -> (&'a f64, &'a [f64; N]) {
+//         (self.t(), self.x())
+//     }
+// }
 
 pub struct RKState<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> {
     pub t: f64,
@@ -33,6 +72,32 @@ pub struct RKState<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> {
     k_seq: VecDeque<[[f64; N]; S]>,
 
     rk: &'static RungeKuttaTable<'static, S>,
+}
+
+impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<(f64, [f64; N])>
+    for &RKState<N, S, F>
+{
+    fn state_into(self) -> (f64, [f64; N]) {
+        (self.t, self.x)
+    }
+}
+
+
+impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<(f64, [f64; N])>
+    for (&RKState<N, S, F>, )
+{
+    fn state_into(self) -> (f64, [f64; N]) {
+        (self.0.t, self.0.x)
+    }
+}
+
+
+impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<([f64; N], )>
+    for (&RKState<N, S, F>, )
+{
+    fn state_into(self) -> ([f64; N], ) {
+        (self.0.x, )
+    }
 }
 
 // impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> std::fmt::Debug for RKState<N, RK, F>
@@ -69,11 +134,11 @@ impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> RKState<N, S, F> {
 }
 
 impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N> for RKState<N, S, F> {
-    fn t(&self) -> f64 {
-        self.t
+    fn t(&self) -> &f64 {
+        &self.t
     }
-    fn x(&self) -> [f64; N] {
-        self.x
+    fn x(&self) -> &[f64; N] {
+        &self.x
     }
 
     fn push_current(&mut self) {
@@ -92,7 +157,12 @@ impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N> for RKStat
         }
     }
 
-    fn make_step(&mut self, rhs: &impl Fn(&Self) -> [f64; N]) {
+    fn make_step<Args, RHS>(&mut self, rhs: &RHS)
+    where
+        Args: std::marker::Tuple,
+        RHS: Fn<Args, Output = [f64; N]>,
+        for<'a> &'a Self: StateInto<Args>,
+    {
         self.t_prev = self.t;
         self.x_prev = self.x;
 
@@ -103,7 +173,7 @@ impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N> for RKStat
                 self.x_prev[k]
                     + self.t_step * (0..i).fold(0., |acc, j| acc + self.rk.a[i][j] * self.k[j][k])
             });
-            self.k[i] = rhs(&self);
+            self.k[i] = rhs.call(self.state_into());
         }
 
         self.x = std::array::from_fn(|k| {
@@ -144,11 +214,11 @@ impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N> for RKStat
         }
     }
 
-    fn eval_derivative(&self, t: f64) -> [f64; N] {
+    fn eval_derivative(&self, _t: f64) -> [f64; N] {
         todo!()
     }
 
-    fn eval_nth_derivative<const ORDER: usize>(&self, t: f64) -> [f64; N] {
+    fn eval_nth_derivative<const ORDER: usize>(&self, _t: f64) -> [f64; N] {
         todo!()
     }
 }

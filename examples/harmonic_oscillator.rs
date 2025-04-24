@@ -1,49 +1,42 @@
 // use diffurch::state::*;
-// use diffurch::rk_table::*;
-// use diffurch::solver::*;
-//
-// struct HarmonicOscillator {
-//     w: f64,
-// }
-// impl DifferentialEquation for HarmonicOscillator {
-//     const N: usize = 2;
-//
-//     fn f(&self, s: &impl State<{ Self::N }>) -> [f64; Self::N] {
-//         let [x, dx] = s.x();
-//         [dx, -(self.w).powi(2) * x]
-//     }
-// }
-//
-// fn main() {
-//     let eq = HarmonicOscillator { w: 1. };
-//
-//     let range = 0. ..10.;
-//     // let range = 0. .. f64::NAN;
-//     let initial_condition = |t: f64| [(eq.w * t).sin(), eq.w * (eq.w * t).cos()];
-//     let rk = rk98::RK98;
-//     let stepsize = 0.05;
-//     let res: Vec<[f64; 2]> = eq
-//         .solve(range, &initial_condition, rk, stepsize)
-//         .into_iter()
-//         .collect();
-//
-//     let [min, max] = res
-//         .iter()
-//         .map(|p| p[0] * p[0] + p[1] * p[1])
-//         .fold([f64::NAN, f64::NAN], |acc, i| {
-//             [acc[0].min(i), acc[1].max(i)]
-//         });
-//
-//     assert!(max - min < 1e-14);
-//
-//     // let mut plot = pgfplots::axis::plot::Plot2D::new();
-//     // plot.coordinates = res.into_iter().map(|p| (p[0], p[1]).into()).collect();
-//     // pgfplots::Picture::from(plot)
-//     //     .show_pdf(pgfplots::Engine::PdfLatex)
-//     //     .unwrap();
-// }
-// //
-//
-fn main() {
+use diffurch::equation::Equation;
+use diffurch::event::Event;
+use diffurch::rk;
+use diffurch::solver::Solver;
 
+fn main() {
+    let k = 1.;
+
+    let eq = Equation::new(|_t: f64, [x, dx]: [f64; 2]| [dx, -k * k * x]);
+
+    let ic = |t: f64| [(t * k).sin(), k * (t * k).cos()];
+    let range = 0. ..10.;
+
+    // let mut solver = solver
+    // .on_step(Event::new(|t: f64, [x, dx]: [f64; 2]| (t, x, dx)).to_std())
+    // ;
+
+    // let solver = solver.on_step(Event::new(|t, [x, dx]| (t, x, dx)).to_std());
+    let mut points = Vec::new();
+
+    let mut t = Vec::new();
+    let mut x = Vec::new();
+    let mut dx = Vec::new();
+
+    Solver::new()
+        .rk(&rk::RK98)
+        .stepsize(0.05)
+        .on_step(Event::new(|t: f64, [x, dx]: [f64; 2]| (t, dx)).to_vec(&mut points))
+        .on_step(Event::new(|[x, dx]: [f64; 2]| x * x + dx * dx).to_std())
+        .on_step(
+            Event::new(|t: f64, [x, dx]: [f64; 2]| [t, x, dx]).to_vecs([&mut t, &mut x, &mut dx]),
+        )
+        .run(eq, ic, range);
+
+    // println!("{:?}", &points);
+    let mut plot = pgfplots::axis::plot::Plot2D::new();
+    plot.coordinates = points.into_iter().map(|p| p.into()).collect();
+    pgfplots::Picture::from(plot)
+        .show_pdf(pgfplots::Engine::PdfLatex)
+        .unwrap();
 }
