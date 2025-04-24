@@ -32,8 +32,7 @@ impl<const S: usize, StepEvents> Solver<S, StepEvents> {
     fn with_stepsize(self, stepsize: f64) -> Self {
         Self {
             rk: self.rk,
-            stepsize,
-            step_events: self.step_events,
+            ..self
         }
     }
 }
@@ -47,5 +46,10 @@ mod tests {
         let solver = Solver::new();
         let solver = Solver::new().with_rk(&RK98).with_stepsize(0.2);
         let solver = Solver::new().with_rk(&DP544).with_stepsize(0.1);
+
+        let solver = Solver { rk: &HEUN3, stepsize: 0.05, step_events: ()};
+        let solver = Solver { rk: &RKTP64, stepsize: 0.05, step_events: ()};
+
+        // let solver = Solver { rk: &RKTP64, step_events: (), ..};
     }
 }

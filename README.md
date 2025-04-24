@@ -150,19 +150,11 @@ let solver = Solver::new()
     .with_rk(rk::CLASSIC4)
     .with_stepsize(0.001)
     .add_step_event(
-        Event::save(|s| {
-            let t = s.t();      // this makes me upset
-            let [x,y,z] = s.x(); // and this
-            [t, x, y, z]
-        })
+        Event::save(|t, [x,y,z]| { [t, x, y, z] })
         .spaced_by(0.1)
         .to_csv("datapoints.csv")?
     )
-    .add_step_event(
-        Event::save(|s| {
-            let [x,y,z] = s.x();
-            x*x + y*y + z*z
-        })
+    .add_step_event(|[x,y,z]| x*x + y*y + z*z)
         .every(100)
         .to_std()
     )
@@ -171,12 +163,41 @@ let solver = Solver::new()
 # Event Interface:
 
 ```rust
-let event = Event::save(|s| {
-        let [x, dx] = s.x();
-        x*x + dx*dx
-        })
+let event = Event::save(|[x, dx]| x*x + dx*dx)
 
+let event = Event::save(|t, [x], [x_]| {
+    [t, x, x_(t - tau)]
+}) // doubious
 
-let event = event_save_xyz!{[t, x, y, z]};
-let event = event_save_x1!{[t, ]};
+let event = Event::new().save(|t, [x,y,z]| [t, x, y, z]);
+let event = Event::new().save(|t, [x, dx]| [t, x]);
 ```
+
+
+# State functions interface:
+
+Under the hood, there is a state object, which holds the current and past states. It is the object on which the runge-kutta scheme is acting upon, making use of past states by means of interpolation, for delay differential equations. 
+
+## Right hand side of the equation
+
+For ordinary differential equations, the idea is to convert regular closures to state functions, supporting signatures like
+`|t, [x, dx]| [dx, -x + t.sin()]`, 
+`|[x,y,z]| [sigma * (y-x), x*(rho - z) - y, x*y - beta*z]`,
+`|t| [(t*w).sin(), (t*w).cos()*w]`.
+
+
+Internally, closure like `|t, [x, dx]| {...}` is called like `closure(state.t(), state.x())`.
+
+The harder question, is how the user is supposed to use the delayed argument. The first instinct is, to make a closure, that accepts the `f64` for time, `[f64; N]` for immediate state, `[Fn(f64) -> f64; N]` for coordinate evaluation functions, and even aditional `[Fn(f64)-> f64; N]` for coordinate derivatives evaluation functions. So, the Hutchinson equation would be written as
+`|t, [x], [x_]| [r * x * (1 - x_(t - tau)])`, and a neutral delay equation would be written as `|t, [x], _, [dx]| [-x + (1 + epsilon)*dx(t - T)]`.
+
+For the Hutchinson equaiton, this closure will be called internally like `closure(state.t(), state.x(), [|t| state.eval::<0>(t)])`
+
+## Events
+
+Exept for the detection events, all events have specific callbacks times, and only the callbacks need to be specified. In that callback, some state variables can be modified directly.
+
+
+
+
+For eventi
