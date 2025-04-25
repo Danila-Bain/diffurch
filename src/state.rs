@@ -52,32 +52,41 @@ impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<(f64,
     }
 }
 
-
-impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<([f64; N], )>
+impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<([f64; N],)>
     for &State<N, S, F>
 {
-    fn state_into(self) -> ([f64; N], ) {
-        (self.x, )
+    fn state_into(self) -> ([f64; N],) {
+        (self.x,)
     }
 }
 
-
 impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<(f64, [f64; N])>
-    for (&State<N, S, F>, )
+    for (&State<N, S, F>,)
 {
     fn state_into(self) -> (f64, [f64; N]) {
         (self.0.t, self.0.x)
     }
 }
 
-
-impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<([f64; N], )>
-    for (&State<N, S, F>, )
+impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<([f64; N],)>
+    for (&State<N, S, F>,)
 {
-    fn state_into(self) -> ([f64; N], ) {
-        (self.0.x, )
+    fn state_into(self) -> ([f64; N],) {
+        (self.0.x,)
     }
 }
+
+// impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]>
+//     StateInto<(f64, [f64; N], [impl Fn(f64) -> f64; N])> for (&State<N, S, F>,)
+// {
+//     fn state_into(self) -> (f64, [f64; N], [impl Fn(f64) -> f64; N]) {
+//         (
+//             self.0.t,
+//             self.0.x,
+//             std::array::from_fn(|i| {move |t| (&self.0).eval_i(t, i)}),
+//         )
+//     }
+// }
 
 // impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> std::fmt::Debug for RKState<N, RK, F>
 // {
@@ -191,6 +200,28 @@ impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N, S, F> {
             return std::array::from_fn(|i| {
                 x_prev[i] + t_step * (0..S).fold(0., |acc, j| acc + self.rk.bi[j](theta) * k[j][i])
             });
+        }
+    }
+
+    pub fn eval_i(&self, t: f64, coordinate: usize) -> f64 {
+        if t < self.t_init {
+            return (self.x_init)(t)[coordinate];
+        } else {
+            let i = self.t_seq.partition_point(|t_i| t_i < &t); // first i : t_seq[i] >= t
+            if i == 0 {
+                panic!("evaluation of state in deleted time range");
+            } else if i == self.t_seq.len() {
+                panic!("evaluation of state in a not yet computed time range");
+            }
+
+            let x_prev = &self.x_seq[i - 1][coordinate];
+            let k = &self.k_seq[i - 1];
+            let t_prev = self.t_seq[i - 1];
+            let t_next = self.t_seq[i - 1];
+            let t_step = t_prev - t_next;
+            let theta = (t - t_prev) / t_step;
+            return x_prev
+                + t_step * (0..S).fold(0., |acc, j| acc + self.rk.bi[j](theta) * k[j][coordinate]);
         }
     }
 
