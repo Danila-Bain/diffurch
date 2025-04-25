@@ -2,9 +2,6 @@ use crate::rk::*;
 
 use std::collections::VecDeque;
 
-pub trait FromState<T> {
-    fn from_state(t: T) -> Self;
-}
 
 pub struct State<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> {
     pub t: f64,
@@ -26,6 +23,10 @@ pub struct State<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> {
     rk: &'static RungeKuttaTable<'static, S>,
 }
 
+pub trait FromState<T> {
+    fn from_state(t: T) -> Self;
+}
+
 impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FromState<&State<N, S, F>>
     for (f64, [f64; N])
 {
@@ -60,11 +61,16 @@ impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FromState<(&State<N
     }
 }
 
-// impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]>
-//     StateInto<
-//     > for (&State<N, S, F>,)
-// {
-// }
+
+impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FromState<(&State<N, S, F>,)>
+    for (f64, [f64; N], [Box<dyn Fn(f64) -> f64>; N])
+{
+    fn from_state(state: (&State<N, S, F>,)) -> Self {
+        let state = state.0;
+        (state.t, state.x)
+    }
+}
+
 
 impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N, S, F> {
     pub fn new(t_init: f64, x_init: F, rk: &'static RungeKuttaTable<S>) -> Self {
@@ -187,8 +193,8 @@ impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N, S, F> {
         }
     }
 
-    // pub fn x_eval_i(&self, coodrdinate: usize) -> impl Fn(f64) -> f64 {
-    //     move |t| (&self).eval_i(t, coodrdinate)
+    // pub fn x_eval_i(&self, coodrdinate: usize) -> Box<dyn Fn(f64) -> f64> {
+    //     Box::new(move |t| (&self).eval_i(t, coodrdinate))
     // }
 
     pub fn eval_derivative(&self, _t: f64) -> [f64; N] {
@@ -200,52 +206,3 @@ impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N, S, F> {
     }
 }
 
-pub struct StateFn<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> {
-    state: &'a State<N, S, F>,
-    coordinate: usize,
-}
-
-impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> Fn<(f64,)>
-    for StateFn<'a, N, S, F>
-{
-    extern "rust-call" fn call(&self, args: (f64,)) -> f64 {
-        let (t,) = args;
-        self.state.eval_i(t, self.coordinate)
-    }
-}
-
-impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FnMut<(f64,)>
-    for StateFn<'a, N, S, F>
-{
-    extern "rust-call" fn call_mut(&mut self, args: (f64,)) -> f64 {
-        self.call(args)
-    }
-}
-
-impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FnOnce<(f64,)>
-    for StateFn<'a, N, S, F>
-{
-    type Output = f64;
-
-    extern "rust-call" fn call_once(self, args: (f64,)) -> f64 {
-        self.call(args)
-    }
-}
-
-impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N, S, F> {
-    pub fn get_coordinate_functions(&self) -> [StateFn<N, S, F>; N] {
-        std::array::from_fn(|coordinate| StateFn::<N, S, F> {
-            state: &self,
-            coordinate,
-        })
-    }
-}
-
-impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FromState<(&'a State<N, S, F>,)>
-    for (f64, [f64; N], [StateFn<'a, N, S, F>; N])
-{
-    fn from_state(state: (&'a State<N, S, F>,)) -> Self {
-        let state = state.0;
-        (state.t, state.x, state.get_coordinate_functions())
-    }
-}

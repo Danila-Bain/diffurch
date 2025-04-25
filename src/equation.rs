@@ -1,4 +1,4 @@
-use crate::state::{State, FromState, StateFn};
+use crate::state::{State, FromState};
 
 pub struct Equation<const N: usize = 1, RHS = (), Events = ()> {
     pub rhs: RHS,
@@ -33,7 +33,7 @@ impl Equation {
 
     pub fn dde<const N: usize, RHS, const S: usize, F: Fn(f64) -> [f64; N]>(rhs: RHS) -> Equation<N, RHS, ()>
     where
-        RHS: Fn(f64, [f64; N], [StateFn<N, S, F>; N]) -> [f64; N],
+        RHS: Fn(f64, [f64; N], [Box<dyn Fn(f64) -> f64>; N]) -> [f64; N],
     {
         Equation::<N, RHS, ()> { rhs, events: () , max_delay: f64::NAN }
     }
