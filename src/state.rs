@@ -22,8 +22,9 @@ pub struct State<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f6
     rk: &'static RungeKuttaTable<'static, S>,
 }
 
-
-impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]> State<N, S, InitialFunction> {
+impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]>
+    State<N, S, InitialFunction>
+{
     pub fn new(t_init: f64, x_init: InitialFunction, rk: &'static RungeKuttaTable<S>) -> Self {
         let x = x_init(t_init);
 
@@ -49,7 +50,9 @@ impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]> State
     }
 }
 
-impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]> State<N, S, InitialFunction> {
+impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]>
+    State<N, S, InitialFunction>
+{
     pub fn push_current(&mut self) {
         self.t_seq.push_back(self.t);
         self.x_seq.push_back(self.x);
@@ -66,10 +69,9 @@ impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]> State
         }
     }
 
-    pub fn make_step<Args, RHS>(&mut self, rhs: &RHS)
+    pub fn make_step<RHS>(&mut self, rhs: &RHS)
     where
-        Args: std::marker::Tuple + for<'a> FromState<&'a Self>,
-        RHS: Fn<Args, Output = [f64; N]>,
+        RHS: Fn(&Self) -> [f64; N],
     {
         self.t_prev = self.t;
         self.x_prev = self.x;
@@ -81,7 +83,7 @@ impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]> State
                 self.x_prev[k]
                     + self.t_step * (0..i).fold(0., |acc, j| acc + self.rk.a[i][j] * self.k[j][k])
             });
-            self.k[i] = rhs.call(Args::from_state(self));
+            self.k[i] = rhs(self);
         }
 
         self.x = std::array::from_fn(|k| {
@@ -161,16 +163,16 @@ pub trait FromState<T> {
     fn from_state(t: T) -> Self;
 }
 
-impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]> FromState<&State<N, S, InitialFunction>>
-    for (f64, [f64; N])
+impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]>
+    FromState<&State<N, S, InitialFunction>> for (f64, [f64; N])
 {
     fn from_state(state: &State<N, S, InitialFunction>) -> Self {
         (state.t, state.x)
     }
 }
 
-impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]> FromState<(&State<N, S, InitialFunction>,)>
-    for (f64, [f64; N])
+impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]>
+    FromState<(&State<N, S, InitialFunction>,)> for (f64, [f64; N])
 {
     fn from_state(state: (&State<N, S, InitialFunction>,)) -> Self {
         let state = state.0;
@@ -178,16 +180,16 @@ impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]> FromS
     }
 }
 
-impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]> FromState<&State<N, S, InitialFunction>>
-    for ([f64; N],)
+impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]>
+    FromState<&State<N, S, InitialFunction>> for ([f64; N],)
 {
     fn from_state(state: &State<N, S, InitialFunction>) -> Self {
         (state.x,)
     }
 }
 
-impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]> FromState<(&State<N, S, InitialFunction>,)>
-    for ([f64; N],)
+impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]>
+    FromState<(&State<N, S, InitialFunction>,)> for ([f64; N],)
 {
     fn from_state(state: (&State<N, S, InitialFunction>,)) -> Self {
         let state = state.0;
@@ -195,11 +197,49 @@ impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]> FromS
     }
 }
 
+// although Arg parameter is not used,
+// it is necessary to avoid conflicting implementations
+// and is available together with Self anyway, together with Ret
+pub trait ToStateFunction<S, Arg, Ret> {
+    fn to_state_function(self) -> impl Fn(&S) -> Ret;
+}
 
-// pub trait ToStateFunction<S, Ret> {
-//     fn to_state_function(self) -> impl Fn(S) -> Ret;
-// }
+impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N], F, Ret>
+    ToStateFunction<State<N, S, InitialFunction>, (&State<N, S, InitialFunction>,), Ret> for F
+where
+    F: for<'a> Fn<(&'a State<N, S, InitialFunction>,), Output = Ret>,
+{
+    fn to_state_function(self) -> impl Fn(&State<N, S, InitialFunction>) -> Ret {
+        self
+    }
+}
 
-// impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]> FromState<(&State<N, S, InitialFunction>,)>
+impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N], F, Ret>
+    ToStateFunction<State<N, S, InitialFunction>, (f64,), Ret> for F
+where
+    F: Fn<(f64,), Output = Ret>,
+{
+    fn to_state_function(self) -> impl Fn(&State<N, S, InitialFunction>) -> Ret {
+        move |state| self(state.t)
+    }
+}
 
+impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N], F, Ret>
+    ToStateFunction<State<N, S, InitialFunction>, ([f64; N],), Ret> for F
+where
+    F: Fn<([f64; N],), Output = Ret>,
+{
+    fn to_state_function(self) -> impl Fn(&State<N, S, InitialFunction>) -> Ret {
+        move |state| self(state.x)
+    }
+}
 
+impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N], F, Ret>
+    ToStateFunction<State<N, S, InitialFunction>, (f64, [f64; N]), Ret> for F
+where
+    F: Fn<(f64, [f64; N]), Output = Ret>,
+{
+    fn to_state_function(self) -> impl Fn(&State<N, S, InitialFunction>) -> Ret {
+        move |state| self(state.t, state.x)
+    }
+}

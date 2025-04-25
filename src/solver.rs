@@ -55,21 +55,23 @@ impl<const S: usize, StepEvents> Solver<S, StepEvents> {
         StepEvents: for<'a> CallEventTower<(&'a State<N, S, IC>,)>,
         RHS: Fn<EquationArgs, Output = [f64; N]>,
         EquationArgs: std::marker::Tuple,
-        EquationArgs: for<'a> FromState<&'a State<N, S, IC>>,
+        // EquationArgs: for<'a> FromState<&'a State<N, S, IC>>,
+        RHS: ToStateFunction<State<N,S,IC>, EquationArgs, [f64; N]>,
     {
         /* initializations */
         let mut state = State::new(interval.start, initial_function, self.rk);
         state.t_step = self.stepsize;
         state.t_span = f64::NAN;
 
-        // let rhs = to_state_function(equation.rhs);
+        // ToStateFunction::<&State<N, S, IC>, EquationArgs, [f64; N]>::to_state_function(equation.rhs);
+        let rhs =  equation.rhs.to_state_function();
         let _equation_events = equation.events;
 
         /* start event */
         /* step event */
 
         while state.t < interval.end {
-            state.make_step(&equation.rhs);
+            state.make_step(&rhs);
             state.push_current();
 
             self.step_events.call_event_tower((&state,));

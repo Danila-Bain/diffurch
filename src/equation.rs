@@ -1,5 +1,3 @@
-use crate::state::{State, FromState};
-
 pub struct Equation<const N: usize = 1, RHS = (), Events = ()> {
     pub rhs: RHS,
     pub events: Events,
@@ -11,9 +9,14 @@ impl Equation {
     where
         // for<'a> &'a crate::state::State<N, 1, fn(f64) -> [f64; N]>: crate::state::StateInto<Args>,
         RHS: Fn<Args, Output = [f64; N]>,
-        Args: std::marker::Tuple + for<'a> FromState<&'a State<N, 1, fn(f64) -> [f64; N]>>,
+        Args: std::marker::Tuple,
+        // Args: for<'a> FromState<&'a State<N, 1, fn(f64) -> [f64; N]>>,
     {
-        Equation::<N, RHS, ()> { rhs, events: (), max_delay: f64::NAN }
+        Equation::<N, RHS, ()> {
+            rhs,
+            events: (),
+            max_delay: f64::NAN,
+        }
     }
 
     // ordinary differential equation
@@ -21,21 +24,33 @@ impl Equation {
     where
         RHS: Fn<([f64; N],), Output = [f64; N]>,
     {
-        Equation::<N, RHS, ()> { rhs, events: (), max_delay: 0. }
+        Equation::<N, RHS, ()> {
+            rhs,
+            events: (),
+            max_delay: 0.,
+        }
     }
 
     pub fn ode2<const N: usize, RHS>(rhs: RHS) -> Equation<N, RHS, ()>
     where
         RHS: Fn(f64, [f64; N]) -> [f64; N],
     {
-        Equation::<N, RHS, ()> { rhs, events: (), max_delay: 0. }
+        Equation::<N, RHS, ()> {
+            rhs,
+            events: (),
+            max_delay: 0.,
+        }
     }
 
     pub fn dde<const N: usize, RHS>(rhs: RHS) -> Equation<N, RHS, ()>
     where
         RHS: for<'a> Fn(f64, [f64; N], [Box<dyn Fn(f64) -> f64 + 'a>; N]) -> [f64; N],
     {
-        Equation::<N, RHS, ()> { rhs, events: () , max_delay: f64::NAN }
+        Equation::<N, RHS, ()> {
+            rhs,
+            events: (),
+            max_delay: f64::NAN,
+        }
     }
 
     pub fn max_delay(self, value: f64) -> Self {
