@@ -1,4 +1,4 @@
-use crate::state::StateInto;
+use crate::state::FromState;
 use std::marker::Tuple;
 pub struct Event<Args : Tuple = (), Output = (), Callback: Fn<Args, Output = Output> = fn(), Stream = ()> {
     callback: Callback,
@@ -48,8 +48,8 @@ impl<Args: Tuple, Output, Callback: Fn<Args, Output = Output>> Event<Args, Outpu
         self.save(|v: Output|  *value = v )
     }
 
-    pub fn call<T: StateInto<Args>>(&self, args: T) {
-        let args: Args = args.state_into();
+    pub fn call<S>(&self, s: S) where Args: FromState<S> {
+        let args = Args::from_state(s);
         self.callback.call(args);
     }
 
@@ -72,39 +72,13 @@ impl<Args: Tuple, const N: usize, Callback: Fn<Args, Output=[f64; N]>> Event<Arg
 }
 
 impl<Args: Tuple, Output, Callback: Fn<Args, Output = Output>, Stream: FnMut(Output)> Event<Args, Output, Callback, Stream> {
-    pub fn call<T: StateInto<Args>>(&mut self, args: T) {
-        let args: Args = args.state_into();
+    pub fn call<S>(&mut self, s: S) where Args: FromState<S> {
+        let args: Args = Args::from_state(s);
         let output = self.callback.call(args);
         (self.stream)(output);
     }
 }
 
-// trait EventCall<Args> {
-//     fn call<T: StateInto<Args>>(&self, args: T);
-// }
-//
-// impl<C, Args> EventCall<Args> for Event<C, ()>
-// where
-//     C: Fn<Args>,
-//     Args: std::marker::Tuple,
-// {
-//     fn call<T: StateInto<Args>>(&self, args: T) {
-//         let args: Args = args.state_into();
-//         self.callback.call(args);
-//     }
-// }
-//
-// impl<C, SC, Args, Ret> EventCall<Args> for Event<C, SC>
-// where
-//     C: Fn<Args, Output = Ret>,
-//     SC: Fn(Ret),
-//     Args: std::marker::Tuple,
-// {
-//     fn call<T: StateInto<Args>>(&self, args: T) {
-//         let args: Args = args.state_into();
-//         (self.save_callback)(self.callback.call(args));
-//     }
-// }
 
 pub trait CallEventTower<Args> {
     fn call_event_tower(&mut self, args: Args);
@@ -114,7 +88,7 @@ impl<Args> CallEventTower<Args> for () {
     fn call_event_tower(&mut self, _args: Args) {}
 }
 
-impl<CallArgs: StateInto<Args> + Copy, Args: Tuple, Output, Callback: Fn<Args, Output=Output>, Stream: FnMut(Output), Tail: CallEventTower<CallArgs>> CallEventTower<CallArgs> for (Event<Args, Output, Callback, Stream>, Tail)
+impl<CallArgs: Copy, Args: Tuple + FromState<CallArgs>, Output, Callback: Fn<Args, Output=Output>, Stream: FnMut(Output), Tail: CallEventTower<CallArgs>> CallEventTower<CallArgs> for (Event<Args, Output, Callback, Stream>, Tail)
 {
     fn call_event_tower(&mut self, args: CallArgs) {
         let (head, tail) = self;
@@ -123,38 +97,3 @@ impl<CallArgs: StateInto<Args> + Copy, Args: Tuple, Output, Callback: Fn<Args, O
         tail.call_event_tower(args);
     }
 }
-
-// pub fn call_event_tower<E, Tail, Args, EArgs>(tower: (E, Tail), args: Args)
-// where
-//     E: EventCall<EArgs>,
-//     Args: std::marker::Tuple + Copy + StateInto<EArgs>,
-// {
-//         let (f, tail) = tower;
-//         f.call(args);
-//         // call_event_tower(tail, args);
-// }
-
-// pub trait CallEventTower<Args> {
-//     fn call_event_tower<EArgs>(&self, args: Args);
-// }
-//
-// impl<Args> CallEventTower<Args> for ()
-// {
-//     #[inline]
-//     fn call_event_tower<EArgs>(&self, _arg: Args) {}
-// }
-//
-// impl<Args, C, SC, Tail> CallEventTower<Args> for (Event<C, SC>, Tail)
-//     where
-// {
-//     #[inline]
-//     fn call_event_tower<EArgs>(&self, args: Args) where
-//     C: Fn<EArgs>,
-//     Args: std::marker::Tuple + Copy + StateInto<EArgs>,
-//     Tail: CallEventTower<Args>,
-//     {
-//         let (f, tail) = self;
-//         f.call(args.state_into());
-//         tail.call_event_tower(args);
-//     }
-// }

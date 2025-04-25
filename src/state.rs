@@ -2,26 +2,8 @@ use crate::rk::*;
 
 use std::collections::VecDeque;
 
-// pub trait State<const N: usize> {
-//     const N: usize = N;
-//     fn t(&self) -> &f64;
-//     fn x(&self) -> &[f64; N];
-//
-//     fn push_current(&mut self);
-//     fn make_step<Args, RHS>(&mut self, rhs: &RHS)
-//     where
-//         Args: std::marker::Tuple,
-//         RHS: Fn<Args, Output = [f64; N]>,
-//         for<'a> &'a Self: StateInto<Args>;
-//     fn make_zero_step(&mut self);
-//
-//     fn eval(&self, t: f64) -> [f64; N];
-//     fn eval_derivative(&self, t: f64) -> [f64; N];
-//     fn eval_nth_derivative<const ORDER: usize>(&self, t: f64) -> [f64; N];
-// }
-
-pub trait StateInto<T> {
-    fn state_into(self) -> T;
+pub trait FromState<T> {
+    fn from_state(t: T) -> Self;
 }
 
 pub struct State<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> {
@@ -44,56 +26,42 @@ pub struct State<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> {
     rk: &'static RungeKuttaTable<'static, S>,
 }
 
-impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<(f64, [f64; N])>
-    for &State<N, S, F>
+impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FromState<&State<N, S, F>>
+    for (f64, [f64; N])
 {
-    fn state_into(self) -> (f64, [f64; N]) {
-        (self.t, self.x)
+    fn from_state(state: &State<N, S, F>) -> Self {
+        (state.t, state.x)
     }
 }
 
-impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<([f64; N],)>
-    for &State<N, S, F>
+
+impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FromState<(&State<N, S, F>, )>
+    for (f64, [f64; N])
 {
-    fn state_into(self) -> ([f64; N],) {
-        (self.x,)
+    fn from_state(state: (&State<N, S, F>,)) -> Self {
+        let state = state.0;
+        (state.t, state.x)
     }
 }
 
-impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<(f64, [f64; N])>
-    for (&State<N, S, F>,)
+impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FromState<&State<N, S, F>>
+    for ([f64; N],)
 {
-    fn state_into(self) -> (f64, [f64; N]) {
-        (self.0.t, self.0.x)
+    fn from_state(state: &State<N, S, F>) -> Self {
+        (state.x,)
     }
 }
 
-impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<([f64; N],)>
-    for (&State<N, S, F>,)
+
+impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FromState<(&State<N, S, F>, )>
+    for ([f64; N],)
 {
-    fn state_into(self) -> ([f64; N],) {
-        (self.0.x,)
+    fn from_state(state: (&State<N, S, F>,)) -> Self {
+        let state = state.0;
+        (state.x,)
     }
 }
 
-// impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]>
-//     StateInto<(f64, [f64; N], [impl Fn(f64) -> f64; N])> for (&State<N, S, F>,)
-// {
-//     fn state_into(self) -> (f64, [f64; N], [impl Fn(f64) -> f64; N]) {
-//         (
-//             self.0.t,
-//             self.0.x,
-//             std::array::from_fn(|i| {move |t| (&self.0).eval_i(t, i)}),
-//         )
-//     }
-// }
-
-// impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> std::fmt::Debug for RKState<N, RK, F>
-// {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         write!(f, "State {{t: {:?}, x: {:?}, t_prev: {:?}, x_prev: {:?}}}", self.t, self.x, self.t_prev, self.x_prev)
-//     }
-// }
 
 impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N, S, F> {
     pub fn new(t_init: f64, x_init: F, rk: &'static RungeKuttaTable<S>) -> Self {
@@ -148,9 +116,8 @@ impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N, S, F> {
 
     pub fn make_step<Args, RHS>(&mut self, rhs: &RHS)
     where
-        Args: std::marker::Tuple,
+        Args: std::marker::Tuple + for<'a> FromState<&'a Self>,
         RHS: Fn<Args, Output = [f64; N]>,
-        for<'a> &'a Self: StateInto<Args>,
     {
         self.t_prev = self.t;
         self.x_prev = self.x;
@@ -162,7 +129,7 @@ impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N, S, F> {
                 self.x_prev[k]
                     + self.t_step * (0..i).fold(0., |acc, j| acc + self.rk.a[i][j] * self.k[j][k])
             });
-            self.k[i] = rhs.call(self.state_into());
+            self.k[i] = rhs.call(Args::from_state(self));
         }
 
         self.x = std::array::from_fn(|k| {
