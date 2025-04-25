@@ -1,19 +1,14 @@
-// The helper macro performs recursive expansion of the coefficients.
-#[macro_export]
-macro_rules! polynomial_body {
-    // Base case: only one coefficient left.
-    ($t:ident, $a:expr) => { $a };
-    // Recursive case: take the first coefficient and multiply the next inner expression by t.
-    ($t:ident, $a:expr, $($rest:expr),+) => {
-        $a + $t * (polynomial_body!($t, $($rest),+))
-    };
-}
-
 // The main macro which creates an anonymous function that computes the polynomial.
 #[macro_export]
 macro_rules! polynomial {
     ($($coef:expr),+ $(,)?) => {
-        |_t| { polynomial_body!(_t, $($coef),+) }
+        |_t| { polynomial!(_t => $($coef),+) }
+    };
+    // Base case: only one coefficient left.
+    ($t:ident => $a:expr) => { $a };
+    // Recursive case: take the first coefficient and multiply the next inner expression by t.
+    ($t:ident => $a:expr, $($rest:expr),+) => {
+        $a + $t * (polynomial!($t => $($rest),+))
     };
 }
 

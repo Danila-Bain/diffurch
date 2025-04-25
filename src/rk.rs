@@ -1,5 +1,4 @@
 use crate::polynomial;
-use crate::polynomial_body;
 
 pub struct RungeKuttaTable<'a, const S: usize> {
     pub order: usize,
