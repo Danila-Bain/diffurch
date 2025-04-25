@@ -24,7 +24,7 @@ pub trait StateInto<T> {
     fn state_into(self) -> T;
 }
 
-pub struct RKState<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> {
+pub struct State<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> {
     pub t: f64,
     pub t_init: f64,
     pub t_prev: f64,
@@ -45,7 +45,7 @@ pub struct RKState<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> {
 }
 
 impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<(f64, [f64; N])>
-    for &RKState<N, S, F>
+    for &State<N, S, F>
 {
     fn state_into(self) -> (f64, [f64; N]) {
         (self.t, self.x)
@@ -54,7 +54,7 @@ impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<(f64,
 
 
 impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<([f64; N], )>
-    for &RKState<N, S, F>
+    for &State<N, S, F>
 {
     fn state_into(self) -> ([f64; N], ) {
         (self.x, )
@@ -63,7 +63,7 @@ impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<([f64
 
 
 impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<(f64, [f64; N])>
-    for (&RKState<N, S, F>, )
+    for (&State<N, S, F>, )
 {
     fn state_into(self) -> (f64, [f64; N]) {
         (self.0.t, self.0.x)
@@ -72,7 +72,7 @@ impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<(f64,
 
 
 impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<([f64; N], )>
-    for (&RKState<N, S, F>, )
+    for (&State<N, S, F>, )
 {
     fn state_into(self) -> ([f64; N], ) {
         (self.0.x, )
@@ -86,7 +86,7 @@ impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> StateInto<([f64
 //     }
 // }
 
-impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> RKState<N, S, F> {
+impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N, S, F> {
     pub fn new(t_init: f64, x_init: F, rk: &'static RungeKuttaTable<S>) -> Self {
         let x = x_init(t_init);
 
@@ -113,7 +113,7 @@ impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> RKState<N, S, F> {
 }
 
 // impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N> for RKState<N, S, F> {
-impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> RKState<N, S, F> {
+impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N, S, F> {
     // fn t(&self) -> &f64 {
     //     &self.t
     // }

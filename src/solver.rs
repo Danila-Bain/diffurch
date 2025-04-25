@@ -52,13 +52,13 @@ impl<const S: usize, StepEvents> Solver<S, StepEvents> {
         interval: std::ops::Range<f64>,
     ) where
         IC: Fn(f64) -> [f64; N],
-        StepEvents: for<'a> CallEventTower<(&'a RKState<N, S, IC>,)>,
+        StepEvents: for<'a> CallEventTower<(&'a State<N, S, IC>,)>,
         RHS: Fn<EquationArgs, Output = [f64; N]>,
-        for<'a> &'a RKState<N, S, IC>: StateInto<EquationArgs>,
+        for<'a> &'a State<N, S, IC>: StateInto<EquationArgs>,
         EquationArgs: std::marker::Tuple,
     {
         /* initializations */
-        let mut state = RKState::new(interval.start, initial_function, self.rk);
+        let mut state = State::new(interval.start, initial_function, self.rk);
         state.t_step = self.stepsize;
         state.t_span = f64::NAN;
 

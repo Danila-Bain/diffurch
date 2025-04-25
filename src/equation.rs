@@ -7,7 +7,7 @@ pub struct Equation<const N: usize = 1, RHS = (), Events = ()> {
 impl Equation {
     pub fn new<const N: usize, Args, F>(rhs: F) -> Equation<N, F, ()>
     where
-        for<'a> &'a crate::state::RKState<N, 1, fn(f64) -> [f64; N]>: crate::state::StateInto<Args>,
+        for<'a> &'a crate::state::State<N, 1, fn(f64) -> [f64; N]>: crate::state::StateInto<Args>,
         F: Fn<Args, Output = [f64; N]>,
         Args: std::marker::Tuple,
     {
