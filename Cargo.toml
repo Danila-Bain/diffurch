@@ -8,4 +8,6 @@ pgfplots = "0.5.1"
 plotters = "^0.3.1"
 plotters-backend = "0.3.7"
 open = "5.3.2"
+ndarray = "0.16.1"
+
 

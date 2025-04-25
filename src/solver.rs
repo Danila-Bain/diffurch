@@ -69,7 +69,7 @@ impl<const S: usize, StepEvents> Solver<S, StepEvents> {
         /* step event */
 
         // interval.end can be NAN, meaning no end
-        while !(*state.t() >= interval.end) {
+        while !(state.t >= interval.end) {
             state.make_step(&equation.rhs);
             state.push_current();
 
