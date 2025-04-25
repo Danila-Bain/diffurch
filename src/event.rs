@@ -1,102 +1,122 @@
 use std::marker::Tuple;
+
 pub struct Event<
-    Args: Tuple = (),
-    Output = (),
-    Callback: Fn<Args, Output = Output> = fn(),
+    // Args: Tuple = (),
+    // Output = (),
+    Callback = (),
     Stream = (),
 > {
     callback: Callback,
     stream: Stream,
-    args: std::marker::PhantomData<Args>,
-    output: std::marker::PhantomData<Output>,
 }
 
 impl Event {
+    // pub fn new<
+    //     'a,
+    //     const N: usize,
+    //     const S: usize,
+    //     InitialFunction: Fn(f64) -> [f64; N],
+    //     Args: Tuple,
+    //     Output,
+    //     Callback: Fn<Args, Output = Output> + ToStateFunction<State<N, S, InitialFunction>, Args, Output>,
+    // >(
+    //     callback: Callback,
+    // ) -> Event<impl for<'b> Fn<(&'b State<N, S, InitialFunction>,), Output = Output>, ()> {
+    //     Event::new_unfiltered(callback.to_state_function())
+    // }
+
     pub fn new<Args: Tuple, Output, Callback: Fn<Args, Output = Output>>(
         callback: Callback,
-    ) -> Event<Args, Output, Callback, ()> {
-        Event::<Args, Output, Callback, ()> {
+    ) -> Event<Callback, ()> {
+        Event::<Callback, ()> {
             callback,
             stream: (),
-            args: std::marker::PhantomData::<Args> {},
-            output: std::marker::PhantomData::<Output> {},
         }
     }
-
-    pub fn new_with_stream<Args: Tuple, Output, Callback: Fn<Args, Output = Output>, Stream>(
-        callback: Callback,
-        stream: Stream,
-    ) -> Event<Args, Output, Callback, Stream> {
-        Event::<Args, Output, Callback, Stream> {
-            callback,
-            stream,
-            args: std::marker::PhantomData::<Args> {},
-            output: std::marker::PhantomData::<Output> {},
-        }
-    }
+    //
+    // pub fn new_with_stream<Args: Tuple, Output, Callback: Fn<Args, Output = Output>, Stream>(
+    //     callback: Callback,
+    //     stream: Stream,
+    // ) -> Event<Args, Output, Callback, Stream> {
+    //     Event::<Args, Output, Callback, Stream> {
+    //         callback,
+    //         stream,
+    //         args: std::marker::PhantomData::<Args> {},
+    //         output: std::marker::PhantomData::<Output> {},
+    //     }
+    // }
 }
 
-impl<Args: Tuple, Output, Callback: Fn<Args, Output = Output>> Event<Args, Output, Callback, ()> {
-    pub fn save<Stream: FnMut(Output)>(
+impl<Callback> Event<Callback, ()> {
+    pub fn save<Args, Output, Stream: FnMut(Output)>(
         self,
         stream: Stream,
-    ) -> Event<Args, Output, Callback, Stream> {
-        Event::<Args, Output, Callback, Stream> {
+    ) -> Event<Callback, Stream>
+    where
+        Args: Tuple,
+        Callback: Fn<Args, Output = Output>,
+    {
+        Event::<Callback, Stream> {
             callback: self.callback,
             stream,
-            args: std::marker::PhantomData::<Args> {},
-            output: std::marker::PhantomData::<Output> {},
         }
     }
 
-    pub fn to_std(self) -> Event<Args, Output, Callback, impl FnMut(Output)>
+    pub fn to_std<Args, Output>(self) -> Event<Callback, impl FnMut(Output)>
     where
+        Args: Tuple,
+        Callback: Fn<Args, Output = Output>,
         Output: std::fmt::Debug,
     {
         self.save(|value: Output| println!("{:?}", value))
     }
 
-    pub fn to_vec(
-        self,
-        vec: &mut Vec<Output>,
-    ) -> Event<Args, Output, Callback, impl FnMut(Output)> {
+    pub fn to_vec<Args, Output>(self, vec: &mut Vec<Output>) -> Event<Callback, impl FnMut(Output)>
+    where
+        Callback: Fn<Args, Output = Output>,
+        Args: Tuple,
+    {
         self.save(|value: Output| vec.push(value))
     }
 
-    pub fn to(self, value: &mut Output) -> Event<Args, Output, Callback, impl FnMut(Output)> {
+    pub fn to<Args, Output>(self, value: &mut Output) -> Event<Callback, impl FnMut(Output)>
+    where
+        Callback: Fn<Args, Output = Output>,
+        Args: Tuple,
+    {
         self.save(|v: Output| *value = v)
     }
 
-    pub fn call(&self, args: Args) {
-        self.callback.call(args);
-    }
-}
+    // pub fn call<Args: Tuple>(&self, args: Args)
+    // where
+    //     Callback: Fn<Args>,
+    // {
+    //     self.callback.call(args);
+    // }
 
-impl<Args: Tuple, const N: usize, Callback: Fn<Args, Output = [f64; N]>>
-    Event<Args, [f64; N], Callback, ()>
-{
-    pub fn to_vecs(
+    pub fn to_vecs<Args, const N: usize>(
         self,
         vecs: [&mut Vec<f64>; N],
-    ) -> Event<Args, [f64; N], Callback, impl FnMut([f64; N])> {
+    ) -> Event<Callback, impl FnMut([f64; N])>
+    where
+        Args: Tuple,
+        Callback: Fn<Args, Output = [f64; N]>,
+    {
         self.save(move |value: [f64; N]| {
             for i in 0..N {
                 vecs[i].push(value[i]);
             }
         })
     }
-
-    // pub fn to_csv(self, filename: &str)
-    //     // -> Event<Args, [f64; N], Callback, impl FnMut([f64; N])>
-    //     {
-    //     todo!();
-    // }
 }
 
-impl<Args: Tuple, Output, Callback: Fn<Args, Output = Output>, Stream: FnMut(Output)>
-    Event<Args, Output, Callback, Stream>
-{
-    pub fn call(&mut self, args: Args) {
+impl<Callback, Stream> Event<Callback, Stream> {
+    pub fn call<Args, Output>(&mut self, args: Args)
+    where
+        Args: Tuple,
+        Callback: Fn<Args, Output = Output>,
+        Stream: FnMut(Output),
+    {
         let output = self.callback.call(args);
         (self.stream)(output);
     }
@@ -110,8 +130,7 @@ impl<Args> CallEventTower<Args> for () {
     fn call_event_tower(&mut self, _args: Args) {}
 }
 
-impl<Args, Output, Callback, Stream, Tail> CallEventTower<Args>
-    for (Event<Args, Output, Callback, Stream>, Tail)
+impl<Args, Output, Callback, Stream, Tail> CallEventTower<Args> for (Event<Callback, Stream>, Tail)
 where
     Args: Tuple + Copy,
     Callback: Fn<Args, Output = Output>,
@@ -126,7 +145,51 @@ where
     }
 }
 
+// impl<Args, Output, Callback, Tail> CallEventTower<Args>
+//     for (Event<Args, Output, Callback, ()>, Tail)
+// where
+//     Args: Tuple + Copy,
+//     Callback: Fn<Args, Output = Output>,
+//     Tail: CallEventTower<Args>,
+// {
+//     fn call_event_tower(&mut self, args: Args) {
+//         let (head, tail) = self;
+//
+//         head.call(args);
+//         tail.call_event_tower(args);
+//     }
+// }
+
 use crate::state::{State, ToStateFunction};
+
+//
+// pub trait IsEvent {}
+//
+// impl<
+//     Args: Tuple,
+//     Output,
+//     Callback: Fn<Args, Output = Output>,
+//     Stream,
+//     >
+//     IsEvent for Event<Args, Output, Callback, Stream> {}
+
+// pub trait ToStateEvent<S> {
+//     fn to_state_event(self) -> impl IsEvent;
+// }
+// impl<
+//     Args: Tuple,
+//     Output,
+//     Callback: Fn<Args, Output = Output> + ToStateFunction<State<N,S,InitialFunction>, Args, Output>,
+//     Stream,
+//     const N: usize,
+//     const S: usize,
+//     InitialFunction: Fn(f64) -> [f64; N],
+// > ToStateEvent<State<N,S,InitialFunction>> for Event<Args, Output, Callback, Stream>
+// {
+//     fn to_state_event(self) -> impl IsEvent {
+//         Event::new_with_stream(self.callback.to_state_function(), self.stream)
+//     }
+// }
 
 pub trait ToStateEventTower<S> {
     fn to_state_event_tower(self) -> impl for<'a> CallEventTower<&'a S>;
@@ -140,40 +203,44 @@ impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]>
     }
 }
 
+// trait ToStateEvent<S> {
+//     fn to_state_event(self);
+// }
+//
 // impl<
-//     Args,
-//     Output,
-//     Callback,
-//     Stream,
-//     Tail,
 //     const N: usize,
 //     const S: usize,
 //     InitialFunction: Fn(f64) -> [f64; N],
-// > ToStateEventTower<State<N, S, InitialFunction>> for (Event<Args, Output, Callback, Stream>, Tail)
-// where
-//     Args: Tuple + Copy,
-//     Callback: Fn<Args, Output = Output>,
-//     Callback: ToStateFunction<State<N, S, InitialFunction>, Args, Output>,
+//     Head: ToStateEvent<State<N, S, InitialFunction>>,
 //     Tail: ToStateEventTower<State<N, S, InitialFunction>>,
-//     (Event<(State<N,S,InitialFunction>,), Output, _, Stream>, ()) : for <'a> CallEventTower<&'a State<N, S, InitialFunction>>,
+// > ToStateEventTower<State<N, S, InitialFunction>> for (Head, Tail)
+//     where
 // {
 //     fn to_state_event_tower(self) -> impl for<'a> CallEventTower<&'a State<N, S, InitialFunction>> {
 //         let (head, tail) = self;
-//         let event = Event::new_with_stream(head.callback.to_state_function(), head.stream);
-//         ()
-//         // (Event::new_with_stream(head.callback.to_state_function(), head.stream), tail.to_state_event_tower())
+//         (head.to_state_event(), tail.to_state_event_tower())
 //     }
 // }
-//     fn to_state_event_tower<'a>(
-//         self,
-//     ) ->
-//         impl CallEventTower<&'a State<N, S, InitialFunction>>
-//      {
+
+// impl<
+//     const N: usize,
+//     const S: usize,
+//     InitialFunction: Fn(f64) -> [f64; N],
+//     Args: Tuple,
+//     Output,
+//     Callback: Fn<Args, Output = Output> + ToStateFunction<State<N, S, InitialFunction>, Args, Output>,
+//     Stream: FnMut(Output),
+//     Tail: ToStateEventTower<State<N, S, InitialFunction>>,
+// > ToStateEventTower<State<N, S, InitialFunction>>
+//     for (Event<Args, Output, Callback, Stream>, Tail)
+//     where
+//         // (Event<&State<N, S, InitialFunction>, Output, ???, Stream>)
+// {
+//     fn to_state_event_tower(self) -> impl for<'a> CallEventTower<&'a State<N, S, InitialFunction>> {
 //         let (head, tail) = self;
-//         (
-//             Event::new_with_stream(head.callback.to_state_function(), head.stream),
-//             tail.to_state_event_tower(),
-//         )
+//         let head = Event::new_with_stream(head.callback.to_state_function(), head.stream);
+//         let tail = tail.to_state_event_tower();
+//         (head, tail)
 //     }
 // }
 
