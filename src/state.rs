@@ -2,7 +2,7 @@ use crate::rk::*;
 
 use std::collections::VecDeque;
 
-pub struct State<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> {
+pub struct State<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]> {
     pub t: f64,
     pub t_init: f64,
     pub t_prev: f64,
@@ -11,7 +11,7 @@ pub struct State<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> {
     pub t_seq: VecDeque<f64>,
 
     pub x: [f64; N],
-    pub x_init: F,
+    pub x_init: InitialFunction,
     pub x_prev: [f64; N],
     pub x_err: [f64; N],
     pub x_seq: VecDeque<[f64; N]>,
@@ -23,8 +23,8 @@ pub struct State<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> {
 }
 
 
-impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N, S, F> {
-    pub fn new(t_init: f64, x_init: F, rk: &'static RungeKuttaTable<S>) -> Self {
+impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]> State<N, S, InitialFunction> {
+    pub fn new(t_init: f64, x_init: InitialFunction, rk: &'static RungeKuttaTable<S>) -> Self {
         let x = x_init(t_init);
 
         Self {
@@ -49,7 +49,7 @@ impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N, S, F> {
     }
 }
 
-impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N, S, F> {
+impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]> State<N, S, InitialFunction> {
     pub fn push_current(&mut self) {
         self.t_seq.push_back(self.t);
         self.x_seq.push_back(self.x);
@@ -161,52 +161,45 @@ pub trait FromState<T> {
     fn from_state(t: T) -> Self;
 }
 
-impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FromState<&State<N, S, F>>
+impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]> FromState<&State<N, S, InitialFunction>>
     for (f64, [f64; N])
 {
-    fn from_state(state: &State<N, S, F>) -> Self {
+    fn from_state(state: &State<N, S, InitialFunction>) -> Self {
         (state.t, state.x)
     }
 }
 
-impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FromState<(&State<N, S, F>,)>
+impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]> FromState<(&State<N, S, InitialFunction>,)>
     for (f64, [f64; N])
 {
-    fn from_state(state: (&State<N, S, F>,)) -> Self {
+    fn from_state(state: (&State<N, S, InitialFunction>,)) -> Self {
         let state = state.0;
         (state.t, state.x)
     }
 }
 
-impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FromState<&State<N, S, F>>
+impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]> FromState<&State<N, S, InitialFunction>>
     for ([f64; N],)
 {
-    fn from_state(state: &State<N, S, F>) -> Self {
+    fn from_state(state: &State<N, S, InitialFunction>) -> Self {
         (state.x,)
     }
 }
 
-impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FromState<(&State<N, S, F>,)>
+impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]> FromState<(&State<N, S, InitialFunction>,)>
     for ([f64; N],)
 {
-    fn from_state(state: (&State<N, S, F>,)) -> Self {
+    fn from_state(state: (&State<N, S, InitialFunction>,)) -> Self {
         let state = state.0;
         (state.x,)
     }
 }
 
-// impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FromState<(&'a State<N, S, F>,)>
-//     for (f64, [f64; N], [Box<dyn Fn(f64) -> f64 + 'a>; N])
-// {
-//     fn from_state(state: (&'a State<N, S, F>,)) -> Self {
-//         let state = state.0;
-//         (
-//             state.t,
-//             state.x,
-//             std::array::from_fn(|i| {
-//                 let f: Box<dyn Fn(f64) -> f64 + 'a> = Box::new(move |t: f64| state.eval_i(t, i));
-//                 f
-//             }),
-//         )
-//     }
+
+// pub trait ToStateFunction<S, Ret> {
+//     fn to_state_function(self) -> impl Fn(S) -> Ret;
 // }
+
+// impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]> FromState<(&State<N, S, InitialFunction>,)>
+
+
