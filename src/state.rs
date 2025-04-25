@@ -34,8 +34,7 @@ impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FromState<&State<N,
     }
 }
 
-
-impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FromState<(&State<N, S, F>, )>
+impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FromState<(&State<N, S, F>,)>
     for (f64, [f64; N])
 {
     fn from_state(state: (&State<N, S, F>,)) -> Self {
@@ -52,8 +51,7 @@ impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FromState<&State<N,
     }
 }
 
-
-impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FromState<(&State<N, S, F>, )>
+impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FromState<(&State<N, S, F>,)>
     for ([f64; N],)
 {
     fn from_state(state: (&State<N, S, F>,)) -> Self {
@@ -62,6 +60,11 @@ impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FromState<(&State<N
     }
 }
 
+// impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]>
+//     StateInto<
+//     > for (&State<N, S, F>,)
+// {
+// }
 
 impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N, S, F> {
     pub fn new(t_init: f64, x_init: F, rk: &'static RungeKuttaTable<S>) -> Self {
@@ -89,15 +92,7 @@ impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N, S, F> {
     }
 }
 
-// impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N> for RKState<N, S, F> {
 impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N, S, F> {
-    // fn t(&self) -> &f64 {
-    //     &self.t
-    // }
-    // fn x(&self) -> &[f64; N] {
-    //     &self.x
-    // }
-
     pub fn push_current(&mut self) {
         self.t_seq.push_back(self.t);
         self.x_seq.push_back(self.x);
@@ -192,11 +187,65 @@ impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N, S, F> {
         }
     }
 
+    // pub fn x_eval_i(&self, coodrdinate: usize) -> impl Fn(f64) -> f64 {
+    //     move |t| (&self).eval_i(t, coodrdinate)
+    // }
+
     pub fn eval_derivative(&self, _t: f64) -> [f64; N] {
         todo!()
     }
 
     pub fn eval_nth_derivative<const ORDER: usize>(&self, _t: f64) -> [f64; N] {
         todo!()
+    }
+}
+
+pub struct StateFn<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> {
+    state: &'a State<N, S, F>,
+    coordinate: usize,
+}
+
+impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> Fn<(f64,)>
+    for StateFn<'a, N, S, F>
+{
+    extern "rust-call" fn call(&self, args: (f64,)) -> f64 {
+        let (t,) = args;
+        self.state.eval_i(t, self.coordinate)
+    }
+}
+
+impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FnMut<(f64,)>
+    for StateFn<'a, N, S, F>
+{
+    extern "rust-call" fn call_mut(&mut self, args: (f64,)) -> f64 {
+        self.call(args)
+    }
+}
+
+impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FnOnce<(f64,)>
+    for StateFn<'a, N, S, F>
+{
+    type Output = f64;
+
+    extern "rust-call" fn call_once(self, args: (f64,)) -> f64 {
+        self.call(args)
+    }
+}
+
+impl<const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> State<N, S, F> {
+    pub fn get_coordinate_functions(&self) -> [StateFn<N, S, F>; N] {
+        std::array::from_fn(|coordinate| StateFn::<N, S, F> {
+            state: &self,
+            coordinate,
+        })
+    }
+}
+
+impl<'a, const N: usize, const S: usize, F: Fn(f64) -> [f64; N]> FromState<(&'a State<N, S, F>,)>
+    for (f64, [f64; N], [StateFn<'a, N, S, F>; N])
+{
+    fn from_state(state: (&'a State<N, S, F>,)) -> Self {
+        let state = state.0;
+        (state.t, state.x, state.get_coordinate_functions())
     }
 }

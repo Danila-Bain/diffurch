@@ -45,7 +45,7 @@ impl<const S: usize, StepEvents> Solver<S, StepEvents> {
 }
 
 impl<const S: usize, StepEvents> Solver<S, StepEvents> {
-    pub fn run<const N: usize, RHS, EquationEvents, IC, EquationArgs>(
+    pub fn run<const N: usize, IC, RHS, EquationEvents,  EquationArgs>(
         &mut self,
         equation: Equation<N, RHS, EquationEvents>,
         initial_function: IC,
@@ -67,8 +67,7 @@ impl<const S: usize, StepEvents> Solver<S, StepEvents> {
         /* start event */
         /* step event */
 
-        // interval.end can be NAN, meaning no end
-        while !(state.t >= interval.end) {
+        while state.t < interval.end {
             state.make_step(&equation.rhs);
             state.push_current();
 
@@ -85,6 +84,9 @@ impl<const S: usize, StepEvents> Solver<S, StepEvents> {
             //     continue;
             // }
         }
+
+
+        /* stop event */
     }
 }
 
