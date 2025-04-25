@@ -54,7 +54,8 @@ impl<const S: usize, StepEvents> Solver<S, StepEvents> {
         IC: Fn(f64) -> [f64; N],
         StepEvents: for<'a> CallEventTower<(&'a State<N, S, IC>,)>,
         RHS: Fn<EquationArgs, Output = [f64; N]>,
-        EquationArgs: std::marker::Tuple + for<'a> FromState<&'a State<N, S, IC>>,
+        EquationArgs: std::marker::Tuple,
+        EquationArgs: for<'a> FromState<&'a State<N, S, IC>>,
     {
         /* initializations */
         let mut state = State::new(interval.start, initial_function, self.rk);

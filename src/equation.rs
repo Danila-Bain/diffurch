@@ -31,9 +31,9 @@ impl Equation {
         Equation::<N, RHS, ()> { rhs, events: (), max_delay: 0. }
     }
 
-    pub fn dde<const N: usize, RHS, const S: usize, F: Fn(f64) -> [f64; N]>(rhs: RHS) -> Equation<N, RHS, ()>
+    pub fn dde<const N: usize, RHS>(rhs: RHS) -> Equation<N, RHS, ()>
     where
-        RHS: Fn(f64, [f64; N], [Box<dyn Fn(f64) -> f64>; N]) -> [f64; N],
+        RHS: for<'a> Fn(f64, [f64; N], [Box<dyn Fn(f64) -> f64 + 'a>; N]) -> [f64; N],
     {
         Equation::<N, RHS, ()> { rhs, events: () , max_delay: f64::NAN }
     }

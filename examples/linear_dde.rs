@@ -10,19 +10,21 @@ fn main() {
 
     let a = k / (k * tau).tan();
     let b = -k / (k * tau).sin();
-    //
+
     let equation = Equation::dde(|t, [x], [x_]| [a * x + b * x_(t - tau)]);
     let ic = |t: f64| [(k * t).sin()];
     let range = 0. .. 20.;
-    //
+
     let mut t = Vec::new();
     let mut x = Vec::new();
-    //
+
     Solver::new()
         .stepsize(0.01)
         .rk(&rk::DP544)
         .on_step(Event::new(|t: f64, [x]: [f64; 1]| [t, x]).to_vecs([&mut t, &mut x]))
         .run(equation, ic, range);
+
+    
     //
     //
     // let mut plot = pgfplots::axis::plot::Plot2D::new();
