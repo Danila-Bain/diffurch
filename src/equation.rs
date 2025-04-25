@@ -6,13 +6,12 @@ pub struct Equation<const N: usize = 1, RHS = (), Events = ()> {
 impl Equation {
     pub fn new<const N: usize, Args, F>(rhs: F) -> Equation<N, F, ()>
     where
-        // for<'a> &'a RKState<N, 1, fn(f64) -> [f64; N]>: StateInto<Args>,
+        for<'a> &'a crate::state::RKState<N, 1, fn(f64) -> [f64; N]>: crate::state::StateInto<Args>,
         F: Fn<Args, Output = [f64; N]>,
-        Args: std::marker::Tuple ,
+        Args: std::marker::Tuple,
     {
         Equation::<N, F, ()> { rhs, events: () }
     }
-
 
     // ordinary differential equation
     pub fn ode<const N: usize, F>(rhs: F) -> Equation<N, F, ()>
@@ -28,8 +27,15 @@ impl Equation {
     {
         Equation::<N, F, ()> { rhs, events: () }
     }
-}
 
+    pub fn dde<const N: usize, F, X>(rhs: F) -> Equation<N, F, ()>
+    where
+        F: Fn(f64, [f64; N], [X; N]) -> [f64; N],
+        X: Fn(f64) -> f64
+    {
+        Equation::<N, F, ()> { rhs, events: () }
+    }
+}
 
 // pub trait EquationArgsOption<const N: usize> {}
 //
