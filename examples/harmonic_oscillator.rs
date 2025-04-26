@@ -12,8 +12,7 @@ fn main() {
     let ic = move |t: f64| [(t * k).sin(), k * (t * k).cos()];
     let range = 0. ..20.;
 
-    let e = Event::new(|t: f64| (t, t-1.)).to_std();
-    // e.call((70,));
+    // let mut e = Event::new(|t: f64| (t, t-1.)).to_std();
     // let e_to_state = ToStateFunction::<'_, State<1,1,fn(f64)->[f64;1]>, _, _>::to_state_function(e);
 
     // let mut points = Vec::new();

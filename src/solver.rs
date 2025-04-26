@@ -65,7 +65,7 @@ impl<const S: usize, StepEvents> Solver<S, StepEvents> {
         RHS: Fn<EquationArgs, Output = [f64; N]>,
         EquationArgs: std::marker::Tuple,
         // EquationArgs: for<'a> FromState<&'a State<N, S, IC>>,
-        RHS: for<'a> ToStateFunction<'a, State<N, S, IC>, EquationArgs, [f64; N]>,
+        RHS: ToStateFunction<State<N, S, IC>, EquationArgs, [f64; N]>,
     {
         /* initializations */
         let mut state = State::new(interval.start, initial_function, self.rk);

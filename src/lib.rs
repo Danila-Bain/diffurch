@@ -1,4 +1,4 @@
-// #![feature(generic_const_exprs)]
+#![feature(generic_const_exprs)]
 // #![feature(generic_const_items)]
 #![feature(unboxed_closures, fn_traits, tuple_trait)]
 
