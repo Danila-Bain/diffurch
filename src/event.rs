@@ -8,7 +8,7 @@ pub struct Event<Callback = (), Stream = ()> {
 }
 
 impl Event {
-    pub fn new<Callback>(callback: Callback) -> Event<Callback, TupleTower<(), 0>> {
+    pub fn new<Callback>(callback: Callback) -> Event<Callback, TupleTower<()>> {
         Event {
             callback,
             stream: TupleTower(()),
@@ -61,12 +61,9 @@ where
     }
 }
 
-impl<Callback, Stream, const N: usize> Event<Callback, TupleTower<Stream, N>> {
-    pub fn to<Args, Output, S>(
-        self,
-        s: S,
-    ) -> Event<Callback, TupleTower<(S, TupleTower<Stream, N>), { N + 1 }>>
-    where
+impl<Callback, Stream> Event<Callback, TupleTower<Stream>> {
+
+    pub fn to<Args, Output, S>(self, s: S) -> Event<Callback, TupleTower<(S, TupleTower<Stream>)>> where
         Args: Tuple,
         Callback: Fn<Args, Output = Output>,
         S: FnMut<(Output,)>,
@@ -77,9 +74,7 @@ impl<Callback, Stream, const N: usize> Event<Callback, TupleTower<Stream, N>> {
         }
     }
 
-    pub fn to_std<Args, Output>(
-        self,
-    ) -> Event<Callback, TupleTower<(impl FnMut<(Output,)>, TupleTower<Stream, N>), { N + 1 }>>
+    pub fn to_std<Args, Output>(self) -> Event<Callback, TupleTower<(impl FnMut<(Output,)>, TupleTower<Stream>)>>
     where
         Args: Tuple,
         Callback: Fn<Args, Output = Output>,
@@ -91,7 +86,7 @@ impl<Callback, Stream, const N: usize> Event<Callback, TupleTower<Stream, N>> {
     pub fn to_vec<Args, Output>(
         self,
         vec: &mut Vec<Output>,
-    ) -> Event<Callback, TupleTower<(impl FnMut<(Output,)>, TupleTower<Stream, N>), { N + 1 }>>
+    ) -> Event<Callback, TupleTower<(impl FnMut<(Output,)>, TupleTower<Stream>)>>
     where
         Args: Tuple,
         Callback: Fn<Args, Output = Output>,
@@ -102,7 +97,7 @@ impl<Callback, Stream, const N: usize> Event<Callback, TupleTower<Stream, N>> {
     pub fn to_var<Args, Output>(
         self,
         value: &mut Output,
-    ) -> Event<Callback, TupleTower<(impl FnMut<(Output,)>, TupleTower<Stream, N>), { N + 1 }>>
+    ) -> Event<Callback, TupleTower<(impl FnMut<(Output,)>, TupleTower<Stream>)>>
     where
         Callback: Fn<Args, Output = Output>,
         Args: Tuple,
@@ -110,18 +105,20 @@ impl<Callback, Stream, const N: usize> Event<Callback, TupleTower<Stream, N>> {
         self.to(|v: Output| *value = v)
     }
 
-    pub fn to_vecs<const NN: usize, Args>(
+    pub fn to_vecs<const N: usize, Args>(
         self,
-        vecs: [&mut Vec<f64>; NN],
-    ) -> Event<Callback, TupleTower<(impl FnMut<([f64; NN],)>, TupleTower<Stream, N>), { N + 1 }>>
+        vecs: [&mut Vec<f64>; N],
+    ) -> Event<Callback, TupleTower<(impl FnMut<([f64; N],)>, TupleTower<Stream>)>>
     where
         Args: Tuple,
-        Callback: Fn<Args, Output = [f64; NN]>,
+        Callback: Fn<Args, Output = [f64; N]>,
     {
-        self.to(move |value: [f64; NN]| {
-            for i in 0..NN {
+        self.to(move |value: [f64; N]| {
+            for i in 0..N {
                 vecs[i].push(value[i]);
             }
         })
     }
 }
+
+
