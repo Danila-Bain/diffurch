@@ -8,14 +8,14 @@ impl<T> TupleTower<T> {
     }
 }
 
-impl<Args, H, T> FnOnce<Args> for TupleTower<(H, TupleTower<T>)>
+impl<Args, H, T> FnOnce<Args> for TupleTower<(H, T)>
 where
     H: FnOnce<Args>,
-    TupleTower<T>: FnOnce<Args>,
+    T: FnOnce<Args>,
     Args: Tuple + Copy,
 {
     // type Output = (H::Output, <TupleTower<T> as FnOnce<Args>>::Output);
-    type Output = TupleTower<(H::Output, <TupleTower<T> as FnOnce<Args>>::Output)>;
+    type Output = TupleTower<(H::Output, T::Output)>;
 
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output {
         let TupleTower((head, tail)) = self;
@@ -34,10 +34,10 @@ where
     }
 }
 
-impl<Args, H, T> FnMut<Args> for TupleTower<(H, TupleTower<T>)>
+impl<Args, H, T> FnMut<Args> for TupleTower<(H, T)>
 where
     H: FnMut<Args>,
-    TupleTower<T>: FnMut<Args>,
+    T: FnMut<Args>,
     Args: Tuple + Copy,
 {
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output {
@@ -55,10 +55,10 @@ where
     }
 }
 
-impl<Args, H, T> Fn<Args> for TupleTower<(H, TupleTower<T>)>
+impl<Args, H, T> Fn<Args> for TupleTower<(H, T)>
 where
     H: Fn<Args>,
-    TupleTower<T>: Fn<Args>,
+    T: Fn<Args>,
     Args: Tuple + Copy,
 {
     extern "rust-call" fn call(&self, args: Args) -> Self::Output {
