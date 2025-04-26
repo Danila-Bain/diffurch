@@ -1,4 +1,7 @@
-use crate::{rk::*, util::tuple_tower::TupleTower};
+use crate::{
+    rk::*,
+    util::tuple_tower::{TupleTower, TupleTowerLevel, TupleTowerLevel0, TupleTowerNextLevel},
+};
 
 use std::collections::VecDeque;
 
@@ -216,9 +219,9 @@ impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N], F, Re
 where
     F: FnMut<(f64,), Output = Ret>,
 {
-    fn to_state_function(mut self) -> 
-        impl for<'b> FnMut<(&'b State<N, S, InitialFunction>,), Output = Ret>
-    {
+    fn to_state_function(
+        mut self,
+    ) -> impl for<'b> FnMut<(&'b State<N, S, InitialFunction>,), Output = Ret> {
         move |state| self(state.t)
     }
 }
@@ -228,8 +231,9 @@ impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N], F, Re
 where
     F: FnMut<([f64; N],), Output = Ret>,
 {
-    fn to_state_function(mut self) -> 
-        impl for<'b> FnMut<(&'b State<N, S, InitialFunction>,), Output = Ret> {
+    fn to_state_function(
+        mut self,
+    ) -> impl for<'b> FnMut<(&'b State<N, S, InitialFunction>,), Output = Ret> {
         move |state| self(state.x)
     }
 }
@@ -239,26 +243,30 @@ impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N], F, Re
 where
     F: FnMut<(f64, [f64; N]), Output = Ret>,
 {
-    fn to_state_function(mut self) -> 
-        impl for<'b> FnMut<(&'b State<N, S, InitialFunction>,), Output = Ret> {
+    fn to_state_function(
+        mut self,
+    ) -> impl for<'b> FnMut<(&'b State<N, S, InitialFunction>,), Output = Ret> {
         move |state| self(state.t, state.x)
     }
 }
 
-pub trait ToStateTupleTower<S, Arg, Ret> {
-    type OutputTower: for<'b> FnMut<(&'b S,), Output = Ret>;
-    fn to_state_tuple_tower(self) -> Self::OutputTower;
+pub trait ToStateTupleTower<S, Arg, Ret, Level> {
+    fn to_state_tuple_tower(self) -> impl for<'b> FnMut<(&'b S,), Output = Ret>;
 }
 
 impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]>
-    ToStateTupleTower<State<N, S, InitialFunction>, TupleTower<()>, TupleTower<()>>
-    for TupleTower<()>
+    ToStateTupleTower<
+        State<N, S, InitialFunction>,
+        TupleTower<()>,
+        TupleTower<()>,
+        TupleTowerLevel0,
+    > for TupleTower<()>
 where
-// TupleTower<()>: for<'b> Fn<(&'b State<N,S,InitialFunction>,), Output = Ret> + 'a;
+    TupleTower<()>: for<'b> Fn<(&'b State<N, S, InitialFunction>,), Output = TupleTower<()>>,
 {
-    type OutputTower = TupleTower<()>;
-
-    fn to_state_tuple_tower(self) -> Self::OutputTower {
+    fn to_state_tuple_tower(
+        self,
+    ) -> impl for<'b> FnMut<(&'b State<N, S, InitialFunction>,), Output = TupleTower<()>> {
         TupleTower(())
     }
 }
@@ -273,28 +281,74 @@ impl<
     TailArg,
     HeadRet,
     TailRet,
+    TailLevel,
 >
     ToStateTupleTower<
         State<N, S, InitialFunction>,
         TupleTower<(HeadArg, TupleTower<TailArg>)>,
         TupleTower<(HeadRet, TupleTower<TailRet>)>,
+        TupleTowerNextLevel<TailLevel>,
     > for TupleTower<(Head, TupleTower<Tail>)>
 where
     Head: ToStateFunction<State<N, S, InitialFunction>, HeadArg, HeadRet>,
-    TupleTower<Tail>:  ToStateTupleTower<
-            State<N, S, InitialFunction>,
-            TupleTower<TailArg>,
-            TupleTower<TailRet>,
-        >,
+    TupleTower<Tail>:
+        ToStateTupleTower<State<N, S, InitialFunction>, TupleTower<TailArg>, TupleTower<TailRet>, TailLevel>,
+    TupleTower<(Head, TupleTower<Tail>)>: TupleTowerLevel<Level = TupleTowerNextLevel<TailLevel>>,
+    TupleTower<Tail>: TupleTowerLevel<Level = TailLevel> ,
 {
-    type OutputTower = impl for<'b> FnMut<
-            (&'b State<N, S, InitialFunction>,),
-            Output = TupleTower<(HeadRet, TupleTower<TailRet>)>,
-        > ;
-
-    fn to_state_tuple_tower(self) -> Self::OutputTower {
+    fn to_state_tuple_tower(
+        self,
+    ) -> impl for<'b> FnMut<
+        (&'b State<N, S, InitialFunction>,),
+        Output = TupleTower<(HeadRet, TupleTower<TailRet>)>,
+    > {
         let Self((head, tail)) = self;
         TupleTower((head.to_state_function(), tail.to_state_tuple_tower()))
     }
 }
 
+// pub trait ToStateTupleTower<S, ArgTower, RetTower> {
+//     fn to_state_tuple_tower(self) -> _;
+// }
+//
+// impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]>
+//     ToStateTupleTower<State<N, S, InitialFunction>, TupleTower<()>, TupleTower<()>>
+//     for TupleTower<()>
+// {
+//     fn to_state_tuple_tower(self) -> TupleTower<()> {
+//         TupleTower(())
+//     }
+// }
+//
+// impl<
+//     const N: usize,
+//     const S: usize,
+//     InitialFunction: Fn(f64) -> [f64; N],
+//     Head,
+//     Tail,
+//     HeadArg,
+//     TailArg,
+//     HeadRet,
+//     TailRet,
+//     // TailLevel,
+// >
+//     ToStateTupleTower<
+//         State<N, S, InitialFunction>,
+//         TupleTower<(HeadArg, TupleTower<TailArg>)>,
+//         TupleTower<(HeadRet, TupleTower<TailRet>)>,
+//     > for TupleTower<(Head, TupleTower<Tail>)>
+// where
+//     Head: ToStateFunction<State<N, S, InitialFunction>, HeadArg, HeadRet>,
+//     TupleTower<Tail>: ToStateTupleTower<
+//             State<N, S, InitialFunction>,
+//             TupleTower<TailArg>,
+//             TupleTower<TailRet>,
+//         >,
+// {
+//     fn to_state_tuple_tower(
+//         self,
+//     ) -> _ {
+//         let Self((head, tail)) = self;
+//         TupleTower((head.to_state_function(), tail.to_state_tuple_tower()))
+//     }
+// }

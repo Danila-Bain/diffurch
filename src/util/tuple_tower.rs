@@ -30,11 +30,9 @@ where
     type Output = TupleTower<()>;
 
     extern "rust-call" fn call_once(self, _args: Args) -> Self::Output {
-       TupleTower(()) 
+        TupleTower(())
     }
 }
-
-
 
 impl<Args, H, T> FnMut<Args> for TupleTower<(H, TupleTower<T>)>
 where
@@ -48,16 +46,14 @@ where
     }
 }
 
-
 impl<Args> FnMut<Args> for TupleTower<()>
 where
     Args: Tuple,
 {
     extern "rust-call" fn call_mut(&mut self, _args: Args) -> Self::Output {
-       TupleTower(()) 
+        TupleTower(())
     }
 }
-
 
 impl<Args, H, T> Fn<Args> for TupleTower<(H, TupleTower<T>)>
 where
@@ -71,12 +67,25 @@ where
     }
 }
 
-
 impl<Args> Fn<Args> for TupleTower<()>
 where
     Args: Tuple,
 {
     extern "rust-call" fn call(&self, _args: Args) -> Self::Output {
-       TupleTower(()) 
+        TupleTower(())
     }
 }
+
+pub struct TupleTowerLevel0 {}
+pub struct TupleTowerNextLevel<Level> {_prev: Level}
+pub trait TupleTowerLevel {
+ type Level;
+}
+impl TupleTowerLevel for TupleTower<()> {
+    type Level = TupleTowerLevel0;
+}
+impl<Head, T> TupleTowerLevel for TupleTower<(Head, T)> where
+T : TupleTowerLevel {
+    type Level = TupleTowerNextLevel<T::Level>;
+}
+
