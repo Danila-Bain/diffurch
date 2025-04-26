@@ -52,8 +52,8 @@ impl<const S: usize, StepEvents> Solver<S, StepEvents> {
         RHS,
         EquationEvents,
         EquationArgs,
-        // StepEventsArgs,
-        // StepEventsRet,
+        StepEventsArgs,
+        StepEventsRet,
     >(
         self,
         equation: Equation<N, RHS, EquationEvents>,
@@ -61,7 +61,8 @@ impl<const S: usize, StepEvents> Solver<S, StepEvents> {
         interval: std::ops::Range<f64>,
     ) where
         IC: Fn(f64) -> [f64; N] + 'static,
-        // StepEvents: for<'a> ToStateTupleTower<'a, State<N,S,IC>, StepEventsArgs, StepEventsRet>,
+        StepEvents: TupleTowerLevel,
+        StepEvents: ToStateTupleTower<State<N,S,IC>, StepEventsArgs, StepEventsRet, StepEvents::Level>,
         RHS: Fn<EquationArgs, Output = [f64; N]>,
         EquationArgs: std::marker::Tuple,
         // EquationArgs: for<'a> FromState<&'a State<N, S, IC>>,
@@ -74,7 +75,7 @@ impl<const S: usize, StepEvents> Solver<S, StepEvents> {
 
         // ToStateFunction::<&State<N, S, IC>, EquationArgs, [f64; N]>::to_state_function(equation.rhs);
         let mut rhs = equation.rhs.to_state_function();
-        // let step_events = self.step_events.to_state_tuple_tower();
+        let mut step_events = self.step_events.to_state_tuple_tower();
 
         let _equation_events = equation.events;
 
@@ -85,7 +86,7 @@ impl<const S: usize, StepEvents> Solver<S, StepEvents> {
             state.make_step(&mut rhs);
             state.push_current();
 
-            // step_events(&state);
+            step_events(&state);
             // self.step_events.call_event_tower((&state,));
             //
             //
