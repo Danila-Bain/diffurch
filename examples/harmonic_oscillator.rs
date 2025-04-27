@@ -29,18 +29,23 @@ fn main() {
         .on_step(
             Event::new(|t: f64, [x, dx]: [f64; 2]| [t, x, dx]).to_vecs([&mut t, &mut x, &mut dx]),
         )
-        .on_step(Event::new(|[x, dx]: [f64; 2]| (x, dx, -1. + x*x + dx*dx)).to_std())
         .on_step(
-            Event::new(|t: f64, [x, dx]: [f64; 2]| (t, x, dx)).to(|(t, x, dx): (f64, f64, f64)| {
+            Event::new(|t: f64, [x, dx]: [f64; 2]| {
+                let [xx, dxx] = ic(t);
+                (x, dx, f64::max((x - xx).abs(), (dx - dxx).abs()))
+            })
+            .to_std(),
+        )
+        .on_step(Event::new(|t: f64, [x, dx]: [f64; 2]| (t, x, dx)).to(
+            |(t, x, dx): (f64, f64, f64)| {
                 max_radius_deviation = max_radius_deviation.max((x.powi(2) + dx.powi(2)) - 1.);
                 max_true_solution_deviation = max_true_solution_deviation.max({
                     let [true_x, true_dx] = ic(t);
                     (x - true_x).powi(2) + (dx - true_dx).powi(2)
                 })
-            }),
-        )
-        .run(eq, ic, range)
-        ;
+            },
+        ))
+        .run(eq, ic, range);
     //
     // println!("Max deviation in radius: {}", max_radius_deviation);
     // println!("Global error: {}", max_true_solution_deviation.sqrt());
