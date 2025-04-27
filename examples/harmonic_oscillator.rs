@@ -1,4 +1,3 @@
-use diffurch::state::*;
 use diffurch::equation::Equation;
 use diffurch::event::Event;
 use diffurch::rk;

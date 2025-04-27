@@ -1,5 +1,4 @@
 use crate::equation::*;
-use crate::event::*;
 use crate::rk::*;
 use crate::state::*;
 use crate::util::tuple_tower::*;

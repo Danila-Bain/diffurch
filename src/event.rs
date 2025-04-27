@@ -1,6 +1,5 @@
-use crate::state::*;
-use crate::util::tuple_tower::*;
-use std::marker::{PhantomData, Tuple};
+use crate::util::tuple_tower::TupleTower;
+use std::marker::Tuple;
 
 pub struct Event<Callback = (), Stream = ()> {
     callback: Callback,
@@ -62,8 +61,8 @@ where
 }
 
 impl<Callback, Stream> Event<Callback, TupleTower<Stream>> {
-
-    pub fn to<Args, Output, S>(self, s: S) -> Event<Callback, TupleTower<(S, TupleTower<Stream>)>> where
+    pub fn to<Args, Output, S>(self, s: S) -> Event<Callback, TupleTower<(S, TupleTower<Stream>)>>
+    where
         Args: Tuple,
         Callback: Fn<Args, Output = Output>,
         S: FnMut<(Output,)>,
@@ -74,7 +73,9 @@ impl<Callback, Stream> Event<Callback, TupleTower<Stream>> {
         }
     }
 
-    pub fn to_std<Args, Output>(self) -> Event<Callback, TupleTower<(impl FnMut<(Output,)>, TupleTower<Stream>)>>
+    pub fn to_std<Args, Output>(
+        self,
+    ) -> Event<Callback, TupleTower<(impl FnMut<(Output,)>, TupleTower<Stream>)>>
     where
         Args: Tuple,
         Callback: Fn<Args, Output = Output>,
@@ -120,5 +121,3 @@ impl<Callback, Stream> Event<Callback, TupleTower<Stream>> {
         })
     }
 }
-
-

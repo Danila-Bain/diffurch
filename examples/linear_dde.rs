@@ -1,19 +1,19 @@
-use diffurch::equation::Equation;
-use diffurch::event::Event;
-use diffurch::rk;
-use diffurch::solver::Solver;
+// use diffurch::equation::Equation;
+// use diffurch::event::Event;
+// use diffurch::rk;
+// use diffurch::solver::Solver;
 
 fn main() {
-    let theta = 0.5f64;
-    let k = 1f64;
-    let tau = 1f64;
-
-    let a = k / (k * tau).tan();
-    let b = -k / (k * tau).sin();
-
-    let equation = Equation::dde(|t, [x], [x_]| [a * x + b * x_(t - tau)]);
-    let ic = |t: f64| [(k * t).sin()];
-    let range = 0. .. 20.;
+    // let theta = 0.5f64;
+    // let k = 1f64;
+    // let tau = 1f64;
+    //
+    // let a = k / (k * tau).tan();
+    // let b = -k / (k * tau).sin();
+    //
+    // let equation = Equation::dde(|t, [x], [x_]| [a * x + b * x_(t - tau)]);
+    // let ic = |t: f64| [(k * t).sin()];
+    // let range = 0. .. 20.;
 
     // let mut t = Vec::new();
     // let mut x = Vec::new();
