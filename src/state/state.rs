@@ -97,7 +97,6 @@ impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]>
         self.t_prev = self.t;
         self.x_prev = self.x;
         self.k = [[0.; N]; S];
-        self.push_current();
     }
 
     pub fn eval(&self, t: f64) -> [f64; N] {
@@ -146,15 +145,14 @@ impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]>
         }
     }
 
-    // pub fn x_eval_i(&self, coodrdinate: usize) -> Box<dyn Fn(f64) -> f64> {
-    //     Box::new(move |t| (&self).eval_i(t, coodrdinate))
+    // pub fn eval_i_function<'a>(&'a self, i: usize) ->  &'a impl Fn<(f64,), Output=f64> {
+    //     todo!()
     // }
-
-    pub fn eval_derivative(&self, _t: f64) -> [f64; N] {
-        todo!()
-    }
-
-    pub fn eval_nth_derivative<const ORDER: usize>(&self, _t: f64) -> [f64; N] {
-        todo!()
-    }
+    //
+    //
+    // type CoordinateFunction = impl Fn(f64) -> f64;
+    //
+    // pub fn x_eval(&self) -> [Self::CoordinateFunction; N] {
+    //     std::array::from_fn(|i| move |t| self.eval_i(t, i))
+    // }
 }

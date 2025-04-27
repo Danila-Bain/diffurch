@@ -1,3 +1,5 @@
+use crate::state::CoordinateFunction;
+
 pub struct Equation<const N: usize = 1, RHS = (), Events = ()> {
     pub rhs: RHS,
     pub events: Events,
@@ -42,9 +44,9 @@ impl Equation {
         }
     }
 
-    pub fn dde<const N: usize, RHS>(rhs: RHS) -> Equation<N, RHS, ()>
+    pub fn dde<const N: usize, RHS, const S: usize, InitialFunction: Fn(f64) -> [f64; N]>(rhs: RHS) -> Equation<N, RHS, ()>
     where
-        RHS: for<'a> Fn(f64, [f64; N], [Box<dyn Fn(f64) -> f64 + 'a>; N]) -> [f64; N],
+        RHS: for<'a> Fn(f64, [f64; N], [CoordinateFunction<'a, N, S, InitialFunction>; N]) -> [f64; N],
     {
         Equation::<N, RHS, ()> {
             rhs,
