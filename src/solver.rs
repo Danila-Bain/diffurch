@@ -72,7 +72,7 @@ impl<const S: usize, StepEvents> Solver<S, StepEvents> {
         /* initializations */
         let mut state = State::new(interval.start, initial_function, self.rk);
         state.t_step = self.stepsize;
-        state.t_span = f64::NAN;
+        state.t_span = equation.max_delay;
 
         // ToStateFunction::<&State<N, S, IC>, EquationArgs, [f64; N]>::to_state_function(equation.rhs);
         let mut rhs = equation.rhs.to_state_function();
@@ -81,13 +81,16 @@ impl<const S: usize, StepEvents> Solver<S, StepEvents> {
         let _equation_events = equation.events;
 
         /* start event */
-        /* step event */
+        step_events(&state);
 
         while state.t < interval.end {
             state.make_step(&mut rhs);
             state.push_current();
 
             step_events(&state);
+
+            state.t_step = state.t_step.min(interval.end - state.t);
+
             // self.step_events.call_event_tower((&state,));
             //
             //
