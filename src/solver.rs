@@ -59,7 +59,7 @@ impl<const S: usize, StepEvents> Solver<S, StepEvents> {
         initial_function: IC,
         interval: std::ops::Range<f64>,
     ) where
-        IC: Fn(f64) -> [f64; N] + 'static,
+        IC: Fn<(f64,) , Output= [f64; N]> ,
         StepEvents: TupleTowerLevel,
         StepEvents: ToStateTupleTower<State<N,S,IC>, StepEventsArgs, StepEventsRet, StepEvents::Level>,
         RHS: Fn<EquationArgs, Output = [f64; N]>,
