@@ -1,4 +1,4 @@
-use crate::util::tuple_tower::TupleTower;
+use crate::{state::CoordinateFunction, util::tuple_tower::TupleTower};
 use std::marker::Tuple;
 
 pub struct Event<Callback = (), Stream = ()> {
@@ -13,6 +13,44 @@ impl Event {
             stream: TupleTower(()),
         }
     }
+
+    pub fn ode<const N: usize, Callback, Output>(
+        callback: Callback,
+    ) -> Event<Callback, TupleTower<()>>
+    where
+        Callback: Fn<([f64; N],), Output = Output>,
+    {
+        Event {
+            callback,
+            stream: TupleTower(()),
+        }
+    }
+
+    pub fn ode2<const N: usize, Callback, Output>(
+        callback: Callback,
+    ) -> Event<Callback, TupleTower<()>>
+    where
+        Callback: Fn<(f64, [f64; N]), Output = Output>,
+    {
+        Event {
+            callback,
+            stream: TupleTower(()),
+        }
+    }
+
+
+    pub fn dde<const N: usize, Callback, Output, const S:usize, InitialFunction>(
+        callback: Callback,
+    ) -> Event<Callback, TupleTower<()>>
+    where
+        Callback: for<'a> Fn<(f64, [f64; N], [CoordinateFunction<'a,N,S,InitialFunction>; N]), Output = Output>,
+    {
+        Event {
+            callback,
+            stream: TupleTower(()),
+        }
+    }
+
 
     pub fn new_with_stream<Callback, Stream>(
         callback: Callback,

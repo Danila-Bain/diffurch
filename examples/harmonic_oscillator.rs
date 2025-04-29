@@ -8,7 +8,9 @@ fn main() {
 
     let eq = Equation::ode(move |[x, dx]| [dx, -k * k * x]);
 
-    let ic = move |t: f64| [(t * k).sin(), k * (t * k).cos()];
+    let ic = move |t: f64| [(t * k).sin(), k * (t * k).cos()]; // argument can be inffered, if
+                                                               // closure is typed in the argument
+
     let range = 0. ..20.;
 
     // let mut e = Event::new(|t: f64| (t, t-1.)).to_std();
@@ -25,18 +27,18 @@ fn main() {
     Solver::new()
         .rk(&rk::RK98)
         .stepsize(0.05)
-        .on_step(Event::new(|t: f64, [x, _dx]: [f64; 2]| (t, x)).to_vec(&mut points))
+        .on_step(Event::ode2(|t, [x, _dx]| (t, x)).to_vec(&mut points))
         .on_step(
-            Event::new(|t: f64, [x, dx]: [f64; 2]| [t, x, dx]).to_vecs([&mut t, &mut x, &mut dx]),
+            Event::ode2(|t, [x, dx]| [t, x, dx]).to_vecs([&mut t, &mut x, &mut dx]),
         )
         .on_step(
-            Event::new(|t: f64, [x, dx]: [f64; 2]| {
+            Event::ode2(|t, [x, dx]| {
                 let [xx, dxx] = ic(t);
                 (x, dx, f64::max((x - xx).abs(), (dx - dxx).abs()))
             })
             .to_std(),
         )
-        .on_step(Event::new(|t: f64, [x, dx]: [f64; 2]| (t, x, dx)).to(
+        .on_step(Event::ode2(|t, [x, dx]| (t, x, dx)).to(
             |(t, x, dx): (f64, f64, f64)| {
                 max_radius_deviation = max_radius_deviation.max((x.powi(2) + dx.powi(2)) - 1.);
                 max_true_solution_deviation = max_true_solution_deviation.max({
