@@ -6,8 +6,8 @@ Roughly in order of simplicity and necessity:
 
 [ ] enlarge the scope of supported events
     [ ] on_substeps
-    [ ] on_start
-    [ ] on_stop
+    [x] on_start
+    [x] on_stop
     [ ] on_rejected_step
 
 [ ] add some built-in events
