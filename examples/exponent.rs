@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use diffurch::*;
 
 fn main() {
@@ -7,8 +9,13 @@ fn main() {
 
     Solver::new()
         .rk(&rk::RK98)
-        .stepsize(0.1)
-        .on_step(Event::ode2(|t, [x]| (t, x, (x - ic(t)[0]) / x)).to_std())
-        // .on_step(Event::dde(|t, [x], [x_]| (t, x, (x - ic(t)[0]) / x, x_(t - 1.))).to_std())
+        .stepsize(0.09)
+        // .on_step(Event::ode2(|t, [x]| (t, x, (x - ic(t)[0]) / x)).to_std())
+        .on_step(
+            Event::dde(|t, [x], [x_]| (t, x, (x - ic(t)[0]) / x, (x_(t - 1.) - ic(t - 1.)[0]) / x))
+                .to_std(),
+        )
         .run(eq, ic, 0. ..5.);
+
+    std::thread::sleep(Duration::from_millis(100));
 }
