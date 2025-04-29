@@ -1,4 +1,4 @@
-use crate::state::State;
+use super::State;
 
 pub trait FromState<T> {
     fn from_state(t: T) -> Self;

@@ -1,7 +1,5 @@
-use crate::{
-    state::{State, ToStateFunction},
-    util::tuple_tower::{TupleTower, TupleTowerLevel, TupleTowerLevel0, TupleTowerNextLevel},
-};
+use super::{State, ToStateFunction};
+use crate::util::tuple_tower::{TupleTower, TupleTowerLevel, TupleTowerLevel0, TupleTowerNextLevel};
 
 pub trait ToStateTupleTower<S, Arg, Ret, Level> {
     fn to_state_tuple_tower(self) -> impl for<'b> FnMut<(&'b S,), Output = Ret>;

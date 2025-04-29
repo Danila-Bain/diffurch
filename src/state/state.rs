@@ -1,4 +1,4 @@
-use crate::rk::*;
+use crate::rk::RungeKuttaTable;
 
 use std::collections::VecDeque;
 

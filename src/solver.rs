@@ -1,7 +1,8 @@
-use crate::equation::*;
-use crate::rk::*;
-use crate::state::*;
-use crate::util::tuple_tower::*;
+use crate::equation::Equation;
+use crate::rk::{RK98, RungeKuttaTable};
+use crate::state::State;
+use crate::util::tuple_tower::{TupleTower, TupleTowerLevel};
+use crate::{ToStateFunction, ToStateTupleTower};
 
 pub struct Solver<const S: usize = 26, StepEvents = TupleTower<()>> {
     rk: &'static RungeKuttaTable<'static, S>,
@@ -61,7 +62,8 @@ impl<const S: usize, StepEvents> Solver<S, StepEvents> {
     ) where
         IC: Fn(f64) -> [f64; N],
         StepEvents: TupleTowerLevel,
-        StepEvents: ToStateTupleTower<State<N,S,IC>, StepEventsArgs, StepEventsRet, StepEvents::Level>,
+        StepEvents:
+            ToStateTupleTower<State<N, S, IC>, StepEventsArgs, StepEventsRet, StepEvents::Level>,
         RHS: Fn<EquationArgs, Output = [f64; N]>,
         EquationArgs: std::marker::Tuple,
         // EquationArgs: for<'a> FromState<&'a State<N, S, IC>>,
@@ -109,6 +111,8 @@ impl<const S: usize, StepEvents> Solver<S, StepEvents> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use crate::rk::*;
 
     #[test]
     fn solver() {

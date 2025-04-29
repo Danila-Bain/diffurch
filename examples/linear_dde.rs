@@ -1,7 +1,4 @@
-use diffurch::equation::Equation;
-use diffurch::event::Event;
-use diffurch::rk;
-use diffurch::solver::Solver;
+use diffurch::{rk, Equation, Event, Solver};
 
 fn main() {
     // let theta = 0.5f64;
