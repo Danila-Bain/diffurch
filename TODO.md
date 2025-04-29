@@ -1,6 +1,6 @@
 Roughly in order of simplicity and necessity:
 
-[ ] implement to_state_function for functions with signatures fn(f64) and fn()
+[x] implement to_state_function for functions with signatures fn(f64) and fn()
 
 [ ] add support for NDDEs
 

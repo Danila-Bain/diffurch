@@ -31,6 +31,6 @@ fn main() {
         .show_pdf(pgfplots::Engine::PdfLatex)
         .unwrap();
 
-    std::thread::sleep(Duration::from_secs(5))
+    std::thread::sleep(Duration::from_secs(1))
 }
 
