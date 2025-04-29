@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use diffurch::{rk, Equation, Event, Solver};
 
 fn main() {
@@ -16,19 +18,19 @@ fn main() {
     let mut x = Vec::new();
 
     Solver::new()
-        .stepsize(0.1)
+        .stepsize(0.33)
         .rk(&rk::RK98)
-        .on_step(Event::new(|t: f64, [x]: [f64; 1]| [t, x]).to_vecs([&mut t, &mut x]))
-        .on_step(Event::new(|t: f64, [x]: [f64; 1]| [t, x, x - ic(t)[0]]).to_std())
+        .on_step(Event::ode2(|t, [x]| [t, x]).to_vecs([&mut t, &mut x]))
+        .on_step(Event::ode2(|t, [x]| [t, x, x - ic(t)[0]]).to_std())
         .run(equation, ic, range);
 
     
-    //
-    //
-    // let mut plot = pgfplots::axis::plot::Plot2D::new();
-    // plot.coordinates = (0..t.len()).map(|i| (t[i], x[i]).into()).collect();
-    // pgfplots::Picture::from(plot)
-    //     .show_pdf(pgfplots::Engine::PdfLatex)
-    //     .unwrap();
+    let mut plot = pgfplots::axis::plot::Plot2D::new();
+    plot.coordinates = (0..t.len()).map(|i| (t[i], x[i]).into()).collect();
+    pgfplots::Picture::from(plot)
+        .show_pdf(pgfplots::Engine::PdfLatex)
+        .unwrap();
+
+    std::thread::sleep(Duration::from_secs(5))
 }
 
