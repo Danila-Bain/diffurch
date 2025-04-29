@@ -124,7 +124,7 @@ impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]>
     }
 
     pub fn eval_i(&self, t: f64, coordinate: usize) -> f64 {
-        if t < self.t_init {
+        if t <= self.t_init {
             return (self.x_init)(t)[coordinate];
         } else {
             let i = self.t_seq.partition_point(|t_i| t_i < &t); // first i : t_seq[i] >= t
@@ -137,9 +137,10 @@ impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]>
             let x_prev = &self.x_seq[i - 1][coordinate];
             let k = &self.k_seq[i - 1];
             let t_prev = self.t_seq[i - 1];
-            let t_next = self.t_seq[i - 1];
-            let t_step = t_prev - t_next;
+            let t_next = self.t_seq[i];
+            let t_step = t_next - t_prev;
             let theta = (t - t_prev) / t_step;
+            // println!("List them all: x_prev={x_prev}, k={k:?}, t_prev={t_prev}, t_next={t_next}, t_step={t_step}, theta={theta}\n\n\n");
             return x_prev
                 + t_step * (0..S).fold(0., |acc, j| acc + self.rk.bi[j](theta) * k[j][coordinate]);
         }
