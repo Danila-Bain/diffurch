@@ -1,37 +1,33 @@
-For solution to be computed, several parts need to be specified:
-- RHS of the equation
-- The initial conditions
-- Events, including ones that are responsible for saving
-- Numerical method specifics, i.e. stepsize, rk_table, 
+Roughly in order of simplicity and necessity:
 
-In different applications it can make sense to specify those parts together or separately.
+[ ] implement to_state_function for functions with signatures fn(f64) and fn()
 
-- Equation object specifies the RHS, and events that modify the state of the equation. It can, but don't have to, specify the initial functions that can be used (one, or several), which can depend on parameters of the equation.
+[ ] add support for NDDEs
 
-Possible syntax for macros: 
-- equation: `x'' = -x;` or `(x', y') = (-y, x);`
-- event: `x < 0 => x = -x;`
-- initial conditions `{x: sigma; y: 2*t;}` or `(x,y): (1,t)`
+[ ] enlarge the scope of supported events
+    [ ] on_substeps
+    [ ] on_start
+    [ ] on_stop
+    [ ] on_rejected_step
 
+[ ] add some built-in events
+    [ ] stop integration
 
-<!-- What is not specified by the equation itself, must be specified in the solution function. -->
+[ ] add filtering of the events, which is a closure that returns bool
+    [ ] basic interface: Event::new(...).filter_by(...)
+    [ ] every(n: usize) (doesn't need arguments)
+    [ ] separated_by(delta: f64) (needs current time)
 
+[ ] implement more output handlers for events
+    [ ] to_csv
+    [ ] to_table (specify the separators manually)
 
-# State functions interface:
+[ ] try to pipe the solution into a real-time plotter
 
-Under the hood, there is a state object, which holds the current and past states. It is the object on which the runge-kutta scheme is acting upon, making use of past states by means of interpolation, for delay differential equations. 
+[ ] add support for detected events
+    [ ] interface like Solver::on(Detection, Event) for saving special values like zero crosses
+    [ ] discrete variables for Equation to support hybrid and discontinuous DEs (hard?)
 
-## Right hand side of the equation
+[ ] add support for events that change state
 
-For ordinary differential equations, the idea is to convert regular closures to state functions, supporting signatures like
-`|t, [x, dx]| [dx, -x + t.sin()]`, 
-`|[x,y,z]| [sigma * (y-x), x*(rho - z) - y, x*y - beta*z]`,
-`|t| [(t*w).sin(), (t*w).cos()*w]`.
-
-
-Internally, closure like `|t, [x, dx]| {...}` is called like `closure(state.t(), state.x())`.
-
-The harder question, is how the user is supposed to use the delayed argument. The first instinct is, to make a closure, that accepts the `f64` for time, `[f64; N]` for immediate state, `[Fn(f64) -> f64; N]` for coordinate evaluation functions, and even aditional `[Fn(f64)-> f64; N]` for coordinate derivatives evaluation functions. So, the Hutchinson equation would be written as
-`|t, [x], [x_]| [r * x * (1 - x_(t - tau)])`, and a neutral delay equation would be written as `|t, [x], _, [dx]| [-x + (1 + epsilon)*dx(t - T)]`.
-
-For the Hutchinson equaiton, this closure will be called internally like `closure(state.t(), state.x(), [|t| state.eval::<0>(t)])`
+[ ] Figure out closure type inference to use one `new` in place of `ode`, `ode2`, `dde`, `ndde`.
