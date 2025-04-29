@@ -55,11 +55,15 @@ impl Equation {
         }
     }
 
-    pub fn max_delay(self, value: f64) -> Self {
+}
+
+impl<const N:usize, RHS,Events> Equation<N,RHS,Events> {
+    pub fn with_delay(self, value: f64) -> Self {
         Self {
             rhs: self.rhs,
             events: self.events,
             max_delay: value,
         }
     }
+
 }
