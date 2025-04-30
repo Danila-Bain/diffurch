@@ -38,19 +38,24 @@ impl Event {
         }
     }
 
-
-    pub fn dde<const N: usize, Callback, Output, const S:usize, InitialFunction>(
+    pub fn dde<const N: usize, Callback, Output, const S: usize, InitialFunction>(
         callback: Callback,
     ) -> Event<Callback, TupleTower<()>>
     where
-        Callback: for<'a> Fn<(f64, [f64; N], [CoordinateFunction<'a,N,S,InitialFunction>; N]), Output = Output>,
+        Callback: for<'a> Fn<
+                (
+                    f64,
+                    [f64; N],
+                    [CoordinateFunction<'a, N, S, InitialFunction>; N],
+                ),
+                Output = Output,
+            >,
     {
         Event {
             callback,
             stream: TupleTower(()),
         }
     }
-
 
     pub fn new_with_stream<Callback, Stream>(
         callback: Callback,
@@ -157,5 +162,10 @@ impl<Callback, Stream> Event<Callback, TupleTower<Stream>> {
                 vecs[i].push(value[i]);
             }
         })
+    }
+
+    pub fn subdivide(n: usize) {
+        println!("{n}");
+        todo!();
     }
 }

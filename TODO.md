@@ -30,4 +30,6 @@ Roughly in order of simplicity and necessity:
 
 [ ] add support for events that change state
 
+[ ] adaptive step size controller
+
 [ ] Figure out closure type inference to use one `new` in place of `ode`, `ode2`, `dde`, `ndde`.

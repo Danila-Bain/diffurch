@@ -18,21 +18,6 @@ macro_rules! to_state_function_impl {
             }
         }
     };
-
-
-    ($args_tuple:ty, $self:ident, $state:ident, $body:block) => {
-        impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N], F, Ret>
-            ToStateFunction<State<N, S, InitialFunction>, $args_tuple, Ret> for F
-        where
-            F: FnMut<$args_tuple, Output = Ret>,
-        {
-            fn to_state_function(
-                mut $self,
-            ) -> impl for<'b> FnMut<(&'b State<N, S, InitialFunction>,), Output = Ret> {
-                move |$state| $body
-            }
-        }
-    };
 }
 
 to_state_function_impl!((), self, _state, { self() });
