@@ -1,119 +1,63 @@
-use crate::{state::CoordinateFunction, util::tuple_tower::TupleTower};
+use crate::{state::CoordFn, util::tutle::Tutle};
 use std::marker::Tuple;
 
-pub struct Event<Callback = (), Stream = TupleTower, Filter = TupleTower> {
-    pub callback: Callback,
-    pub stream: Stream,
-    pub filter: Filter,
+pub struct Event<C = (), S = Tutle, F = Tutle> {
+    pub callback: C,
+    pub stream: S,
+    pub filter: F,
 }
 
 impl Event {
-    pub fn new<Callback>(callback: Callback) -> Event<Callback> {
+    pub fn new<C>(callback: C) -> Event<C> {
         Event {
             callback,
-            stream: TupleTower(()),
-            filter: TupleTower(()),
+            stream: Tutle(()),
+            filter: Tutle(()),
         }
     }
 
-    pub fn ode<const N: usize, Callback, Output>(
-        callback: Callback,
-    ) -> Event<Callback>
+    pub fn ode<const N: usize, C, Output>(callback: C) -> Event<C>
     where
-        Callback: Fn<([f64; N],), Output = Output>,
+        C: Fn<([f64; N],), Output = Output>,
     {
         Event {
             callback,
-            stream: TupleTower(()),
-            filter: TupleTower(()),
+            stream: Tutle(()),
+            filter: Tutle(()),
         }
     }
 
-    pub fn ode2<const N: usize, Callback, Output>(
-        callback: Callback,
-    ) -> Event<Callback>
+    pub fn ode2<const N: usize, C, Output>(callback: C) -> Event<C>
     where
-        Callback: Fn<(f64, [f64; N]), Output = Output>,
+        C: Fn<(f64, [f64; N]), Output = Output>,
     {
         Event {
             callback,
-            stream: TupleTower(()),
-            filter: TupleTower(()),
+            stream: Tutle(()),
+            filter: Tutle(()),
         }
     }
 
-    pub fn dde<const N: usize, Callback, Output, const S: usize, InitialFunction>(
-        callback: Callback,
-    ) -> Event<Callback>
+    pub fn dde<const N: usize, C, Output, const S: usize, IF>(callback: C) -> Event<C>
     where
-        Callback: for<'a> Fn<
-                (
-                    f64,
-                    [f64; N],
-                    [CoordinateFunction<'a, N, S, InitialFunction>; N],
-                ),
-                Output = Output,
-            >,
+        C: for<'a> Fn<(f64, [f64; N], [CoordFn<'a, N, S, IF>; N]), Output = Output>,
     {
         Event {
             callback,
-            stream: TupleTower(()),
-            filter: TupleTower(()),
+            stream: Tutle(()),
+            filter: Tutle(()),
         }
     }
-
-    // pub fn new_with_stream<Callback, Stream>(
-    //     callback: Callback,
-    //     stream: Stream,
-    // ) -> Event<Callback, Stream> {
-    //     Event::<Callback, Stream, TupleTower<()>> { callback, stream, filter: TupleTower(()) }
-    // }
 }
 
-// impl<Callback, Stream, Filter, Args> FnOnce<Args> for Event<Callback, Stream, Filter>
-// where
-//     Args: Tuple,
-//     Callback: FnOnce<Args>,
-//     Stream: FnOnce<(Callback::Output,), Output=()>,
-// {
-//     type Output = Stream::Output;
-//
-//     extern "rust-call" fn call_once(self, args: Args) -> Self::Output {
-//         let Self { callback, stream, filter } = self;
-//         stream.call_once((callback.call_once(args),))
-//     }
-// }
-//
-// impl<Callback, Stream, Args> FnMut<Args> for Event<Callback, Stream>
-// where
-//     Args: Tuple,
-//     Callback: FnMut<Args>,
-//     Stream: FnMut<(Callback::Output,), Output=()>,
-// {
-//     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output {
-//         let Self { callback, stream, filter } = self;
-//         stream.call_mut((callback.call_mut(args),))
-//     }
-// }
-//
-// impl<Callback, Stream, Args> Fn<Args> for Event<Callback, Stream>
-// where
-//     Args: Tuple,
-//     Callback: Fn<Args>,
-//     Stream: Fn<(Callback::Output,), Output=()>,
-// {
-//     extern "rust-call" fn call(&self, args: Args) -> Self::Output {
-//         let Self { callback, stream, filter } = self;
-//         stream.call((callback.call(args),))
-//     }
-// }
 
-impl<Callback, Stream, Filter> Event<Callback, TupleTower<Stream>, TupleTower<Filter>> {
-    pub fn to<Args, Output, S>(self, s: S) -> Event<Callback, TupleTower<(S, TupleTower<Stream>)>, TupleTower<Filter>>
+impl<C, S, F> Event<C, Tutle<S>, Tutle<F>> {
+    pub fn to<Args, O, S_>(self, s: S_) 
+        -> Event<C, Tutle<(S_, Tutle<S>)>, Tutle<F>>
     where
         Args: Tuple,
-        Callback: Fn<Args, Output = Output>,
-        S: FnMut<(Output,)>,
+        C: Fn<Args, Output = O>,
+        S_: FnMut<(O,)>,
     {
         Event {
             callback: self.callback,
@@ -122,24 +66,24 @@ impl<Callback, Stream, Filter> Event<Callback, TupleTower<Stream>, TupleTower<Fi
         }
     }
 
-    pub fn to_std<Args, Output>(
+    pub fn to_std<Args, O>(
         self,
-    ) -> Event<Callback, TupleTower<(impl FnMut<(Output,)>, TupleTower<Stream>)>, TupleTower<Filter>>
+    ) -> Event<C, Tutle<(impl FnMut<(O,)>, Tutle<S>)>, Tutle<F>>
     where
         Args: Tuple,
-        Callback: Fn<Args, Output = Output>,
-        Output: std::fmt::Debug,
+        C: Fn<Args, Output = O>,
+        O: std::fmt::Debug,
     {
-        self.to(|value: Output| println!("{:?}", value))
+        self.to(|value: O| println!("{:?}", value))
     }
 
     pub fn to_vec<Args, Output>(
         self,
         vec: &mut Vec<Output>,
-    ) -> Event<Callback, TupleTower<(impl FnMut<(Output,)>, TupleTower<Stream>)>, TupleTower<Filter>>
+    ) -> Event<C, Tutle<(impl FnMut<(Output,)>, Tutle<S>)>, Tutle<F>>
     where
         Args: Tuple,
-        Callback: Fn<Args, Output = Output>,
+        C: Fn<Args, Output = Output>,
     {
         self.to(|value: Output| vec.push(value))
     }
@@ -147,9 +91,9 @@ impl<Callback, Stream, Filter> Event<Callback, TupleTower<Stream>, TupleTower<Fi
     pub fn to_var<Args, Output>(
         self,
         value: &mut Output,
-    ) -> Event<Callback, TupleTower<(impl FnMut<(Output,)>, TupleTower<Stream>)>, TupleTower<Filter>>
+    ) -> Event<C, Tutle<(impl FnMut<(Output,)>, Tutle<S>)>, Tutle<F>>
     where
-        Callback: Fn<Args, Output = Output>,
+        C: Fn<Args, Output = Output>,
         Args: Tuple,
     {
         self.to(|v: Output| *value = v)
@@ -158,10 +102,10 @@ impl<Callback, Stream, Filter> Event<Callback, TupleTower<Stream>, TupleTower<Fi
     pub fn to_vecs<const N: usize, Args>(
         self,
         vecs: [&mut Vec<f64>; N],
-    ) -> Event<Callback, TupleTower<(impl FnMut<([f64; N],)>, TupleTower<Stream>)>, TupleTower<Filter>>
+    ) -> Event<C, Tutle<(impl FnMut<([f64; N],)>, Tutle<S>)>, Tutle<F>>
     where
         Args: Tuple,
-        Callback: Fn<Args, Output = [f64; N]>,
+        C: Fn<Args, Output = [f64; N]>,
     {
         self.to(move |value: [f64; N]| {
             for i in 0..N {
@@ -170,12 +114,10 @@ impl<Callback, Stream, Filter> Event<Callback, TupleTower<Stream>, TupleTower<Fi
         })
     }
 
-
-
-    pub fn filter_by<Args, F>(self, f: F) -> Event<Callback, TupleTower<Stream>, TupleTower<(F, TupleTower<Filter>)>>
+    pub fn filter_by<Args, F_>(self, f: F_) -> Event<C, Tutle<S>, Tutle<(F_, Tutle<F>)>>
     where
         Args: Tuple,
-        F: FnMut<Args, Output = bool>,
+        F_: FnMut<Args, Output = bool>,
     {
         Event {
             callback: self.callback,
@@ -184,29 +126,34 @@ impl<Callback, Stream, Filter> Event<Callback, TupleTower<Stream>, TupleTower<Fi
         }
     }
 
-    pub fn every(self, n: usize) -> Event<Callback, TupleTower<Stream>, TupleTower<(impl FnMut<(), Output=bool>, TupleTower<Filter>)>> {
+    pub fn every(
+        self,
+        n: usize,
+    ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(), Output = bool>, Tutle<F>)>> {
         let mut counter = n - 1;
         self.filter_by(move || {
             counter += 1;
             counter -= n * (counter >= n) as usize;
             return counter == 0;
-        }) 
+        })
     }
 
-    pub fn separated_by(self, delta: f64) -> Event<Callback, TupleTower<Stream>, TupleTower<(impl FnMut<(f64,), Output=bool>, TupleTower<Filter>)>> {
+    pub fn separated_by(
+        self,
+        delta: f64,
+    ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(f64,), Output = bool>, Tutle<F>)>> {
         let mut last_trigger = f64::NEG_INFINITY;
         self.filter_by(move |t| {
             let res = t >= last_trigger + delta;
             last_trigger = t;
             return res;
-        }) 
+        })
     }
 
-    pub fn in_range(self, interval: std::ops::Range<f64>) -> Event<Callback, TupleTower<Stream>, TupleTower<(impl FnMut<(f64,), Output=bool>, TupleTower<Filter>)>> {
-        self.filter_by(move |t| {
-           interval.contains(&t)
-        }) 
+    pub fn in_range(
+        self,
+        interval: std::ops::Range<f64>,
+    ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(f64,), Output = bool>, Tutle<F>)>> {
+        self.filter_by(move |t| interval.contains(&t))
     }
-
-
 }

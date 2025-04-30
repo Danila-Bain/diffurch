@@ -1,4 +1,4 @@
-use crate::state::CoordinateFunction;
+use crate::state::CoordFn;
 
 pub struct Equation<const N: usize = 1, RHS = (), Events = ()> {
     pub rhs: RHS,
@@ -44,9 +44,11 @@ impl Equation {
         }
     }
 
-    pub fn dde<const N: usize, RHS, const S: usize, InitialFunction: Fn(f64) -> [f64; N]>(rhs: RHS) -> Equation<N, RHS, ()>
+    pub fn dde<const N: usize, RHS, const S: usize, IF: Fn(f64) -> [f64; N]>(
+        rhs: RHS,
+    ) -> Equation<N, RHS, ()>
     where
-        RHS: for<'a> Fn(f64, [f64; N], [CoordinateFunction<'a, N, S, InitialFunction>; N]) -> [f64; N],
+        RHS: for<'a> Fn(f64, [f64; N], [CoordFn<'a, N, S, IF>; N]) -> [f64; N],
     {
         Equation::<N, RHS, ()> {
             rhs,
@@ -54,10 +56,9 @@ impl Equation {
             max_delay: f64::NAN,
         }
     }
-
 }
 
-impl<const N:usize, RHS,Events> Equation<N,RHS,Events> {
+impl<const N: usize, RHS, Events> Equation<N, RHS, Events> {
     pub fn with_delay(self, value: f64) -> Self {
         Self {
             rhs: self.rhs,
@@ -65,5 +66,4 @@ impl<const N:usize, RHS,Events> Equation<N,RHS,Events> {
             max_delay: value,
         }
     }
-
 }

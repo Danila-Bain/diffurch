@@ -2,7 +2,7 @@ use crate::rk::RungeKuttaTable;
 
 use std::collections::VecDeque;
 
-pub struct State<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]> {
+pub struct State<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]> {
     pub t: f64,
     pub t_init: f64,
     pub t_prev: f64,
@@ -11,7 +11,7 @@ pub struct State<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f6
     pub t_seq: VecDeque<f64>,
 
     pub x: [f64; N],
-    pub x_init: InitialFunction,
+    pub x_init: IF,
     pub x_prev: [f64; N],
     pub x_err: [f64; N],
     pub x_seq: VecDeque<[f64; N]>,
@@ -22,10 +22,10 @@ pub struct State<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f6
     rk: &'static RungeKuttaTable<'static, S>,
 }
 
-impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]>
-    State<N, S, InitialFunction>
+impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]>
+    State<N, S, IF>
 {
-    pub fn new(t_init: f64, x_init: InitialFunction, rk: &'static RungeKuttaTable<S>) -> Self {
+    pub fn new(t_init: f64, x_init: IF, rk: &'static RungeKuttaTable<S>) -> Self {
         let x = x_init(t_init);
 
         Self {
@@ -50,8 +50,8 @@ impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]>
     }
 }
 
-impl<const N: usize, const S: usize, InitialFunction: Fn(f64) -> [f64; N]>
-    State<N, S, InitialFunction>
+impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]>
+    State<N, S, IF>
 {
     pub fn push_current(&mut self) {
         self.t_seq.push_back(self.t);

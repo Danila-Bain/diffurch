@@ -1,14 +1,21 @@
 use crate::equation::Equation;
 use crate::rk::{RK98, RungeKuttaTable};
 use crate::state::State;
-use crate::util::tuple_tower::{TupleTower, TupleTowerLevel};
-use crate::{ToStateFunction, ToStateTupleTower};
+use crate::util::tutle::{Tutle, TutleLevel};
+use crate::{ToStateFn, ToStateTutle};
 
+mod new_solver {
+    use super::*;
+    pub struct Solver<const S: usize = 26> {
+        rk: &'static RungeKuttaTable<'static, S>,
+        stepsize: f64,
+    }
+}
 pub struct Solver<
     const S: usize = 26,
-    StepEvents = TupleTower,
-    StartEvents = TupleTower,
-    StopEvents = TupleTower,
+    StepEvents = Tutle,
+    StartEvents = Tutle,
+    StopEvents = Tutle,
 > {
     rk: &'static RungeKuttaTable<'static, S>,
     stepsize: f64,
@@ -22,18 +29,21 @@ impl Solver {
         Self {
             rk: &RK98,
             stepsize: 0.05,
-            step_events: TupleTower(()),
-            start_events: TupleTower(()),
-            stop_events: TupleTower(()),
+            step_events: Tutle(()),
+            start_events: Tutle(()),
+            stop_events: Tutle(()),
         }
     }
 }
 
-impl<const S: usize, StepEvents, StartEvents, StopEvents> Solver<S, TupleTower<StepEvents>, TupleTower<StartEvents>, TupleTower<StopEvents>> {
+impl<const S: usize, StepEvents, StartEvents, StopEvents>
+    Solver<S, Tutle<StepEvents>, Tutle<StartEvents>, Tutle<StopEvents>>
+{
     pub fn rk<const S_NEW: usize>(
         self,
         rk: &'static RungeKuttaTable<'static, S_NEW>,
-    ) -> Solver<S_NEW, TupleTower<StepEvents>, TupleTower<StartEvents>, TupleTower<StopEvents>> {
+    ) -> Solver<S_NEW, Tutle<StepEvents>, Tutle<StartEvents>, Tutle<StopEvents>>
+    {
         Solver {
             rk,
             stepsize: self.stepsize,
@@ -47,7 +57,15 @@ impl<const S: usize, StepEvents, StartEvents, StopEvents> Solver<S, TupleTower<S
         Self { stepsize, ..self }
     }
 
-    pub fn on_step<E>(self, event: E) -> Solver<S, TupleTower<(E, TupleTower<StepEvents>)>, TupleTower<StartEvents>, TupleTower<StopEvents> > {
+    pub fn on_step<E>(
+        self,
+        event: E,
+    ) -> Solver<
+        S,
+        Tutle<(E, Tutle<StepEvents>)>,
+        Tutle<StartEvents>,
+        Tutle<StopEvents>,
+    > {
         Solver {
             rk: self.rk,
             stepsize: self.stepsize,
@@ -57,8 +75,15 @@ impl<const S: usize, StepEvents, StartEvents, StopEvents> Solver<S, TupleTower<S
         }
     }
 
-
-    pub fn on_start<E>(self, event: E) -> Solver<S, TupleTower<StepEvents>, TupleTower<(E, TupleTower<StartEvents>)>, TupleTower<StopEvents> > {
+    pub fn on_start<E>(
+        self,
+        event: E,
+    ) -> Solver<
+        S,
+        Tutle<StepEvents>,
+        Tutle<(E, Tutle<StartEvents>)>,
+        Tutle<StopEvents>,
+    > {
         Solver {
             rk: self.rk,
             stepsize: self.stepsize,
@@ -68,8 +93,15 @@ impl<const S: usize, StepEvents, StartEvents, StopEvents> Solver<S, TupleTower<S
         }
     }
 
-
-    pub fn on_stop<E>(self, event: E) -> Solver<S, TupleTower<StepEvents>,  TupleTower<StartEvents>, TupleTower<(E, TupleTower<StopEvents>)>> {
+    pub fn on_stop<E>(
+        self,
+        event: E,
+    ) -> Solver<
+        S,
+        Tutle<StepEvents>,
+        Tutle<StartEvents>,
+        Tutle<(E, Tutle<StopEvents>)>,
+    > {
         Solver {
             rk: self.rk,
             stepsize: self.stepsize,
@@ -80,7 +112,9 @@ impl<const S: usize, StepEvents, StartEvents, StopEvents> Solver<S, TupleTower<S
     }
 }
 
-impl<const S: usize, StepEvents, StartEvents, StopEvents> Solver<S, StepEvents, StartEvents, StopEvents> {
+impl<const S: usize, StepEvents, StartEvents, StopEvents>
+    Solver<S, StepEvents, StartEvents, StopEvents>
+{
     pub fn run<
         const N: usize,
         IC,
@@ -100,30 +134,30 @@ impl<const S: usize, StepEvents, StartEvents, StopEvents> Solver<S, StepEvents, 
         interval: std::ops::Range<f64>,
     ) where
         IC: Fn(f64) -> [f64; N],
-        StepEvents: TupleTowerLevel,
+        StepEvents: TutleLevel,
         StepEvents:
-            ToStateTupleTower<State<N, S, IC>, StepEventsArgs, StepEventsRet, StepEvents::Level>,
-        StartEvents: TupleTowerLevel,
+            ToStateTutle<State<N, S, IC>, StepEventsArgs, StepEventsRet, StepEvents::Level>,
+        StartEvents: TutleLevel,
         StartEvents:
-            ToStateTupleTower<State<N, S, IC>, StartEventsArgs, StartEventsRet, StartEvents::Level>,
-        StopEvents: TupleTowerLevel,
+            ToStateTutle<State<N, S, IC>, StartEventsArgs, StartEventsRet, StartEvents::Level>,
+        StopEvents: TutleLevel,
         StopEvents:
-            ToStateTupleTower<State<N, S, IC>, StopEventsArgs, StopEventsRet, StopEvents::Level>,
+            ToStateTutle<State<N, S, IC>, StopEventsArgs, StopEventsRet, StopEvents::Level>,
         RHS: Fn<EquationArgs, Output = [f64; N]>,
         EquationArgs: std::marker::Tuple,
         // EquationArgs: for<'a> FromState<&'a State<N, S, IC>>,
-        RHS: ToStateFunction<State<N, S, IC>, EquationArgs, [f64; N]>,
+        RHS: ToStateFn<State<N, S, IC>, EquationArgs, [f64; N]>,
     {
         /* initializations */
         let mut state = State::new(interval.start, initial_function, self.rk);
         state.t_step = self.stepsize;
         state.t_span = equation.max_delay;
 
-        // ToStateFunction::<&State<N, S, IC>, EquationArgs, [f64; N]>::to_state_function(equation.rhs);
+        // ToStateFn::<&State<N, S, IC>, EquationArgs, [f64; N]>::to_state_function(equation.rhs);
         let mut rhs = equation.rhs.to_state_function();
-        let mut step_events = self.step_events.to_state_tuple_tower();
-        let mut start_events = self.start_events.to_state_tuple_tower();
-        let mut stop_events = self.stop_events.to_state_tuple_tower();
+        let mut step_events = self.step_events.to_state_tutle();
+        let mut start_events = self.start_events.to_state_tutle();
+        let mut stop_events = self.stop_events.to_state_tutle();
 
         let _equation_events = equation.events;
 
@@ -142,4 +176,3 @@ impl<const S: usize, StepEvents, StartEvents, StopEvents> Solver<S, StepEvents, 
         stop_events(&state);
     }
 }
-
