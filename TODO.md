@@ -5,7 +5,7 @@ Roughly in order of simplicity and necessity:
 [ ] add support for NDDEs
 
 [ ] enlarge the scope of supported events
-    [ ] on_substeps
+    [ ] on_substeps (very hard?)
     [x] on_start
     [x] on_stop
     [ ] on_rejected_step
