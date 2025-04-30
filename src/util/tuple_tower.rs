@@ -89,3 +89,26 @@ T : TupleTowerLevel {
     type Level = TupleTowerNextLevel<T::Level>;
 }
 
+
+pub trait BoolTupleTower {
+    fn any(&self) -> bool; 
+    fn all(&self) -> bool; 
+}
+
+impl BoolTupleTower for TupleTower<()> {
+    fn any(&self) -> bool { false }
+    fn all(&self) -> bool { true }
+}
+
+impl<Rest> BoolTupleTower for TupleTower<(bool, Rest)>
+where Rest: BoolTupleTower {
+    fn any(&self) -> bool {
+        let TupleTower((value, rest)) = self;
+        *value || rest.any() 
+    }
+
+    fn all(&self) -> bool {
+        let TupleTower((value, rest)) = self;
+        *value && rest.all()
+    }
+}

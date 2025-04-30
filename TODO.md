@@ -14,7 +14,7 @@ Roughly in order of simplicity and necessity:
     [ ] stop integration
 
 [ ] add filtering of the events, which is a closure that returns bool
-    [ ] basic interface: Event::new(...).filter_by(...)
+    [ ] filter_by(...), like filter_by(|t| t >= 10.)
     [ ] every(n: usize) (doesn't need arguments)
     [ ] separated_by(delta: f64) (needs current time)
 
