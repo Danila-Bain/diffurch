@@ -48,9 +48,9 @@ impl<Args: Tuple> Fn<Args> for Tutle<()> {
 impl<Args: Tuple + Copy, H, T, HR, TR> FnOnce<Args> for Tutle<(H, T)>
 where
     H: FnOnce<Args, Output = HR>,
-    T: FnOnce<Args, Output = Tutle<TR>>,
+    T: FnOnce<Args, Output = TR>,
 {
-    type Output = Tutle<(HR, Tutle<TR>)>;
+    type Output = Tutle<(HR, TR)>;
 
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output {
         let Tutle((head, tail)) = self;
@@ -60,7 +60,7 @@ where
 impl<Args: Tuple + Copy, H, T, HR, TR> FnMut<Args> for Tutle<(H, T)>
 where
     H: FnMut<Args, Output = HR>,
-    T: FnMut<Args, Output = Tutle<TR>>,
+    T: FnMut<Args, Output = TR>,
 {
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output {
         let Tutle((head, tail)) = self;
@@ -70,7 +70,7 @@ where
 impl<Args: Tuple + Copy, H, T, HR, TR> Fn<Args> for Tutle<(H, T)>
 where
     H: Fn<Args, Output = HR>,
-    T: Fn<Args, Output = Tutle<TR>>,
+    T: Fn<Args, Output = TR>,
 {
     extern "rust-call" fn call(&self, args: Args) -> Self::Output {
         let Tutle((head, tail)) = self;
