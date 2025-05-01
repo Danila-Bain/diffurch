@@ -8,31 +8,23 @@ use crate::{
 use super::{CoordFn, State, ToStateTutle};
 
 pub trait ToStateFn<S, Arg, Ret> {
-    fn to_state_function(self) -> impl for<'b> FnMut<(&'b S,), Output = Ret>;
-    fn to_state_eval_function(self) -> impl for<'b> FnMut<(&'b S, f64), Output = Ret>;
+    type StateFn: for<'b> FnMut<(&'b S,), Output = Ret>;
+    type StateEvalFn: for<'b> FnMut<(&'b S, f64), Output = Ret>;
+
+    fn to_state_function(self) -> Self::StateFn;
+    fn to_state_eval_function(self) -> Self::StateEvalFn;
 }
 
 macro_rules! to_state_function_impl {
     (args: $args_tuple:ty, self: $self:ident, t: $t:ident, state: $state:ident, body: $body:block, body_eval: $body_eval:block) => {
         impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N], F, Ret>
             ToStateFn<State<N, S, IF>, $args_tuple, Ret> for F
-        where
-            F: FnMut<$args_tuple, Output = Ret>,
+        where F: FnMut<$args_tuple, Output = Ret>,
         {
-            fn to_state_function(
-                mut $self,
-            ) -> impl for<'b> FnMut<(&'b State<N, S, IF>,), Output = Ret> {
-                move |$state| $body
-            }
-
-            fn to_state_eval_function(
-                mut $self,
-            )
--> impl for<'b> FnMut<(&'b State<N,S,IF>, f64), Output = Ret>
-            {
-
-                move |$state, $t| $body_eval
-            }
+            type StateFn = impl for<'b> FnMut<(&'b State<N,S,IF>,), Output = Ret>;
+            type StateEvalFn = impl for<'b> FnMut<(&'b State<N,S,IF>, f64), Output = Ret>;
+            fn to_state_function(mut $self) -> Self::StateFn { move |$state| $body }
+            fn to_state_eval_function( mut $self) -> Self::StateEvalFn { move |$state, $t| $body_eval }
         }
     };
 }
@@ -78,7 +70,10 @@ impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N], F, Ret>
 where
     F: for<'a> FnMut<(f64, [f64; N], [CoordFn<'a, N, S, IF>; N]), Output = Ret>,
 {
-    fn to_state_function(mut self) -> impl for<'b> FnMut<(&'b State<N, S, IF>,), Output = Ret> {
+
+    type StateFn = impl for<'b> FnMut<(&'b State<N,S,IF>,), Output = Ret>;
+    type StateEvalFn = impl for<'b> FnMut<(&'b State<N,S,IF>, f64), Output = Ret>;
+    fn to_state_function(mut self) -> Self::StateFn {
         move |state| {
             self(
                 state.t,
@@ -91,7 +86,7 @@ where
         }
     }
 
-    fn to_state_eval_function(mut self) -> impl for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = Ret> {
+    fn to_state_eval_function(mut self) -> Self::StateEvalFn {
         move |state, t| {
             self(
                 t,
@@ -130,9 +125,14 @@ where
     Filter: ToStateTutle<State<N, S, IF>, FilterArgs, FilterRet, Filter::Level>,
     FilterRet: BoolTutle,
 {
+
+
+    type StateFn = impl for<'b> FnMut<(&'b State<N, S, IF>,), Output = Option<StreamRet>> ;
+    type StateEvalFn = impl for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = Option<StreamRet>> ;
+
     fn to_state_function(
         self,
-    ) -> impl for<'b> FnMut<(&'b State<N, S, IF>,), Output = Option<StreamRet>> {
+    ) -> Self::StateFn {
         let Self {
             callback,
             stream,
@@ -153,7 +153,7 @@ where
         }
     }
 
-    fn to_state_eval_function(self) -> impl for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = Option<StreamRet>> {
+    fn to_state_eval_function(self) -> Self::StateEvalFn {
         let Self {
             callback,
             stream,
@@ -202,9 +202,14 @@ where
     Filter: ToStateTutle<State<N, S, IF>, FilterArgs, FilterRet, Filter::Level>,
     FilterRet: BoolTutle,
 {
+
+
+    type StateFn = impl for<'b> FnMut<(&'b State<N, S, IF>,), Output = Option<StreamRet>> ;
+    type StateEvalFn = impl for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = Option<StreamRet>> ;
+
     fn to_state_function(
         self,
-    ) -> impl for<'b> FnMut<(&'b State<N, S, IF>,), Output = Option<StreamRet>> {
+    ) -> Self::StateFn {
         let n = self.subdivision;
 
         let mut self_eval = self.to_state_eval_function();
@@ -219,7 +224,7 @@ where
         }
     }
 
-    fn to_state_eval_function(self) -> impl for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = Option<StreamRet>> {
+    fn to_state_eval_function(self) -> Self::StateEvalFn {
         let Self {
             callback,
             stream,
