@@ -2,46 +2,31 @@ use super::{State, ToStateFn};
 use crate::util::tutle::{Tutle, TutleLevel, TutleLevel0, TutleNextLevel};
 
 pub trait ToStateTutle<S, Arg, R, Level> {
-    fn to_state_tutle(self) -> impl for<'b> FnMut<(&'b S,), Output = R>;
-    fn to_state_eval_tutle(self) -> impl for<'b> FnMut<(&'b S, f64,), Output = R>;
+    type StateTutle: for<'b> FnMut<(&'b S,), Output = R>;
+    type StateEvalTutle: for<'b> FnMut<(&'b S, f64), Output = R>;
+
+    fn to_state_tutle(self) -> Self::StateTutle;
+    fn to_state_eval_tutle(self) -> Self::StateEvalTutle;
 }
 
 impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]>
-    ToStateTutle<
-        State<N, S, IF>,
-        Tutle<()>,
-        Tutle<()>,
-        TutleLevel0,
-    > for Tutle<()>
+    ToStateTutle<State<N, S, IF>, Tutle<()>, Tutle<()>, TutleLevel0> for Tutle<()>
 where
     Tutle<()>: for<'b> Fn<(&'b State<N, S, IF>,), Output = Tutle<()>>,
 {
-    fn to_state_tutle(
-        self,
-    ) -> impl for<'b> FnMut<(&'b State<N, S, IF>,), Output = Tutle<()>> {
+    type StateTutle = impl for<'b> FnMut<(&'b State<N, S, IF>,), Output = Tutle<()>>;
+    type StateEvalTutle = impl for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = Tutle<()>>;
+
+    fn to_state_tutle(self) -> Self::StateTutle {
         Tutle(())
     }
 
-
-    fn to_state_eval_tutle(
-        self,
-    ) -> impl for<'b> FnMut<(&'b State<N, S, IF>, f64,), Output = Tutle<()>> {
+    fn to_state_eval_tutle(self) -> Self::StateEvalTutle {
         Tutle(())
     }
 }
 
-impl<
-    const N: usize,
-    const S: usize,
-    IF: Fn(f64) -> [f64; N],
-    H,
-    T,
-    HArg,
-    TArg,
-    HR,
-    TR,
-    TL,
->
+impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N], H, T, HArg, TArg, HR, TR, TL>
     ToStateTutle<
         State<N, S, IF>,
         Tutle<(HArg, Tutle<TArg>)>,
@@ -50,31 +35,20 @@ impl<
     > for Tutle<(H, Tutle<T>)>
 where
     H: ToStateFn<State<N, S, IF>, HArg, HR>,
-    Tutle<T>: ToStateTutle<
-            State<N, S, IF>,
-            Tutle<TArg>,
-            Tutle<TR>,
-            TL,
-        >,
+    Tutle<T>: ToStateTutle<State<N, S, IF>, Tutle<TArg>, Tutle<TR>, TL>,
     Tutle<(H, Tutle<T>)>: TutleLevel<Level = TutleNextLevel<TL>>,
     Tutle<T>: TutleLevel<Level = TL>,
 {
-    fn to_state_tutle(
-        self,
-    ) -> impl for<'b> FnMut<
-        (&'b State<N, S, IF>,),
-        Output = Tutle<(HR, Tutle<TR>)>,
-    > {
+    type StateTutle = impl for<'b> FnMut<(&'b State<N, S, IF>,), Output = Tutle<(HR, Tutle<TR>)>>;
+    type StateEvalTutle =
+        impl for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = Tutle<(HR, Tutle<TR>)>>;
+
+    fn to_state_tutle(self) -> Self::StateTutle {
         let Self((head, tail)) = self;
         Tutle((head.to_state_function(), tail.to_state_tutle()))
     }
 
-    fn to_state_eval_tutle(
-        self,
-    ) -> impl for<'b> FnMut<
-        (&'b State<N, S, IF>, f64,),
-        Output = Tutle<(HR, Tutle<TR>)>,
-    > {
+    fn to_state_eval_tutle(self) -> Self::StateEvalTutle {
         let Self((head, tail)) = self;
         Tutle((head.to_state_eval_function(), tail.to_state_eval_tutle()))
     }
