@@ -122,7 +122,7 @@ impl<
         State<N, S, IF>,
         (CallbackArgs, StreamArg, StreamRet, FilterArgs, FilterRet),
         Option<StreamRet>,
-    > for Event<Callback, Stream, Filter>
+    > for Event<Callback, Stream, Filter, ()>
 where
     Callback: ToStateFn<State<N, S, IF>, CallbackArgs, StreamArg>,
     Stream: FnMut<(StreamArg,), Output = StreamRet>,
@@ -137,6 +137,7 @@ where
             callback,
             stream,
             filter,
+            subdivision: _,
         } = self;
 
         let mut callback = callback.to_state_function();
@@ -157,6 +158,7 @@ where
             callback,
             stream,
             filter,
+            subdivision: _,
         } = self;
 
         let mut callback = callback.to_state_eval_function();

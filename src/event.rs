@@ -1,10 +1,11 @@
 use crate::{state::CoordFn, util::tutle::Tutle};
 use std::marker::Tuple;
 
-pub struct Event<C = (), S = Tutle, F = Tutle> {
+pub struct Event<C = (), S = Tutle, F = Tutle, D = ()> {
     pub callback: C,
     pub stream: S,
     pub filter: F,
+    pub subdivision: D,
 }
 
 impl Event {
@@ -13,6 +14,7 @@ impl Event {
             callback,
             stream: Tutle(()),
             filter: Tutle(()),
+            subdivision: (),
         }
     }
 
@@ -24,6 +26,7 @@ impl Event {
             callback,
             stream: Tutle(()),
             filter: Tutle(()),
+            subdivision: (),
         }
     }
 
@@ -35,6 +38,7 @@ impl Event {
             callback,
             stream: Tutle(()),
             filter: Tutle(()),
+            subdivision: (),
         }
     }
 
@@ -46,14 +50,15 @@ impl Event {
             callback,
             stream: Tutle(()),
             filter: Tutle(()),
+            subdivision: (),
         }
     }
 }
 
 
-impl<C, S, F> Event<C, Tutle<S>, Tutle<F>> {
+impl<C, S, F, D> Event<C, Tutle<S>, Tutle<F>, D> {
     pub fn to<Args, O, S_>(self, s: S_) 
-        -> Event<C, Tutle<(S_, Tutle<S>)>, Tutle<F>>
+        -> Event<C, Tutle<(S_, Tutle<S>)>, Tutle<F>, D>
     where
         Args: Tuple,
         C: Fn<Args, Output = O>,
@@ -63,12 +68,13 @@ impl<C, S, F> Event<C, Tutle<S>, Tutle<F>> {
             callback: self.callback,
             stream: self.stream.append(s),
             filter: self.filter,
+            subdivision: self.subdivision,
         }
     }
 
     pub fn to_std<Args, O>(
         self,
-    ) -> Event<C, Tutle<(impl FnMut<(O,)>, Tutle<S>)>, Tutle<F>>
+    ) -> Event<C, Tutle<(impl FnMut<(O,)>, Tutle<S>)>, Tutle<F>, D>
     where
         Args: Tuple,
         C: Fn<Args, Output = O>,
@@ -80,7 +86,7 @@ impl<C, S, F> Event<C, Tutle<S>, Tutle<F>> {
     pub fn to_vec<Args, Output>(
         self,
         vec: &mut Vec<Output>,
-    ) -> Event<C, Tutle<(impl FnMut<(Output,)>, Tutle<S>)>, Tutle<F>>
+    ) -> Event<C, Tutle<(impl FnMut<(Output,)>, Tutle<S>)>, Tutle<F>, D>
     where
         Args: Tuple,
         C: Fn<Args, Output = Output>,
@@ -91,7 +97,7 @@ impl<C, S, F> Event<C, Tutle<S>, Tutle<F>> {
     pub fn to_var<Args, Output>(
         self,
         value: &mut Output,
-    ) -> Event<C, Tutle<(impl FnMut<(Output,)>, Tutle<S>)>, Tutle<F>>
+    ) -> Event<C, Tutle<(impl FnMut<(Output,)>, Tutle<S>)>, Tutle<F>, D>
     where
         C: Fn<Args, Output = Output>,
         Args: Tuple,
@@ -102,7 +108,7 @@ impl<C, S, F> Event<C, Tutle<S>, Tutle<F>> {
     pub fn to_vecs<const N: usize, Args>(
         self,
         vecs: [&mut Vec<f64>; N],
-    ) -> Event<C, Tutle<(impl FnMut<([f64; N],)>, Tutle<S>)>, Tutle<F>>
+    ) -> Event<C, Tutle<(impl FnMut<([f64; N],)>, Tutle<S>)>, Tutle<F>, D>
     where
         Args: Tuple,
         C: Fn<Args, Output = [f64; N]>,
@@ -114,7 +120,7 @@ impl<C, S, F> Event<C, Tutle<S>, Tutle<F>> {
         })
     }
 
-    pub fn filter_by<Args, F_>(self, f: F_) -> Event<C, Tutle<S>, Tutle<(F_, Tutle<F>)>>
+    pub fn filter_by<Args, F_>(self, f: F_) -> Event<C, Tutle<S>, Tutle<(F_, Tutle<F>)>, D>
     where
         Args: Tuple,
         F_: FnMut<Args, Output = bool>,
@@ -123,13 +129,14 @@ impl<C, S, F> Event<C, Tutle<S>, Tutle<F>> {
             callback: self.callback,
             stream: self.stream,
             filter: self.filter.append(f),
+            subdivision: self.subdivision,
         }
     }
 
     pub fn every(
         self,
         n: usize,
-    ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(), Output = bool>, Tutle<F>)>> {
+    ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(), Output = bool>, Tutle<F>)>, D> {
         let mut counter = n - 1;
         self.filter_by(move || {
             counter += 1;
@@ -141,7 +148,7 @@ impl<C, S, F> Event<C, Tutle<S>, Tutle<F>> {
     pub fn separated_by(
         self,
         delta: f64,
-    ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(f64,), Output = bool>, Tutle<F>)>> {
+    ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(f64,), Output = bool>, Tutle<F>)>, D> {
         let mut last_trigger = f64::NEG_INFINITY;
         self.filter_by(move |t| {
             if t >= last_trigger + delta {
@@ -154,11 +161,11 @@ impl<C, S, F> Event<C, Tutle<S>, Tutle<F>> {
     pub fn in_range(
         self,
         interval: std::ops::Range<f64>,
-    ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(f64,), Output = bool>, Tutle<F>)>> {
+    ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(f64,), Output = bool>, Tutle<F>)>, D> {
         self.filter_by(move |t| interval.contains(&t))
     }
 
-    pub fn once( self) -> Event<C,Tutle<S>, Tutle<(impl FnMut<(), Output = bool>, Tutle<F>)>> {
+    pub fn once( self) -> Event<C,Tutle<S>, Tutle<(impl FnMut<(), Output = bool>, Tutle<F>)>, D> {
         let mut flag = true;
         self.filter_by(move || {
             if flag {
@@ -173,7 +180,7 @@ impl<C, S, F> Event<C, Tutle<S>, Tutle<F>> {
     pub fn first(
         self,
         n: usize,
-    ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(), Output = bool>, Tutle<F>)>> {
+    ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(), Output = bool>, Tutle<F>)>, D> {
         let mut counter = 0;
         self.filter_by(move || {
             counter += 1;
@@ -185,12 +192,24 @@ impl<C, S, F> Event<C, Tutle<S>, Tutle<F>> {
     pub fn times(
         self,
         range: std::ops::Range<usize>,
-    ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(), Output = bool>, Tutle<F>)>> {
+    ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(), Output = bool>, Tutle<F>)>, D> {
         let mut counter = 0;
         self.filter_by(move || {
             let ret = range.contains(&counter);
             counter += 1;
             ret
         })
+    }
+}
+
+
+impl<C, S, F> Event<C, Tutle<S>, Tutle<F>, ()> { 
+    pub fn subdivide(self, n: usize) -> Event<C,Tutle<S>,Tutle<F>,usize> {
+        Event {
+            callback: self.callback,
+            stream: self.stream,
+            filter: self.filter,
+            subdivision: n,
+        }
     }
 }
