@@ -1,8 +1,7 @@
 use std::marker::Tuple;
 
 use crate::{
-    Event,
-    util::tutle::{BoolTutle, TutleLevel},
+    util::tutle::{BoolTutle, LazyBoolTutle, TutleLevel}, Event
 };
 
 use super::{CoordFn, State, ToStateTutle};
@@ -124,8 +123,9 @@ where
     Filter: TutleLevel,
     Filter: ToStateTutle<State<N, S, IF>, FilterArgs, FilterRet, Filter::Level>,
     FilterRet: BoolTutle,
+    // Filter::StateTutle : for<'a> LazyBoolTutle<(&'a State<N,S,IF>,)>,
+    // Filter::StateEvalTutle : for <'a> LazyBoolTutle<(&'a State<N,S,IF>, f64)>,
 {
-
 
     type StateFn = impl for<'b> FnMut<(&'b State<N, S, IF>,), Output = Option<StreamRet>> ;
     type StateEvalFn = impl for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = Option<StreamRet>> ;
@@ -145,6 +145,7 @@ where
         let mut stream = stream;
 
         move |state| {
+            // if filter.lazy_all((state,)) {
             if filter(state).all() {
                 Some(stream.call_mut((callback.call_mut((state,)),)))
             } else {
@@ -162,11 +163,12 @@ where
         } = self;
 
         let mut callback = callback.to_state_eval_function();
-        let mut filter = filter.to_state_tutle();
+        let mut filter = filter.to_state_eval_tutle();
         let mut stream = stream;
 
         move |state, t| {
-            if filter(state).all() {
+            // if filter.lazy_all((state, t)) {
+            if filter(state, t).all() {
                 Some(stream.call_mut((callback.call_mut((state, t)),)))
             } else {
                 None
@@ -174,6 +176,11 @@ where
         }
     }
 }
+
+// Event<{closure@examples/harmonic_oscillator.rs:42:25: 42:37}, Tutle<(impl FnMut<((f64, f64, f64, f64),)>, Tutle)>>
+// Event<{closure@examples/harmonic_oscillator.rs:42:25: 42:37}, Tutle<(impl FnMut<((f64, f64, f64, f64),)>, Tutle)>>: ToStateFn<State<_, 26, _>, _, _>
+// Tutle<(Event<{closure@examples/harmonic_oscillator.rs:42:25: 42:37}, Tutle<(impl FnMut<((f64, f64, f64, f64),)>, Tutle)>>, Tutle)>
+// Tutle<(Event<{closure@examples/harmonic_oscillator.rs:49:29: 49:31}, Tutle<(impl FnMut<(&str,)>, Tutle)>>, Tutle<(Event<{closure@examples/harmonic_oscillator.rs:42:25: 42:37}, Tutle<(impl FnMut<((f64, f64, f64, f64),)>, Tutle)>>, Tutle)>)>
 
 
 

@@ -111,6 +111,18 @@ pub trait LazyBoolTutle<Args> {
     fn lazy_any(&mut self, arg: Args) -> bool;
 }
 
+
+impl<Args> LazyBoolTutle<Args> for Tutle<()> 
+{
+    fn lazy_all(&mut self, _args: Args) -> bool {
+        true
+    }
+
+    fn lazy_any(&mut self, _args: Args) -> bool {
+        false
+    }
+}
+
 impl<Args: Tuple + Copy, F, Rest> LazyBoolTutle<Args> for Tutle<(F, Rest)> 
 where F: FnMut<Args, Output=bool>, Rest: LazyBoolTutle<Args>
 {

@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use diffurch::{Equation, Event, Solver, State, rk};
+use diffurch::{Equation, Event, Solver, rk};
 
 fn main() {
     let k = 1.;
@@ -43,10 +43,10 @@ fn main() {
                 let [xx, dxx] = ic(t);
                 (t, x, dx, f64::max((x - xx).abs(), (dx - dxx).abs()))
             })
-            .subdivide(5)
+            // .subdivide(5)
             .to_std(),
         )
-        .on_step(Event::new(|| "Step finished").to_std())
+        // .on_step(Event::new(|| "Step finished").to_std())
         // .on_step(Event::ode2(|t, [x, dx]| (t, x, dx)).to(
         //     |(t, x, dx): (f64, f64, f64)| {
         //         max_radius_deviation = max_radius_deviation.max((x.powi(2) + dx.powi(2)) - 1.);
