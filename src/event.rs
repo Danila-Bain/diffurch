@@ -18,47 +18,33 @@ impl Event {
         }
     }
 
-    pub fn ode<const N: usize, C, Output>(callback: C) -> Event<C>
-    where
-        C: Fn<([f64; N],), Output = Output>,
-    {
-        Event {
-            callback,
-            stream: Tutle(()),
-            filter: Tutle(()),
-            subdivision: (),
-        }
+    pub fn ode<const N: usize, C: Fn<([f64; N],), Output = Output>, Output>(
+        callback: C,
+    ) -> Event<C> {
+        Event::new(callback)
     }
 
-    pub fn ode2<const N: usize, C, Output>(callback: C) -> Event<C>
-    where
-        C: Fn<(f64, [f64; N]), Output = Output>,
-    {
-        Event {
-            callback,
-            stream: Tutle(()),
-            filter: Tutle(()),
-            subdivision: (),
-        }
+    pub fn ode2<const N: usize, C: Fn<(f64, [f64; N]), Output = Output>, Output>(
+        callback: C,
+    ) -> Event<C> {
+        Event::new(callback)
     }
 
-    pub fn dde<const N: usize, C, Output, const S: usize, IF>(callback: C) -> Event<C>
-    where
+    pub fn dde<
+        const N: usize,
+        const S: usize,
+        IF,
         C: for<'a> Fn<(f64, [f64; N], [CoordFn<'a, N, S, IF>; N]), Output = Output>,
-    {
-        Event {
-            callback,
-            stream: Tutle(()),
-            filter: Tutle(()),
-            subdivision: (),
-        }
+        Output,
+    >(
+        callback: C,
+    ) -> Event<C> {
+        Event::new(callback)
     }
 }
 
-
 impl<C, S, F, D> Event<C, Tutle<S>, Tutle<F>, D> {
-    pub fn to<Args, O, S_>(self, s: S_) 
-        -> Event<C, Tutle<(S_, Tutle<S>)>, Tutle<F>, D>
+    pub fn to<Args, O, S_>(self, s: S_) -> Event<C, Tutle<(S_, Tutle<S>)>, Tutle<F>, D>
     where
         Args: Tuple,
         C: Fn<Args, Output = O>,
@@ -72,9 +58,7 @@ impl<C, S, F, D> Event<C, Tutle<S>, Tutle<F>, D> {
         }
     }
 
-    pub fn to_std<Args, O>(
-        self,
-    ) -> Event<C, Tutle<(impl FnMut<(O,)>, Tutle<S>)>, Tutle<F>, D>
+    pub fn to_std<Args, O>(self) -> Event<C, Tutle<(impl FnMut<(O,)>, Tutle<S>)>, Tutle<F>, D>
     where
         Args: Tuple,
         C: Fn<Args, Output = O>,
@@ -154,7 +138,9 @@ impl<C, S, F, D> Event<C, Tutle<S>, Tutle<F>, D> {
             if t >= last_trigger + delta {
                 last_trigger = t;
                 true
-            } else { false }
+            } else {
+                false
+            }
         })
     }
 
@@ -165,7 +151,7 @@ impl<C, S, F, D> Event<C, Tutle<S>, Tutle<F>, D> {
         self.filter_by(move |t| interval.contains(&t))
     }
 
-    pub fn once( self) -> Event<C,Tutle<S>, Tutle<(impl FnMut<(), Output = bool>, Tutle<F>)>, D> {
+    pub fn once(self) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(), Output = bool>, Tutle<F>)>, D> {
         let mut flag = true;
         self.filter_by(move || {
             if flag {
@@ -188,7 +174,6 @@ impl<C, S, F, D> Event<C, Tutle<S>, Tutle<F>, D> {
         })
     }
 
-
     pub fn times(
         self,
         range: std::ops::Range<usize>,
@@ -202,9 +187,8 @@ impl<C, S, F, D> Event<C, Tutle<S>, Tutle<F>, D> {
     }
 }
 
-
-impl<C, S, F> Event<C, Tutle<S>, Tutle<F>, ()> { 
-    pub fn subdivide(self, n: usize) -> Event<C,Tutle<S>,Tutle<F>,usize> {
+impl<C, S, F> Event<C, Tutle<S>, Tutle<F>, ()> {
+    pub fn subdivide(self, n: usize) -> Event<C, Tutle<S>, Tutle<F>, usize> {
         Event {
             callback: self.callback,
             stream: self.stream,
