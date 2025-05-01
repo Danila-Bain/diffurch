@@ -1,14 +1,14 @@
 use std::time::Duration;
 
-use diffurch::{rk, Equation, Event, Solver, State};
+use diffurch::{Equation, Event, Solver, State, rk};
 
 fn main() {
     let k = 1.;
 
-    let eq = Equation::ode(move |[x, dx]: [f64; 2]| [dx, -k * k * x]);
+    let eq = Equation::ode(move |[x, dx]: [f64; 2]| [dx, -k * k * x]).with_delay(10.);
 
     let ic = move |t: f64| [(t * k).sin(), k * (t * k).cos()]; // argument can be inffered, if
-                                                               // closure is typed in the argument
+    // closure is typed in the argument
 
     let range = 0. ..20.;
 
@@ -19,7 +19,7 @@ fn main() {
     // let mut e = e.to_state_function();
     // e(&s);
 
-    let mut points = Vec::new();
+    // let mut points = Vec::new();
 
     // let mut t = Vec::new();
     // let mut x = Vec::new();
@@ -30,21 +30,23 @@ fn main() {
 
     Solver::new()
         .rk(&rk::RK98)
-        .stepsize(0.05)
-        .on_step(Event::ode2(|t, [x, _dx]| (t, x)).in_range(10. .. 11.).to_std())
-        .on_step(Event::new(|| "Hello").separated_by(0.99).to_std())
-        .on_step(Event::ode2(|t, [x, _dx]| (t, x)).to_vec(&mut points))
+        .stepsize(0.5)
+        // .on_step(Event::ode2(|t, [x, _dx]| (t, x)).subdivide(5).to_std())
+        // .on_step(Event::new(|| "Hello").separated_by(0.99).to_std())
+        // .on_step(Event::ode2(|t, [x, _dx]| (t, x)).to_vec(&mut points))
         // .on_step(Event::ode2(|t: f64, [x, _dx]: [f64; 2]| (t, x)).to_std())
         // .on_step(
         //     Event::ode2(|t, [x, dx]| [t, x, dx]).to_vecs([&mut t, &mut x, &mut dx]),
         // )
-        // .on_step(
-        //     Event::ode2(|t, [x, dx]| {
-        //         let [xx, dxx] = ic(t);
-        //         (x, dx, f64::max((x - xx).abs(), (dx - dxx).abs()))
-        //     })
-        //     .to_std(),
-        // )
+        .on_step(
+            Event::ode2(|t, [x, dx]| {
+                let [xx, dxx] = ic(t);
+                (t, x, dx, f64::max((x - xx).abs(), (dx - dxx).abs()))
+            })
+            .subdivide(5)
+            .to_std(),
+        )
+        .on_step(Event::new(|| "Step finished").to_std())
         // .on_step(Event::ode2(|t, [x, dx]| (t, x, dx)).to(
         //     |(t, x, dx): (f64, f64, f64)| {
         //         max_radius_deviation = max_radius_deviation.max((x.powi(2) + dx.powi(2)) - 1.);

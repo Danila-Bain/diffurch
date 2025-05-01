@@ -175,3 +175,69 @@ where
     }
 }
 
+
+
+impl<
+    const N: usize,
+    const S: usize,
+    IF: Fn(f64) -> [f64; N],
+    Callback,
+    Stream,
+    Filter,
+    CallbackArgs,
+    StreamArg,
+    StreamRet,
+    FilterArgs,
+    FilterRet,
+>
+    ToStateFn<
+        State<N, S, IF>,
+        (CallbackArgs, StreamArg, StreamRet, FilterArgs, FilterRet),
+        Option<StreamRet>,
+    > for Event<Callback, Stream, Filter, usize>
+where
+    Callback: ToStateFn<State<N, S, IF>, CallbackArgs, StreamArg>,
+    Stream: FnMut<(StreamArg,), Output = StreamRet>,
+    Filter: TutleLevel,
+    Filter: ToStateTutle<State<N, S, IF>, FilterArgs, FilterRet, Filter::Level>,
+    FilterRet: BoolTutle,
+{
+    fn to_state_function(
+        self,
+    ) -> impl for<'b> FnMut<(&'b State<N, S, IF>,), Output = Option<StreamRet>> {
+        let n = self.subdivision;
+
+        let mut self_eval = self.to_state_eval_function();
+
+        move  |state| {
+            let step = state.t - state.t_prev;
+
+            for i in 1..n {
+                self_eval.call_mut((state, state.t_prev + (i as f64 / n as f64 * step)));
+            }
+            self_eval.call_mut((state, state.t))
+        }
+    }
+
+    fn to_state_eval_function(self) -> impl for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = Option<StreamRet>> {
+        let Self {
+            callback,
+            stream,
+            filter,
+            subdivision: _,
+        } = self;
+
+        let mut callback = callback.to_state_eval_function();
+        let mut filter = filter.to_state_tutle();
+        let mut stream = stream;
+
+        move |state, t| {
+            if filter(state).all() {
+                Some(stream.call_mut((callback.call_mut((state, t)),)))
+            } else {
+                None
+            }
+        }
+    }
+}
+

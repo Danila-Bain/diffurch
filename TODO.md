@@ -4,8 +4,8 @@ In each section, roughly in order of simplicity and necessity:
 
 [x] implement to_state_function for functions with signatures fn(f64) and fn()
 
-[ ] enlarge the scope of supported events
-    [ ] on_substeps (very hard?)
+[x] enlarge the scope of supported events
+    [x] subdivide option for Events
     [x] on_start
     [x] on_stop
     [ ] on_rejected_step
@@ -29,6 +29,7 @@ In each section, roughly in order of simplicity and necessity:
 
 
 # Event Output
+
 
 [x] add filtering of the events, which is a closure that returns bool
     [x] filter_by(...), like filter_by(|t| t >= 10.)
@@ -80,3 +81,7 @@ In each section, roughly in order of simplicity and necessity:
 [ ] Figure out closure type inference to use one `new` in place of `ode`, `ode2`, `dde`, `ndde`.
 
 [ ] equation! macro, which also saves the string representation of the equation
+
+# Internal optimizations
+
+[ ] Make the streams in events return (), such that to_state_func and to_state_eval_func are not weird for subdivided callbacks

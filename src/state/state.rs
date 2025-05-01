@@ -100,7 +100,7 @@ impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]>
     }
 
     pub fn eval_all(&self, t: f64) -> [f64; N] {
-        if t < self.t_init {
+        if t <= self.t_init {
             return (self.x_init)(t);
         } else {
             let i = self.t_seq.partition_point(|t_i| t_i < &t); // first i : t_seq[i] >= t
