@@ -1,11 +1,11 @@
 use std::time::Duration;
 
-use diffurch::{rk, Equation, Event, Solver, State, ToStateFunction};
+use diffurch::{rk, Equation, Event, Solver, State};
 
 fn main() {
     let k = 1.;
 
-    let eq = Equation::ode(move |[x, dx]| [dx, -k * k * x]);
+    let eq = Equation::ode(move |[x, dx]: [f64; 2]| [dx, -k * k * x]);
 
     let ic = move |t: f64| [(t * k).sin(), k * (t * k).cos()]; // argument can be inffered, if
                                                                // closure is typed in the argument
@@ -19,7 +19,7 @@ fn main() {
     // let mut e = e.to_state_function();
     // e(&s);
 
-    // let mut points = Vec::new();
+    let mut points = Vec::new();
 
     // let mut t = Vec::new();
     // let mut x = Vec::new();
@@ -31,9 +31,10 @@ fn main() {
     Solver::new()
         .rk(&rk::RK98)
         .stepsize(0.05)
-        // .on_step(Event::ode2(|t, [x, _dx]| (t, x)).filter_by(|t| t > 10.).to_vec(&mut points))
-        // .on_step(Event::ode2(|t, [x, _dx]| (t, x)).to_vec(&mut points))
-        .on_step(Event::ode2(|t, [x, _dx]| (t, x)).to_std())
+        .on_step(Event::ode2(|t, [x, _dx]| (t, x)).in_range(10. .. 11.).to_std())
+        .on_step(Event::new(|| "Hello").separated_by(0.99).to_std())
+        .on_step(Event::ode2(|t, [x, _dx]| (t, x)).to_vec(&mut points))
+        // .on_step(Event::ode2(|t: f64, [x, _dx]: [f64; 2]| (t, x)).to_std())
         // .on_step(
         //     Event::ode2(|t, [x, dx]| [t, x, dx]).to_vecs([&mut t, &mut x, &mut dx]),
         // )

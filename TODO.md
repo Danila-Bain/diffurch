@@ -13,10 +13,11 @@ Roughly in order of simplicity and necessity:
 [ ] add some built-in events
     [ ] stop integration
 
-[ ] add filtering of the events, which is a closure that returns bool
-    [ ] filter_by(...), like filter_by(|t| t >= 10.)
-    [ ] every(n: usize) (doesn't need arguments)
-    [ ] separated_by(delta: f64) (needs current time)
+[x] add filtering of the events, which is a closure that returns bool
+    [x] filter_by(...), like filter_by(|t| t >= 10.)
+    [x] every(n: usize) (doesn't need arguments)
+    [x] separated_by(delta: f64) (needs current time)
+    [x] once, first, times
 
 [ ] implement more output handlers for events
     [ ] to_csv

@@ -144,9 +144,10 @@ impl<C, S, F> Event<C, Tutle<S>, Tutle<F>> {
     ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(f64,), Output = bool>, Tutle<F>)>> {
         let mut last_trigger = f64::NEG_INFINITY;
         self.filter_by(move |t| {
-            let res = t >= last_trigger + delta;
-            last_trigger = t;
-            return res;
+            if t >= last_trigger + delta {
+                last_trigger = t;
+                true
+            } else { false }
         })
     }
 
@@ -155,5 +156,41 @@ impl<C, S, F> Event<C, Tutle<S>, Tutle<F>> {
         interval: std::ops::Range<f64>,
     ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(f64,), Output = bool>, Tutle<F>)>> {
         self.filter_by(move |t| interval.contains(&t))
+    }
+
+    pub fn once( self) -> Event<C,Tutle<S>, Tutle<(impl FnMut<(), Output = bool>, Tutle<F>)>> {
+        let mut flag = true;
+        self.filter_by(move || {
+            if flag {
+                flag = false;
+                true
+            } else {
+                false
+            }
+        })
+    }
+
+    pub fn first(
+        self,
+        n: usize,
+    ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(), Output = bool>, Tutle<F>)>> {
+        let mut counter = 0;
+        self.filter_by(move || {
+            counter += 1;
+            counter <= n
+        })
+    }
+
+
+    pub fn times(
+        self,
+        range: std::ops::Range<usize>,
+    ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(), Output = bool>, Tutle<F>)>> {
+        let mut counter = 0;
+        self.filter_by(move || {
+            let ret = range.contains(&counter);
+            counter += 1;
+            ret
+        })
     }
 }
