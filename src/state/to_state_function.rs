@@ -1,15 +1,19 @@
 use std::marker::Tuple;
 
-use crate::{util::tutle::{BoolTutle, TutleLevel}, Event};
+use crate::{
+    Event,
+    util::tutle::{BoolTutle, TutleLevel},
+};
 
 use super::{CoordFn, State, ToStateTutle};
 
 pub trait ToStateFn<S, Arg, Ret> {
     fn to_state_function(self) -> impl for<'b> FnMut<(&'b S,), Output = Ret>;
+    fn to_state_eval_function(self) -> impl for<'b> FnMut<(&'b S, f64), Output = Ret>;
 }
 
 macro_rules! to_state_function_impl {
-    ($args_tuple:ty, $self:ident, $state:ident, $body:block) => {
+    (args: $args_tuple:ty, self: $self:ident, t: $t:ident, state: $state:ident, body: $body:block, body_eval: $body_eval:block) => {
         impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N], F, Ret>
             ToStateFn<State<N, S, IF>, $args_tuple, Ret> for F
         where
@@ -20,14 +24,54 @@ macro_rules! to_state_function_impl {
             ) -> impl for<'b> FnMut<(&'b State<N, S, IF>,), Output = Ret> {
                 move |$state| $body
             }
+
+            fn to_state_eval_function(
+                mut $self,
+            )
+-> impl for<'b> FnMut<(&'b State<N,S,IF>, f64), Output = Ret>
+            {
+
+                move |$state, $t| $body_eval
+            }
         }
     };
 }
 
-to_state_function_impl!((), self, _state, { self() });
-to_state_function_impl!((f64,), self, state, { self(state.t) });
-to_state_function_impl!(([f64; N],), self, state, { self(state.x) });
-to_state_function_impl!((f64, [f64; N],), self, state, { self(state.t, state.x) });
+to_state_function_impl! {
+    args: (),
+    self: self,
+    t: _t,
+    state: _state,
+    body: { self() },
+    body_eval: { self() }
+}
+
+to_state_function_impl! {
+    args: (f64,),
+    self: self,
+    t: t,
+    state: _state,
+    body: { self(_state.t) },
+    body_eval: { self(t) }
+}
+
+to_state_function_impl! {
+    args: ([f64; N],),
+    self: self,
+    t: t,
+    state: state,
+    body: { self(state.x) },
+    body_eval: { self(state.eval_all(t)) }
+}
+
+to_state_function_impl! {
+    args: (f64, [f64; N]),
+    self: self,
+    t: t,
+    state: state,
+    body: { self(state.t, state.x) },
+    body_eval: { self(t, state.eval_all(t)) }
+}
 
 impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N], F, Ret>
     ToStateFn<State<N, S, IF>, (f64, [f64; N], [CoordFn<'_, N, S, IF>; N]), Ret> for F
@@ -39,6 +83,19 @@ where
             self(
                 state.t,
                 state.x,
+                std::array::from_fn(|i| CoordFn {
+                    state_ref: state,
+                    coordinate: i,
+                }),
+            )
+        }
+    }
+
+    fn to_state_eval_function(mut self) -> impl for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = Ret> {
+        move |state, t| {
+            self(
+                t,
+                state.eval_all(t),
                 std::array::from_fn(|i| CoordFn {
                     state_ref: state,
                     coordinate: i,
@@ -85,11 +142,30 @@ where
         let mut callback = callback.to_state_function();
         let mut filter = filter.to_state_tutle();
         let mut stream = stream;
-        // stream.call_mut((callback.call_once(args),))
 
         move |state| {
             if filter(state).all() {
                 Some(stream.call_mut((callback.call_mut((state,)),)))
+            } else {
+                None
+            }
+        }
+    }
+
+    fn to_state_eval_function(self) -> impl for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = Option<StreamRet>> {
+        let Self {
+            callback,
+            stream,
+            filter,
+        } = self;
+
+        let mut callback = callback.to_state_eval_function();
+        let mut filter = filter.to_state_tutle();
+        let mut stream = stream;
+
+        move |state, t| {
+            if filter(state).all() {
+                Some(stream.call_mut((callback.call_mut((state, t)),)))
             } else {
                 None
             }
