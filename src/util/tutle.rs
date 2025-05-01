@@ -104,3 +104,31 @@ where Tutle<Rest>: BoolTutle {
         *value && rest.all()
     }
 }
+
+
+pub trait LazyBoolTutle<Args> {
+    fn lazy_all(&mut self, arg: Args) -> bool;
+    fn lazy_any(&mut self, arg: Args) -> bool;
+}
+
+impl<Args: Tuple + Copy, F, Rest> LazyBoolTutle<Args> for Tutle<(F, Rest)> 
+where F: FnMut<Args, Output=bool>, Rest: LazyBoolTutle<Args>
+{
+    fn lazy_all(&mut self, args: Args) -> bool {
+        let Tutle((f, rest)) = self;
+        if !rest.lazy_all(args) {
+            false
+        } else {
+            f.call_mut(args)
+        }
+    }
+
+    fn lazy_any(&mut self, args: Args) -> bool {
+        let Tutle((f, rest)) = self;
+        if rest.lazy_any(args) {
+            true
+        } else {
+            f.call_mut(args)
+        }
+    }
+}
