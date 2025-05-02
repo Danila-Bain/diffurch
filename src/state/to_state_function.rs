@@ -106,18 +106,17 @@ impl<
     Filter,
     CallbackArgs,
     StreamArg,
-    StreamRet,
     FilterArgs,
     FilterRet,
 >
     ToStateFn<
         State<N, S, IF>,
-        (CallbackArgs, StreamArg, StreamRet, FilterArgs, FilterRet),
-        Option<StreamRet>,
+        (CallbackArgs, StreamArg, FilterArgs, FilterRet),
+        (),
     > for Event<Callback, Stream, Filter, ()>
 where
     Callback: ToStateFn<State<N, S, IF>, CallbackArgs, StreamArg>,
-    Stream: FnMut<(StreamArg,), Output = StreamRet>,
+    Stream: FnMut<(StreamArg,)>,
     Filter: TutleLevel,
     Filter: ToStateTutle<State<N, S, IF>, FilterArgs, FilterRet, Filter::Level>,
     FilterRet: BoolTutle,
@@ -125,8 +124,8 @@ where
     // Filter::StateEvalTutle : for <'a> LazyBoolTutle<(&'a State<N,S,IF>, f64)>,
 {
 
-    type StateFn = impl for<'b> FnMut<(&'b State<N, S, IF>,), Output = Option<StreamRet>> ;
-    type StateEvalFn = impl for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = Option<StreamRet>> ;
+    type StateFn = impl for<'b> FnMut<(&'b State<N, S, IF>,), Output=()>;
+    type StateEvalFn = impl for<'b> FnMut<(&'b State<N, S, IF>, f64), Output=()>;
 
     fn to_state_function(
         self,
@@ -145,9 +144,7 @@ where
         move |state| {
             // if filter.lazy_all((state,)) {
             if filter(state).all() {
-                Some(stream.call_mut((callback.call_mut((state,)),)))
-            } else {
-                None
+                stream.call_mut((callback.call_mut((state,)),));
             }
         }
     }
@@ -167,19 +164,11 @@ where
         move |state, t| {
             // if filter.lazy_all((state, t)) {
             if filter(state, t).all() {
-                Some(stream.call_mut((callback.call_mut((state, t)),)))
-            } else {
-                None
+                stream.call_mut((callback.call_mut((state, t)),));
             }
         }
     }
 }
-
-// Event<{closure@examples/harmonic_oscillator.rs:42:25: 42:37}, Tutle<(impl FnMut<((f64, f64, f64, f64),)>, Tutle)>>
-// Event<{closure@examples/harmonic_oscillator.rs:42:25: 42:37}, Tutle<(impl FnMut<((f64, f64, f64, f64),)>, Tutle)>>: ToStateFn<State<_, 26, _>, _, _>
-// Tutle<(Event<{closure@examples/harmonic_oscillator.rs:42:25: 42:37}, Tutle<(impl FnMut<((f64, f64, f64, f64),)>, Tutle)>>, Tutle)>
-// Tutle<(Event<{closure@examples/harmonic_oscillator.rs:49:29: 49:31}, Tutle<(impl FnMut<(&str,)>, Tutle)>>, Tutle<(Event<{closure@examples/harmonic_oscillator.rs:42:25: 42:37}, Tutle<(impl FnMut<((f64, f64, f64, f64),)>, Tutle)>>, Tutle)>)>
-
 
 
 impl<
@@ -191,26 +180,25 @@ impl<
     Filter,
     CallbackArgs,
     StreamArg,
-    StreamRet,
     FilterArgs,
     FilterRet,
 >
     ToStateFn<
         State<N, S, IF>,
-        (CallbackArgs, StreamArg, StreamRet, FilterArgs, FilterRet),
-        Option<StreamRet>,
+        (CallbackArgs, StreamArg, FilterArgs, FilterRet),
+        (),
     > for Event<Callback, Stream, Filter, usize>
 where
     Callback: ToStateFn<State<N, S, IF>, CallbackArgs, StreamArg>,
-    Stream: FnMut<(StreamArg,), Output = StreamRet>,
+    Stream: FnMut<(StreamArg,)>,
     Filter: TutleLevel,
     Filter: ToStateTutle<State<N, S, IF>, FilterArgs, FilterRet, Filter::Level>,
     FilterRet: BoolTutle,
 {
 
 
-    type StateFn = impl for<'b> FnMut<(&'b State<N, S, IF>,), Output = Option<StreamRet>> ;
-    type StateEvalFn = impl for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = Option<StreamRet>> ;
+    type StateFn = impl for<'b> FnMut<(&'b State<N, S, IF>,), Output = ()> ;
+    type StateEvalFn = impl for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = ()> ;
 
     fn to_state_function(
         self,
@@ -222,10 +210,9 @@ where
         move  |state| {
             let step = state.t - state.t_prev;
 
-            for i in 1..n {
+            for i in 1..=n {
                 self_eval.call_mut((state, state.t_prev + (i as f64 / n as f64 * step)));
             }
-            self_eval.call_mut((state, state.t))
         }
     }
 
@@ -243,9 +230,7 @@ where
 
         move |state, t| {
             if filter(state).all() {
-                Some(stream.call_mut((callback.call_mut((state, t)),)))
-            } else {
-                None
+                stream.call_mut((callback.call_mut((state, t)),));
             }
         }
     }
@@ -299,10 +284,14 @@ mod tests {
     #[test]
     fn const_event() {
         let state = new_state();
-        let f = Event::new(|| 123.);
+        let mut out = 0.;        
+        {
+            let f = Event::new(|| 123.).to_var(&mut out);
 
-        println!("{:?}", (f.callback)());
-        let mut f = f.to_state_function();
-        assert_eq!(f(&state), Some(Tutle(())));
+            println!("{:?}", (f.callback)());
+            let mut f = f.to_state_function();
+            f(&state);
+        }
+        assert_eq!(out, 123.);
     }
 }

@@ -48,7 +48,7 @@ impl<C, S, F, D> Event<C, Tutle<S>, Tutle<F>, D> {
     where
         Args: Tuple,
         C: Fn<Args, Output = O>,
-        S_: FnMut<(O,)>,
+        S_: FnMut<(O,), Output=()>,
     {
         Event {
             callback: self.callback,
