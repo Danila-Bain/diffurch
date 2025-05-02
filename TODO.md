@@ -37,7 +37,7 @@ In each section, roughly in order of simplicity and necessity:
     [x] separated_by(delta: f64) (needs current time)
     [x] once, first, times
 
-[ ] make filtering be iterative, such that .every(2).every(2) is equivallent to every(4), make the order of their calls correct (it is reversed at the time)
+[x] make filtering be iterative, such that .every(2).every(2) is equivallent to every(4), make the order of their calls correct (it is reversed at the time)
 
 [ ] implement more output handlers for events
     [ ] to_file (output as in to_std)

@@ -3,14 +3,14 @@ use std::time::Duration;
 use diffurch::{Equation, Event, Solver, rk};
 
 fn main() {
-    let k = 1.;
+    let k = 0.5;
 
     let eq = Equation::ode(move |[x, dx]: [f64; 2]| [dx, -k * k * x]).with_delay(10.);
 
     let ic = move |t: f64| [(t * k).sin(), k * (t * k).cos()]; // argument can be inffered, if
     // closure is typed in the argument
 
-    let range = 0. ..20.;
+    let range = 0. ..50.;
 
     // let mut e = Event::new(|t: f64| (t, t-1.)).to_std();
     //
@@ -30,7 +30,7 @@ fn main() {
 
     Solver::new()
         .rk(&rk::RK98)
-        .stepsize(0.5)
+        .stepsize(1.)
         // .on_step(Event::ode2(|t, [x, _dx]| (t, x)).subdivide(5).to_std())
         // .on_step(Event::new(|| "Hello").separated_by(0.99).to_std())
         // .on_step(Event::ode2(|t, [x, _dx]| (t, x)).to_vec(&mut points))
@@ -43,6 +43,8 @@ fn main() {
                 let [xx, dxx] = ic(t);
                 (t, x, dx, f64::max((x - xx).abs(), (dx - dxx).abs()))
             })
+            .every(4)
+            .every(6)
             // .subdivide(5)
             .to_std(),
         )

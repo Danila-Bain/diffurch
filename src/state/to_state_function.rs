@@ -2,7 +2,7 @@ use crate::{
     util::tutle::{BoolTutle, LazyBoolTutle, TutleLevel}, Event
 };
 
-use super::{CoordFn, State, ToStateTutle};
+use super::{CoordFn, State, ToBoolStateTutle, ToStateTutle};
 
 pub trait ToStateFn<S, Arg, Ret> {
     type StateFn: for<'b> FnMut<(&'b S,), Output = Ret>;
@@ -118,9 +118,9 @@ where
     Callback: ToStateFn<State<N, S, IF>, CallbackArgs, StreamArg>,
     Stream: FnMut<(StreamArg,)>,
     Filter: TutleLevel,
-    Filter: ToStateTutle<State<N, S, IF>, FilterArgs, FilterRet, Filter::Level>,
+    Filter: ToBoolStateTutle<State<N, S, IF>, FilterArgs, FilterRet, Filter::Level>,
     FilterRet: BoolTutle,
-    Filter::StateTutle: TutleLevel, // works if we add TutleLevel to this associated type in
+    // Filter::StateTutle: TutleLevel, // works if we add TutleLevel to this associated type in
                                     // ToStateTutle impl
     // Filter::StateTutle: for <'a> FnMut<(&'a State<N, S, IF>,)>, // ok
     // Filter::StateTutle : for<'a> LazyBoolTutle<(&'a State<N,S,IF>,)>,
@@ -145,8 +145,8 @@ where
         let mut stream = stream;
 
         move |state| {
-            // if filter.lazy_all((state,)) {
-            if filter(state).all() {
+            if filter.lazy_all((state,)) {
+            // if filter(state).all() {
                 stream.call_mut((callback.call_mut((state,)),));
             }
         }
@@ -165,8 +165,8 @@ where
         let mut stream = stream;
 
         move |state, t| {
-            // if filter.lazy_all((state, t)) {
-            if filter(state, t).all() {
+            if filter.lazy_all((state, t)) {
+            // if filter(state, t).all() {
                 stream.call_mut((callback.call_mut((state, t)),));
             }
         }
