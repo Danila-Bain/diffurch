@@ -1,5 +1,5 @@
 use crate::{
-    util::tutle::{BoolTutle, TutleLevel}, Event
+    util::tutle::{BoolTutle, LazyBoolTutle, TutleLevel}, Event
 };
 
 use super::{CoordFn, State, ToStateTutle};
@@ -120,6 +120,9 @@ where
     Filter: TutleLevel,
     Filter: ToStateTutle<State<N, S, IF>, FilterArgs, FilterRet, Filter::Level>,
     FilterRet: BoolTutle,
+    Filter::StateTutle: TutleLevel, // works if we add TutleLevel to this associated type in
+                                    // ToStateTutle impl
+    // Filter::StateTutle: for <'a> FnMut<(&'a State<N, S, IF>,)>, // ok
     // Filter::StateTutle : for<'a> LazyBoolTutle<(&'a State<N,S,IF>,)>,
     // Filter::StateEvalTutle : for <'a> LazyBoolTutle<(&'a State<N,S,IF>, f64)>,
 {
