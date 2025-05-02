@@ -1,7 +1,5 @@
-use std::marker::Tuple;
-
 use crate::{
-    util::tutle::{BoolTutle, LazyBoolTutle, TutleLevel}, Event
+    util::tutle::{BoolTutle, TutleLevel}, Event
 };
 
 use super::{CoordFn, State, ToStateTutle};
@@ -253,3 +251,58 @@ where
     }
 }
 
+
+#[cfg(test)]
+mod tests {
+    use crate::util::tutle::Tutle;
+
+    use super::*;
+
+    fn new_state() -> State<1, 1, impl Fn(f64) -> [f64;1]> {
+        let ic = |_: f64| [0.42];
+        return State::new(0.69, ic, &crate::rk::EULER);
+    }
+
+    #[test]
+    fn constant_fn() {
+        let state = new_state();
+        let f = || 123.;
+        let mut f = f.to_state_function();
+        assert_eq!(f(&state), 123.);
+    }
+
+
+    #[test]
+    fn time_fn() {
+        let state = new_state();
+        let f = |t: f64| (t, -t);
+        let mut f = f.to_state_function();
+        assert_eq!(f(&state), (state.t, -state.t));
+    }
+
+    #[test]
+    fn ode_fn() {
+        let state = new_state();
+        let f = |[x]: [f64; 1]| (x, -x);
+        let mut f = f.to_state_function();
+        assert_eq!(f(&state), (state.x[0], -state.x[0]));
+    }
+
+    #[test]
+    fn ode2_fn() {
+        let state = new_state();
+        let f = |t: f64, [x]: [f64; 1]| (t, x);
+        let mut f = f.to_state_function();
+        assert_eq!(f(&state), (state.t, state.x[0]));
+    }
+
+    #[test]
+    fn const_event() {
+        let state = new_state();
+        let f = Event::new(|| 123.);
+
+        println!("{:?}", (f.callback)());
+        let mut f = f.to_state_function();
+        assert_eq!(f(&state), Some(Tutle(())));
+    }
+}

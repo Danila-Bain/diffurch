@@ -1,6 +1,7 @@
 use std::marker::Tuple;
 
 // tuple tower
+#[derive(Debug, PartialEq)]
 pub struct Tutle<T = ()>(pub T);
 
 impl<T> Tutle<T> {
