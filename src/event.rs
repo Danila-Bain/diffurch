@@ -163,7 +163,7 @@ impl<C, S, F, D> Event<C, Tutle<S>, Tutle<F>, D> {
         })
     }
 
-    pub fn first(
+    pub fn take(
         self,
         n: usize,
     ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(), Output = bool>, Tutle<F>)>, D> {
