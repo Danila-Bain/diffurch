@@ -12,6 +12,9 @@ In each section, roughly in order of simplicity and necessity:
 
 [ ] add support for NDDEs
 
+<!-- Syntax: (|t, [x], [x_], [dx_]| [x_(t-1) - dx_(t-2)]) or (|t, [x], [x_]| [x_(t-1) - x_.1(t-1)]) -->
+<!-- or even (|t, [x]| [x() + x(t-1) - x.1(t-2)]) -->
+
 [ ] add support for events that change state
 
 [ ] add support for detected events
@@ -36,6 +39,7 @@ In each section, roughly in order of simplicity and necessity:
     [x] every(n: usize) (doesn't need arguments)
     [x] separated_by(delta: f64) (needs current time)
     [x] once, first, times
+    [ ] .no_init() to exclude points at the initial points 
 
 [x] make filtering be iterative, such that .every(2).every(2) is equivallent to every(4), make the order of their calls correct (it is reversed at the time)
 
@@ -74,6 +78,16 @@ In each section, roughly in order of simplicity and necessity:
 [ ] try to pipe the solution into a real-time plotter
 
 
+# Detecting events
+
+Naming: `on_root(|t: f64, [x, dx]: [f64; 2]| x, Event::new(...)...)`
+
+[ ] on_root
+[ ] on_above_root, on_below_root (naming should change)
+[ ] on_period
+
+[ ] delay propagated events
+
 # API convenience and macros
 
 [ ] Constructor functions for functions with arguments () - Equation::const or (f64,) - Equation::t
@@ -82,6 +96,16 @@ In each section, roughly in order of simplicity and necessity:
 
 [ ] equation! macro, which also saves the string representation of the equation
 
+[ ] allow .times(1..) for excluding the first step
+
+[ ] allow the initial function to have no arguments
+
 # Internal optimizations
 
-[ ] Make the streams in events return (), such that to_state_func and to_state_eval_func are not weird for subdivided callbacks
+[?] Make the streams in events return (), such that to_state_func and to_state_eval_func are not weird for subdivided callbacks
+[ ] For polynomials, multiplication by zero and adding zero can be optimized away, but it is not done by the compiler.
+
+# Direction of further development
+
+[ ] Automatic differentiation numerical types (for root finding?)
+[ ] Support for numbers with higher precision
