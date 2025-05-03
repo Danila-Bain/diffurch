@@ -152,4 +152,32 @@ impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]> State<N, S, IF> {
                 + t_step * (0..S).fold(0., |acc, j| acc + self.rk.bi[j](theta) * k[j][coordinate]);
         }
     }
+
+    pub fn eval_derivative(&self, t: f64, coordinate: usize) -> f64 {
+        if t <= self.t_init {
+            return (self.x_init)(t)[coordinate];
+        } else {
+            let i = self.t_seq.partition_point(|t_i| t_i < &t); // first i : t_seq[i] >= t
+            if i == 0 {
+                panic!(
+                    "Evaluation of state in deleted time range. Try adding .with_delay({}) to your equation.",
+                    self.t - t
+                );
+            } else if i == self.t_seq.len() {
+                panic!(
+                    "Evaluation of state in a not yet computed time range at {t} while state.t is {}.",
+                    self.t
+                );
+            }
+
+            let x_prev = &self.x_seq[i - 1][coordinate];
+            let k = &self.k_seq[i - 1];
+            let t_prev = self.t_seq[i - 1];
+            let t_next = self.t_seq[i];
+            let t_step = t_next - t_prev;
+            let theta = (t - t_prev) / t_step;
+            return x_prev
+                + t_step * (0..S).fold(0., |acc, j| acc + self.rk.bi[j](theta) * k[j][coordinate]);
+        }
+    }
 }
