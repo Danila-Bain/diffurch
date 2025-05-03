@@ -121,7 +121,7 @@ fn subdivide_5(b: &mut Bencher) {
         Solver::new()
             .stepsize(STEPSIZE)
             .on_step(Event::ode2(|t, [x, _]| (t, x)).to_var(&mut var).subdivide(5))
-            .run(eq.with_delay(2.*STEPSIZE), ic, range);
+            .run(eq, ic, range);
         var
     })
 }
@@ -136,7 +136,7 @@ fn subdivide_compensate_2(b: &mut Bencher) {
         Solver::new()
             .stepsize(STEPSIZE*n as f64)
             .on_step(Event::ode2(|t, [x, _]| (t, x)).to_var(&mut var).subdivide(n))
-            .run(eq.with_delay(2.*n as f64*STEPSIZE), ic, range);
+            .run(eq, ic, range);
         var
     })
 }
@@ -151,7 +151,7 @@ fn subdivide_compensate_5(b: &mut Bencher) {
         Solver::new()
             .stepsize(STEPSIZE*n as f64)
             .on_step(Event::ode2(|t, [x, _]| (t, x)).to_var(&mut var).subdivide(n))
-            .run(eq.with_delay(2.*n as f64*STEPSIZE), ic, range);
+            .run(eq, ic, range);
         var
     })
 }
@@ -166,7 +166,7 @@ fn subdivide_compensate_10(b: &mut Bencher) {
         Solver::new()
             .stepsize(STEPSIZE*n as f64)
             .on_step(Event::ode2(|t, [x, _]| (t, x)).to_var(&mut var).subdivide(n))
-            .run(eq.with_delay(2.*n as f64*STEPSIZE), ic, range);
+            .run(eq, ic, range);
         var
     })
 }
@@ -181,7 +181,7 @@ fn subdivide_compensate_20(b: &mut Bencher) {
         Solver::new()
             .stepsize(STEPSIZE*n as f64)
             .on_step(Event::ode2(|t, [x, _]| (t, x)).to_var(&mut var).subdivide(n))
-            .run(eq.with_delay(2.*n as f64*STEPSIZE), ic, range);
+            .run(eq, ic, range);
         var
     })
 }

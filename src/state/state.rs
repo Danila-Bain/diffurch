@@ -22,9 +22,7 @@ pub struct State<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]> {
     rk: &'static RungeKuttaTable<'static, S>,
 }
 
-impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]>
-    State<N, S, IF>
-{
+impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]> State<N, S, IF> {
     pub fn new(t_init: f64, x_init: IF, rk: &'static RungeKuttaTable<S>) -> Self {
         let x = x_init(t_init);
 
@@ -50,14 +48,12 @@ impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]>
     }
 }
 
-impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]>
-    State<N, S, IF>
-{
+impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]> State<N, S, IF> {
     pub fn push_current(&mut self) {
         self.t_seq.push_back(self.t);
         self.x_seq.push_back(self.x);
         self.k_seq.push_back(self.k);
-        while self.t - self.t_span
+        while self.t - self.t_span - 2. * self.t_step
             > *self
                 .t_seq
                 .front()
@@ -105,9 +101,15 @@ impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]>
         } else {
             let i = self.t_seq.partition_point(|t_i| t_i < &t); // first i : t_seq[i] >= t
             if i == 0 {
-                panic!("evaluation of state in deleted time range");
+                panic!(
+                    "Evaluation of state in deleted time range. Try adding .with_delay({}) to your equation.",
+                    self.t - t
+                );
             } else if i == self.t_seq.len() {
-                panic!("evaluation of state in a not yet computed time range");
+                panic!(
+                    "Evaluation of state in a not yet computed time range at {t} while state.t is {}.",
+                    self.t
+                );
             }
 
             let x_prev = &self.x_seq[i - 1];
@@ -129,9 +131,15 @@ impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]>
         } else {
             let i = self.t_seq.partition_point(|t_i| t_i < &t); // first i : t_seq[i] >= t
             if i == 0 {
-                panic!("evaluation of state in deleted time range");
+                panic!(
+                    "Evaluation of state in deleted time range. Try adding .with_delay({}) to your equation.",
+                    self.t - t
+                );
             } else if i == self.t_seq.len() {
-                panic!("evaluation of state in a not yet computed time range");
+                panic!(
+                    "Evaluation of state in a not yet computed time range at {t} while state.t is {}.",
+                    self.t
+                );
             }
 
             let x_prev = &self.x_seq[i - 1][coordinate];
