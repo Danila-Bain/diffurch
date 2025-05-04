@@ -12,6 +12,22 @@ macro_rules! polynomial {
     };
 }
 
+macro_rules! polynomial_fold {
+    () => {
+        |_t: f64| { 0. }
+    };
+    ($($coef:expr),+ $(,)?) => {
+        |t: f64| { 
+            [$($coef),+].into_iter().rev()
+            .reduce(|acc: f64, c: f64| c + t * acc).expect("coefficient array is non-empty")
+        }
+    };
+}
+
+
+// 1. + t * (2. + t * (3.))
+// 0. + t * (0. + t * (0.))
+
 #[bench]
 fn base(b: &mut Bencher) {
     let mut t = 0.;
@@ -21,8 +37,18 @@ fn base(b: &mut Bencher) {
 }
 
 #[bench]
-fn macro_polynomial(b: &mut Bencher) {
+fn macro_recursion_polynomial(b: &mut Bencher) {
     let p = polynomial![-1., 0., 1.];
+    let mut t = 0.;
+    b.iter(|| {
+        t += 0.01;
+        p(t)
+    })
+}
+
+#[bench]
+fn macro_fold_polynomial(b: &mut Bencher) {
+    let p = polynomial_fold![-1., 0., 1.];
     let mut t = 0.;
     b.iter(|| {
         t += 0.01;
@@ -95,6 +121,7 @@ impl<const N: usize> PolynomialArray<N> {
 fn struct_polynomial_assertions(b: &mut Bencher) {
     let p0 = polynomial![-1., 0., 1.];
     let p1 = PolynomialArray::new([-1., 0., 1.]);
+    let p2 = polynomial_fold![-1., 0., 1.];
     let mut t = 0.;
     b.iter(|| {
         t += 0.01;
@@ -102,6 +129,7 @@ fn struct_polynomial_assertions(b: &mut Bencher) {
         assert_eq!(val, p1.eval_fold(t));
         assert_eq!(val, p1.eval_loop_index(t));
         assert_eq!(val, p1.eval_loop_iter(t));
+        assert_eq!(val, p2(t));
     })
 }
 
@@ -183,6 +211,7 @@ fn macro_polynomial_zero_bloat(b: &mut Bencher) {
         p(t)
     })
 }
+
 
 #[bench]
 fn macro_polynomial_zero_bloat_minuses(b: &mut Bencher) {

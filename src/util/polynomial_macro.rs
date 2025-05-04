@@ -1,29 +1,31 @@
 // The main macro which creates an anonymous function that computes the polynomial.
 #[macro_export]
 macro_rules! polynomial {
-    ($($coef:expr),+ $(,)?) => {
-        |_t| { polynomial!(_t => $($coef),+) }
+    () => {
+        |_t: f64| { 0. }
     };
-    // Base case: only one coefficient left.
-    ($t:ident => $a:expr) => { $a };
-    // Recursive case: take the first coefficient and multiply the next inner expression by t.
-    ($t:ident => $a:expr, $($rest:expr),+) => {
-        $a + $t * (polynomial!($t => $($rest),+))
+    ($($coef:expr),+ $(,)?) => {
+        |t: f64| { 
+            [$($coef),+].into_iter().rev()
+            .reduce(|acc: f64, c: f64| c + t * acc).unwrap()
+        }
     };
 }
 
 macro_rules! polynomial_derivative {
+    () => {
+        |_t: f64| { 0. }
+    };
+    ($coef:expr) => {
+        |_t: f64| { 0. }
+    };
     ($($coef:expr),+ $(,)?) => {
-        |_t| { polynomial_derivative!(_t, 0. => $($coef),+) }
-    };
-    // Base case: only one coefficient left.
-    ($t:ident, $i:expr => $a:expr) => { $a * $i };
-    // Recursive case: take the first coefficient and multiply the next inner expression by t.
-    ($t:ident, 0. => $a:expr, $($rest:expr),+) => {
-        polynomial_derivative!($t, (1.) => $($rest),+)
-    };
-    ($t:ident, $i:expr => $a:expr, $($rest:expr),+) => {
-        $a * $i + $t * (polynomial_derivative!($t, ($i + 1.) => $($rest),+))
+        |t: f64| { 
+            let coef = [$($coef),+];
+            let last = *coef.last().unwrap();
+            coef.into_iter().enumerate().skip(1).rev().skip(1)
+            .fold(last * (coef.len()-1) as f64, |acc: f64, (n, c): (usize, f64)| n as f64 * c + t * acc)
+        }
     };
 }
 
@@ -96,20 +98,19 @@ mod tests {
     }
 
 
-    // ok but causes wery large compile time
-    // #[test]
-    // fn geometric_sum_derivative() {
-    //     let geometric_series = polynomial_derivative![
-    //         1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
-    //         1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
-    //         1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
-    //         1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
-    //     ];
-    //
-    //     assert_eq!(geometric_series(1./2.), (1f64/(1. - 1./2.)).powi(2));
-    //     assert_eq!(geometric_series(1./3.), 1.5f64.powi(2));
-    //     assert_eq!(geometric_series(1./4.), (1f64/(1. - 1./4.)).powi(2));
-    //     assert_eq!(geometric_series(1./5.), (1f64/(1. - 1./5.)).powi(2));
-    //     assert_eq!(geometric_series(1./6.), (1f64/(1. - 1./6.)).powi(2));
-    // }
+    #[test]
+    fn geometric_sum_derivative() {
+        let geometric_series = polynomial_derivative![
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+            1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+        ];
+
+        assert_eq!(geometric_series(1./2.), (1f64/(1. - 1./2.)).powi(2));
+        assert_eq!(geometric_series(1./3.), 1.5f64.powi(2));
+        assert_eq!(geometric_series(1./4.), (1f64/(1. - 1./4.)).powi(2));
+        assert_eq!(geometric_series(1./5.), (1f64/(1. - 1./5.)).powi(2));
+        assert_eq!(geometric_series(1./6.), (1f64/(1. - 1./6.)).powi(2));
+    }
 }
