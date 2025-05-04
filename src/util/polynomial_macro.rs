@@ -42,6 +42,10 @@ macro_rules! polynomial {
             $crate::polynomial_derivative_closure![$($coef),*],
          )
     };
+    ($t:ident => $($coef:expr),+) => {
+        [$($coef),+].into_iter().rev()
+            .reduce(|acc: f64, c: f64| c + $t * acc).unwrap()
+    };
 }
 
 
