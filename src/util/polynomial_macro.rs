@@ -1,6 +1,10 @@
 // The main macro which creates an anonymous function that computes the polynomial.
+
+
+
+
 #[macro_export]
-macro_rules! polynomial {
+macro_rules! polynomial_closure {
     () => {
         |_t: f64| { 0. }
     };
@@ -12,7 +16,8 @@ macro_rules! polynomial {
     };
 }
 
-macro_rules! polynomial_derivative {
+#[macro_export]
+macro_rules! polynomial_derivative_closure {
     () => {
         |_t: f64| { 0. }
     };
@@ -29,6 +34,16 @@ macro_rules! polynomial_derivative {
     };
 }
 
+#[macro_export]
+macro_rules! polynomial {
+    ($($coef:expr),*) => {
+        (
+            polynomial_closure![$($coef),*],
+            polynomial_derivative_closure![$($coef),*],
+         )
+    };
+}
+
 
 
 #[cfg(test)]
@@ -37,21 +52,21 @@ mod tests {
 
     #[test]
     fn constant_polynomail_evauation() {
-        let p = polynomial![42.];
+        let p = polynomial_closure![42.];
         assert_eq!(p(0.), 42.);
         assert_eq!(p(1.), 42.);
     }
 
     #[test]
     fn linear_polynomial_evaluation() {
-        let p = polynomial![42., 2.];
+        let p = polynomial_closure![42., 2.];
         assert_eq!(p(0.), 42.);
         assert_eq!(p(69.), 42. + 2. * 69.);
     }
 
     #[test]
     fn quadratic_polynomial_evaluation() {
-        let p = polynomial![-1., 0., 1.];
+        let p = polynomial_closure![-1., 0., 1.];
         assert_eq!(p(0.), -1.);
         assert_eq!(p(-1.), 0.);
         assert_eq!(p(1.), 0.);
@@ -59,7 +74,7 @@ mod tests {
 
     #[test]
     fn geometric_sum() {
-        let geometric_series = polynomial![
+        let geometric_series = polynomial_closure![
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
@@ -76,14 +91,14 @@ mod tests {
 
     #[test]
     fn constant_polynomail_derivative() {
-        let p = polynomial_derivative![42.];
+        let p = polynomial_derivative_closure![42.];
         assert_eq!(p(0.), 0.);
         assert_eq!(p(1.), 0.);
     }
 
     #[test]
     fn linear_polynomial_derivative() {
-        let p = polynomial_derivative![42., 2.];
+        let p = polynomial_derivative_closure![42., 2.];
         assert_eq!(p(0.), 2.);
         assert_eq!(p(69.), 2.);
     }
@@ -91,7 +106,7 @@ mod tests {
 
     #[test]
     fn quadratic_polynomial_derivative() {
-        let p = polynomial_derivative![-1., 0., 1.];
+        let p = polynomial_derivative_closure![-1., 0., 1.];
         assert_eq!(p(0.), 2.*0.);
         assert_eq!(p(-1.), 2.*(-1.));
         assert_eq!(p(1.), 2.*1.);
@@ -100,7 +115,7 @@ mod tests {
 
     #[test]
     fn geometric_sum_derivative() {
-        let geometric_series = polynomial_derivative![
+        let geometric_series = polynomial_derivative_closure![
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,

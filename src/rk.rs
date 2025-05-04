@@ -1,4 +1,6 @@
 use crate::polynomial;
+use crate::polynomial_closure;
+use crate::polynomial_derivative_closure;
 
 pub struct RungeKuttaTable<'a, const S: usize> {
     pub order: usize,
@@ -8,7 +10,7 @@ pub struct RungeKuttaTable<'a, const S: usize> {
     pub b: [f64; S],
     pub b2: [f64; S],
     pub c: [f64; S],
-    pub bi: [fn(f64) -> f64; S],
+    pub bi: [(fn(f64) -> f64, fn(f64) -> f64); S],
 }
 
 pub static EULER: RungeKuttaTable<1> = RungeKuttaTable {
@@ -1045,7 +1047,7 @@ mod tests {
     fn interpolation_continuity_error<const S: usize>(rk: &RungeKuttaTable<S>) -> f64 {
         let mut max = 0f64;
         for i in 0..S {
-            max = max.max((rk.b[i] - rk.bi[i](1.)).abs());
+            max = max.max((rk.b[i] - rk.bi[i].0(1.)).abs());
         }
         max
     }

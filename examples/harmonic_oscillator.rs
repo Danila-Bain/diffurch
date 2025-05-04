@@ -23,21 +23,21 @@ fn main() {
     Solver::new()
         .rk(&rk::RK98)
         .stepsize(1.)
-        .on_step(Event::ode2(|t, [x, _]| (t, x)).to_std().to_vec(&mut points).subdivide(10))
+        .on_step(Event::ode2(|t, [x, _]| (t, x)).to_vec(&mut points).subdivide(10))
         // .on_step(Event::new(|| "Hello").separated_by(0.99).to_std())
         // .on_step(Event::ode2(|t, [x, _dx]| (t, x)).to_vec(&mut points))
         // .on_step(Event::ode2(|t: f64, [x, _dx]: [f64; 2]| (t, x)).to_std())
         // .on_step(
         //     Event::ode2(|t, [x, dx]| [t, x, dx]).to_vecs([&mut t, &mut x, &mut dx]),
         // )
-        // .on_step(
-        //     Event::ode2(|t, [x, dx]| {
-        //         let [xx, dxx] = ic(t);
-        //         (t, x, dx, f64::max((x - xx).abs(), (dx - dxx).abs()))
-        //     })
-        //     // .subdivide(5)
-        //     .to_std(),
-        // )
+        .on_step(
+            Event::ode2(|t, [x, dx]| {
+                let [xx, dxx] = ic(t);
+                (t, x, dx, f64::max((x - xx).abs(), (dx - dxx).abs()))
+            })
+            .subdivide(10)
+            .to_std(),
+        )
         // .on_step(Event::new(|| "Step finished").to_std())
         // .on_step(Event::ode2(|t, [x, dx]| (t, x, dx)).to(
         //     |(t, x, dx): (f64, f64, f64)| {
