@@ -60,6 +60,11 @@ In each section, roughly in order of simplicity and necessity:
 
 [ ] return the whole state
 
+# Differentiation
+
+[ ] support extending closures with the method like .with_derivative(||...), which produces and object that implements Fn to call the inital closure, and a method .d to invoke a derivative
+[ ] use that for a polynomial macro
+
 # Solver
 
 [ ] adaptive step size controller

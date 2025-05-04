@@ -1,6 +1,3 @@
-// #![feature(tectonic)]
-// Data is pulled from https://covid.ourworldindata.org/data/owid-covid-data.json
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut plot = pgfplots::axis::plot::Plot2D::new();
 
@@ -12,11 +9,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     pgfplots::Picture::from(plot).show_pdf(pgfplots::Engine::PdfLatex)?;
 
     Ok(())
-}
-
-#[test]
-#[ignore]
-fn pgfplots() {
-    main().unwrap();
-    // std::thread::sleep(time::Duration::from_secs(1));
 }

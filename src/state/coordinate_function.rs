@@ -10,6 +10,7 @@ pub struct CoordFn<
     pub coordinate: usize,
 }
 
+
 impl<'state, const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]> FnOnce<()>
     for CoordFn<'state, N, S, IF>
 {
@@ -61,5 +62,11 @@ impl<'state, const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]> Fn<(f64,)>
     extern "rust-call" fn call(&self, args: (f64,)) -> Self::Output {
         let (t,) = args;
         return self.state_ref.eval(t, self.coordinate);
+    }
+}
+
+impl<'state, const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]> CoordFn<'state, N, S, IF> {
+    pub fn d(&self, t: f64) -> f64 {
+        return self.state_ref.eval_derivative(t, self.coordinate);
     }
 }
