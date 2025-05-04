@@ -1,29 +1,25 @@
 use super::State;
 
-pub struct CoordFn<
-    'state,
-    const N: usize,
-    const S: usize,
-    IF: Fn(f64) -> [f64; N],
-> {
+pub struct CoordFn<'state, const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]> {
     pub state_ref: &'state State<N, S, IF>,
     pub coordinate: usize,
 }
-
 
 impl<'state, const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]> FnOnce<()>
     for CoordFn<'state, N, S, IF>
 {
     type Output = f64;
 
-    #[inline] extern "rust-call" fn call_once(self, _:()) -> Self::Output {
+    #[inline]
+    extern "rust-call" fn call_once(self, _: ()) -> Self::Output {
         self.state_ref.x[self.coordinate]
     }
 }
 impl<'state, const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]> FnMut<()>
     for CoordFn<'state, N, S, IF>
 {
-    #[inline] extern "rust-call" fn call_mut(&mut self, _:()) -> Self::Output {
+    #[inline]
+    extern "rust-call" fn call_mut(&mut self, _: ()) -> Self::Output {
         self.state_ref.x[self.coordinate]
     }
 }
@@ -31,7 +27,8 @@ impl<'state, const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]> FnMut<()>
 impl<'state, const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]> Fn<()>
     for CoordFn<'state, N, S, IF>
 {
-    #[inline] extern "rust-call" fn call(&self, _:()) -> Self::Output {
+    #[inline]
+    extern "rust-call" fn call(&self, _: ()) -> Self::Output {
         self.state_ref.x[self.coordinate]
     }
 }
@@ -65,7 +62,9 @@ impl<'state, const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]> Fn<(f64,)>
     }
 }
 
-impl<'state, const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]> CoordFn<'state, N, S, IF> {
+impl<'state, const N: usize, const S: usize, IF: Fn(f64) -> [f64; N], DIF: Fn(f64) -> [f64; N]>
+    CoordFn<'state, N, S, crate::util::with_derivative::Differentiable<IF, DIF>>
+{
     pub fn d(&self, t: f64) -> f64 {
         return self.state_ref.eval_derivative(t, self.coordinate);
     }

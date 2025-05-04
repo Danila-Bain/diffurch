@@ -120,7 +120,7 @@ impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]> State<N, S, IF> {
             let theta = (t - t_prev) / t_step;
 
             return std::array::from_fn(|i| {
-                x_prev[i] + t_step * (0..S).fold(0., |acc, j| acc + self.rk.bi[j].0(theta) * k[j][i])
+                x_prev[i] + t_step * (0..S).fold(0., |acc, j| acc + self.rk.bi[j](theta) * k[j][i])
             });
         }
     }
@@ -149,13 +149,17 @@ impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]> State<N, S, IF> {
             let t_step = t_next - t_prev;
             let theta = (t - t_prev) / t_step;
             return x_prev
-                + t_step * (0..S).fold(0., |acc, j| acc + self.rk.bi[j].0(theta) * k[j][coordinate]);
+                + t_step * (0..S).fold(0., |acc, j| acc + self.rk.bi[j](theta) * k[j][coordinate]);
         }
     }
 
+}
+
+
+impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N], DIF: Fn(f64) -> [f64; N]> State<N, S, crate::util::with_derivative::Differentiable<IF, DIF>> {
     pub fn eval_derivative(&self, t: f64, coordinate: usize) -> f64 {
         if t <= self.t_init {
-            return (self.x_init)(t)[coordinate];
+            return self.x_init.d(t)[coordinate];
         } else {
             let i = self.t_seq.partition_point(|t_i| t_i < &t); // first i : t_seq[i] >= t
             if i == 0 {
@@ -176,7 +180,7 @@ impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]> State<N, S, IF> {
             let t_next = self.t_seq[i];
             let t_step = t_next - t_prev;
             let theta = (t - t_prev) / t_step;
-            return (0..S).fold(0., |acc, j| acc + self.rk.bi[j].1(theta) * k[j][coordinate]);
+            return (0..S).fold(0., |acc, j| acc + self.rk.bi[j].d(theta) * k[j][coordinate]);
         }
     }
 }
