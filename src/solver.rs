@@ -4,13 +4,6 @@ use crate::state::State;
 use crate::util::tutle::{Tutle, TutleLevel};
 use crate::{ToStateFn, ToStateTutle};
 
-mod new_solver {
-    use super::*;
-    pub struct Solver<const S: usize = 26> {
-        rk: &'static RungeKuttaTable<'static, S>,
-        stepsize: f64,
-    }
-}
 pub struct Solver<const S: usize = 26, StepE = Tutle, StartE = Tutle, StopE = Tutle> {
     rk: &'static RungeKuttaTable<'static, S>,
     stepsize: f64,

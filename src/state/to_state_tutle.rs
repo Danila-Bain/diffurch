@@ -1,5 +1,5 @@
 use super::{State, ToStateFn};
-use crate::util::tutle::{BoolTutle, LazyBoolTutle, Tutle, TutleLevel, TutleLevel0, TutleNextLevel};
+use crate::util::tutle::{LazyBoolTutle, Tutle, TutleLevel, TutleLevel0, TutleNextLevel};
 
 pub trait ToStateTutle<S, Arg, R, Level> {
     type StateTutle: TutleLevel + for<'b> FnMut<(&'b S,), Output = R>;

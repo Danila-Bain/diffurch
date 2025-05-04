@@ -242,8 +242,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::util::tutle::Tutle;
-
     use super::*;
 
     fn new_state() -> State<1, 1, impl Fn(f64) -> [f64;1]> {
