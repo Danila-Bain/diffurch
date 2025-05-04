@@ -1,6 +1,4 @@
 use crate::polynomial;
-use crate::polynomial_closure;
-use crate::polynomial_derivative_closure;
 
 pub struct RungeKuttaTable<'a, const S: usize> {
     pub order: usize,
