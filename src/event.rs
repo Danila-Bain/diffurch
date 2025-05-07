@@ -119,6 +119,18 @@ impl<C, S, F, D> Event<C, Tutle<S>, Tutle<F>, D> {
     }
 
 
+    pub fn to_file<Args, O>(self, filename: &str) -> Event<C, Tutle<(impl FnMut<(O,)>, Tutle<S>)>, Tutle<F>, D>
+    where
+        Args: Tuple,
+        C: Fn<Args, Output = O>,
+        O: std::fmt::Debug,
+    {
+        use std::io::Write;
+        let mut file = std::fs::File::create_buffered(filename).unwrap();
+        self.to(move |value: O| writeln!(&mut file, "{:?}", value).unwrap())
+    }
+
+
     /// The function that pushes its argument to provided mutable vector is appended to `stream`
     /// field. The modified event is returned.
     ///
