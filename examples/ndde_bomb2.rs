@@ -28,13 +28,13 @@ fn solution(epsilon: f64, alpha: f64, beta: f64) -> (f64, f64, f64) {
     //
 
     let stepsize = 1./(beta * 10.).round();
+    // for now, delay should be an integer mutiple of a stepsize for NDDEs, due to the initial
+    // discontinuities
 
     println!("{}", stepsize);
 
     Solver::new()
-        .stepsize(
-            stepsize
-        )
+        .stepsize(stepsize)
         .rk(&rk::RK98)
         // .on_step(Event::dde(|t, [x, x_int, dx_int], [_, x_int_, dx_int_]| (t, x, x_int - x_int_(t - 1.), dx_int - dx_int_(t - 1.))).to_std().separated_by(5.1))
         .on_stop(
@@ -51,7 +51,7 @@ fn solution(epsilon: f64, alpha: f64, beta: f64) -> (f64, f64, f64) {
             Event::ode2(|t, [x, _, _]| [t, x])
                 .to_vecs([&mut t, &mut x])
                 // .subdivide(5)
-                .in_range((range.end - 5.*T * (2.*PI / beta))..range.end),
+                .in_range((range.end - 4.*T * (2.*PI / beta))..range.end),
         )
         .run(equation, ic, range);
 

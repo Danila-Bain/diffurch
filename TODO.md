@@ -23,6 +23,7 @@ In each section, roughly in order of simplicity and necessity:
     [ ] different location methods: StepBegin, StepEnd, Lerp, Brent, Bisection
 
 [ ] delay propagated events
+    [ ] treat initial discontinuities for DDEs and NDDEs
 
 [ ] support hybrid and discontinuous DEs (hard?)
     [ ] automatic support for functions `signum, clamp, abs, floor, ceil, round, fract, % (mod)`
@@ -45,13 +46,14 @@ In each section, roughly in order of simplicity and necessity:
 
 [ ] implement more output handlers for events
     [ ] to_file (output as in to_std)
-    [ ] to_csv
+    [ ] to_csv (same as to_file, but formatted)
     [ ] to_table (specify the separators manually)
     [ ] to_hist (basic datashading), probably make a histogram class, that can grow for values outside of the current range
+    [ ] to_plot(window: f64, realtime: true) (for crude accessible realtime plotting)
 
 [ ] for text output handlers, make the destination and formatting orthogonal, like
-    [ ] .to_file_formatted("filename", Format::CSV)
-    [ ] .to_std_formatted(Format::Plain)
+    [ ] .to_file_format("filename", Format::CSV)
+    [ ] .to_std_format(Format::Plain)
 
 [ ] add some built-in events
     [ ] stop integration

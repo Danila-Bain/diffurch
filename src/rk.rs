@@ -1,5 +1,6 @@
 use crate::polynomial;
 
+#[derive(Clone)]
 pub struct RungeKuttaTable<'a, const S: usize> {
     pub order: usize,
     pub order_embedded: usize,
@@ -11,10 +12,11 @@ pub struct RungeKuttaTable<'a, const S: usize> {
     pub bi: [crate::util::with_derivative::Differentiable<fn(f64) -> f64, fn(f64) -> f64>; S],
 }
 
+/// Euler method (<https://en.wikipedia.org/wiki/Euler_method>), with linear interpolation
 pub static EULER: RungeKuttaTable<1> = RungeKuttaTable {
     order: 1,
     order_embedded: 0,
-    order_interpolant: 0,
+    order_interpolant: 1,
     a: [&[]],
     b: [1.],
     b2: [0.],
@@ -22,8 +24,22 @@ pub static EULER: RungeKuttaTable<1> = RungeKuttaTable {
     bi: [polynomial![0., 1.]],
 };
 
+/// Macro declares a static RungeKuttaTable<2> of order 2 with linear interpolantion, and Euler method as an
+/// embedded scheme. 
+/// <https://en.wikipedia.org/wiki/List_of_Runge%E2%80%93Kutta_methods#cite_ref-butcher_1-0>
+///
+/// # Usage
+/// ```
+/// generic_rk_order2!(MIDPOINT, 0.5);
+/// generic_rk_order2!(HEUN2, 1.);
+/// generic_rk_order2!(RALSTON2, 2. / 3.);
+/// ```
+#[macro_export]
 macro_rules! generic_rk_order2 {
     ($TypeName:ident, $alpha:expr) => {
+
+/// Order 2 method with linear interpolation and embedded Euler method. See
+/// <https://en.wikipedia.org/wiki/List_of_Runge–Kutta_methods>
         pub static $TypeName: RungeKuttaTable<2> = RungeKuttaTable {
             order: 2,
             order_embedded: 1,
@@ -39,12 +55,30 @@ macro_rules! generic_rk_order2 {
         };
     };
 }
+
 generic_rk_order2!(MIDPOINT, 0.5);
 generic_rk_order2!(HEUN2, 1.);
 generic_rk_order2!(RALSTON2, 2. / 3.);
 
+
+/// Macro declares a static RungeKuttaTable<3> of order 3 with linear interpolantion, and embedded order 2 method
+/// <https://en.wikipedia.org/wiki/List_of_Runge–Kutta_methods>
+///
+/// # Usage
+/// ```
+/// generic_rk_order3!(KUTTA3, 0.5, 1.);
+/// generic_rk_order3!(HEUN3, 1. / 3., 2. / 3.);
+/// generic_rk_order3!(RALSTON3, 1. / 2., 3. / 4.); // also used in the embedded Bogacki-Shampine
+/// generic_rk_order3!(WRAY3, 8. / 15., 2. / 3.);
+/// generic_rk_order3!(SSP3, 1., 1. / 2.); // strong stability preserving
+/// ```
+#[macro_export]
 macro_rules! generic_rk_order3 {
     ($TypeName:ident, $alpha:expr, $beta:expr) => {
+
+        /// Order 3 method with linear interpolation and embedded order 2 method. See
+        /// <https://en.wikipedia.org/wiki/List_of_Runge–Kutta_methods>.
+        /// See in the book "Ernst Hairer , Gerhard Wanner , Syvert P. Nørsett - Solving Ordinary Differential Equations I": Embedded Runge-Kutta Formulas (Methods of order 3(2)).
         pub static $TypeName: RungeKuttaTable<3> = RungeKuttaTable {
             order: 3,
             order_embedded: 2,
@@ -81,6 +115,8 @@ generic_rk_order3!(RALSTON3, 1. / 2., 3. / 4.); // also used in the embedded Bog
 generic_rk_order3!(WRAY3, 8. / 15., 2. / 3.);
 generic_rk_order3!(SSP3, 1., 1. / 2.); // strong stability preserving
 
+
+/// "The" Runge-Kutta method, with embedded order 2 method, and with order 3 interpolant.
 pub static CLASSIC4: RungeKuttaTable<4> = RungeKuttaTable {
     order: 4,
     order_embedded: 2,
@@ -97,9 +133,12 @@ pub static CLASSIC4: RungeKuttaTable<4> = RungeKuttaTable {
     ],
 };
 
-pub static CLASSIC423: RungeKuttaTable<5> = RungeKuttaTable {
+/// "The" Runge-Kutta method, with embedded order 3 method, and with order 3 interpolant. Also
+/// known as the Zonneveld 4(3) method.
+/// See in the book "Ernst Hairer , Gerhard Wanner , Syvert P. Nørsett - Solving Ordinary Differential Equations I": Embedded Runge-Kutta Formulas (Table 4.2. Zonneveld 4(3)).
+pub static CLASSIC43: RungeKuttaTable<5> = RungeKuttaTable {
     order: 4,
-    order_embedded: 2,
+    order_embedded: 3,
     order_interpolant: 3,
     a: [
         &[],
@@ -120,6 +159,7 @@ pub static CLASSIC423: RungeKuttaTable<5> = RungeKuttaTable {
     ],
 };
 
+/// Dormand-Prince method of order 5, with embedded order 4 method, and with order 4 interpolant. 
 pub static DP544: RungeKuttaTable<7> = RungeKuttaTable {
     order: 5,
     order_embedded: 4,
@@ -1210,7 +1250,7 @@ mod tests {
     test_rk!(rk3_ralston, RALSTON3, 1e-15);
 
     test_rk!(rk4_classic, CLASSIC4, 1e-15);
-    test_rk!(rk4_classic_dense, CLASSIC423, 1e-15);
+    test_rk!(rk4_classic_dense, CLASSIC43, 1e-15);
 
     test_rk!(dormand_prince, DP544, 1e-11);
 
