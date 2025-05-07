@@ -30,6 +30,7 @@ pub static EULER: RungeKuttaTable<1> = RungeKuttaTable {
 ///
 /// # Usage
 /// ```
+/// use diffurch::{generic_rk_order2, polynomial, rk::RungeKuttaTable};
 /// generic_rk_order2!(MIDPOINT, 0.5);
 /// generic_rk_order2!(HEUN2, 1.);
 /// generic_rk_order2!(RALSTON2, 2. / 3.);
@@ -66,6 +67,7 @@ generic_rk_order2!(RALSTON2, 2. / 3.);
 ///
 /// # Usage
 /// ```
+/// use diffurch::{generic_rk_order3, polynomial, rk::RungeKuttaTable};
 /// generic_rk_order3!(KUTTA3, 0.5, 1.);
 /// generic_rk_order3!(HEUN3, 1. / 3., 2. / 3.);
 /// generic_rk_order3!(RALSTON3, 1. / 2., 3. / 4.); // also used in the embedded Bogacki-Shampine
