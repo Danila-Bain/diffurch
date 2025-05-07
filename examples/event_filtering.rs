@@ -34,9 +34,16 @@ fn main() {
     let event7 = Event::ode2(f).to_vec(&mut p7).times(0..usize::MAX);
     let event8 = Event::ode2(f).to_vec(&mut p8).times(0..5);
     let event9 = Event::ode2(f).to_vec(&mut p9).take(5);
-    let event10 = Event::ode2(f).to_vec(&mut p10).filter_by(|[x] : [f64; 1]| x > 100.);
-    let event11 = Event::ode2(f).to_var(&mut p11).filter_by(|[x] : [f64; 1]| x > 100.);
-    let event12 = Event::ode2(f).to_var(&mut p12).filter_by(|[x] : [f64; 1]| x > 100.).once();
+    let event10 = Event::ode2(f)
+        .to_vec(&mut p10)
+        .filter_by(|[x]: [f64; 1]| x > 100.);
+    let event11 = Event::ode2(f)
+        .to_var(&mut p11)
+        .filter_by(|[x]: [f64; 1]| x > 100.);
+    let event12 = Event::ode2(f)
+        .to_var(&mut p12)
+        .filter_by(|[x]: [f64; 1]| x > 100.)
+        .once();
     let event13 = Event::ode2(f).to_vec(&mut p13).subdivide(2);
     let event14 = Event::ode2(f).to_vec(&mut p14).subdivide(4);
 
@@ -80,6 +87,22 @@ fn main() {
     assert_eq!(p11, (50., solution(50.)[0]));
     assert_eq!(p12, (5., solution(5.)[0]));
 
-    assert!((0..=100).map(|i| {let t = i as f64 * 0.5; (p13[i+1].1 - f_t(t).1).abs()}).fold(0f64, |acc, x| acc.max(x)) < 1e-7);
-    assert!((0..=200).map(|i| {let t = i as f64 * 0.25; (p14[i+3].1 - f_t(t).1).abs()}).fold(0f64, |acc, x| acc.max(x)) < 1e-7);
+    assert!(
+        (0..=100)
+            .map(|i| {
+                let t = i as f64 * 0.5;
+                (p13[i + 1].1 - f_t(t).1).abs()
+            })
+            .fold(0f64, |acc, x| acc.max(x))
+            < 1e-7
+    );
+    assert!(
+        (0..=200)
+            .map(|i| {
+                let t = i as f64 * 0.25;
+                (p14[i + 3].1 - f_t(t).1).abs()
+            })
+            .fold(0f64, |acc, x| acc.max(x))
+            < 1e-7
+    );
 }

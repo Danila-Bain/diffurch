@@ -17,13 +17,12 @@ macro_rules! polynomial_fold {
         |_t: f64| { 0. }
     };
     ($($coef:expr),+ $(,)?) => {
-        |t: f64| { 
+        |t: f64| {
             [$($coef),+].into_iter().rev()
             .reduce(|acc: f64, c: f64| c + t * acc).expect("coefficient array is non-empty")
         }
     };
 }
-
 
 // 1. + t * (2. + t * (3.))
 // 0. + t * (0. + t * (0.))
@@ -211,7 +210,6 @@ fn macro_polynomial_zero_bloat(b: &mut Bencher) {
         p(t)
     })
 }
-
 
 #[bench]
 fn macro_polynomial_zero_bloat_minuses(b: &mut Bencher) {

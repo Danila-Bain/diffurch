@@ -10,7 +10,7 @@ impl State {
 
 fn apply<F>(f: F) -> f64
 where
-    F: for<'a> Fn(Box<dyn Fn() -> f64 + 'a>) -> f64,  // Accepts any 'a
+    F: for<'a> Fn(Box<dyn Fn() -> f64 + 'a>) -> f64, // Accepts any 'a
 {
     let state = State { value: 3. };
     let state_function = state.get_function();

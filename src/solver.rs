@@ -118,16 +118,15 @@ impl<const S: usize, StepE, StartE, StopE> Solver<S, StepE, StartE, StopE> {
         /* initializations */
 
         let t_init = match interval.start_bound() {
-           std::ops::Bound::Unbounded => 0.,
-           std::ops::Bound::Included(value) => *value,
-           std::ops::Bound::Excluded(value) => *value,
+            std::ops::Bound::Unbounded => 0.,
+            std::ops::Bound::Included(value) => *value,
+            std::ops::Bound::Excluded(value) => *value,
         };
 
-
         let t_end = match interval.end_bound() {
-           std::ops::Bound::Unbounded => f64::MAX,
-           std::ops::Bound::Included(value) => *value,
-           std::ops::Bound::Excluded(value) => *value,
+            std::ops::Bound::Unbounded => f64::MAX,
+            std::ops::Bound::Included(value) => *value,
+            std::ops::Bound::Excluded(value) => *value,
         };
 
         let mut state = State::new(t_init, initial_function, self.rk);

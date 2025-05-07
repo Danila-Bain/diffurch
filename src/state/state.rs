@@ -152,11 +152,11 @@ impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]> State<N, S, IF> {
                 + t_step * (0..S).fold(0., |acc, j| acc + self.rk.bi[j](theta) * k[j][coordinate]);
         }
     }
-
 }
 
-
-impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N], DIF: Fn(f64) -> [f64; N]> State<N, S, crate::util::with_derivative::Differentiable<IF, DIF>> {
+impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N], DIF: Fn(f64) -> [f64; N]>
+    State<N, S, crate::util::with_derivative::Differentiable<IF, DIF>>
+{
     pub fn eval_derivative(&self, t: f64, coordinate: usize) -> f64 {
         if t <= self.t_init {
             return self.x_init.d(t)[coordinate];

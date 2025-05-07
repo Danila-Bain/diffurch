@@ -1,18 +1,17 @@
-
-use diffurch::{rk, Equation, Event, Solver, util::with_derivative::WithDerivative};
+use diffurch::{Equation, Event, Solver, rk, util::with_derivative::WithDerivative};
 
 fn main() {
     // let theta = 0.5f64;
-    let k : f64 = 1.;
-    let tau : f64 = 0.5;
+    let k: f64 = 1.;
+    let tau: f64 = 0.5;
 
     let a = -k * (k * tau).tan();
     let b = 1. / (k * tau).cos();
 
     let equation = Equation::dde(|t, [x], [x_]| [a * x + b * x_.d(t - tau)]);
     let ic = move |t: f64| [(k * t).sin()];
-    let ic = ic.with_derivative(move |t: f64| [k* (k*t).cos()]);
-    let range = 0. .. 110.;
+    let ic = ic.with_derivative(move |t: f64| [k * (k * t).cos()]);
+    let range = 0. ..110.;
 
     let mut t = Vec::new();
     let mut x = Vec::new();
@@ -20,8 +19,18 @@ fn main() {
     Solver::new()
         .stepsize(0.1)
         .rk(&rk::RK98)
-        .on_step(Event::ode2(|t, [x]| [t, x]).to_vecs([&mut t, &mut x]).separated_by(0.05))
-        .on_step(Event::ode2({let sol = ic.clone(); move |t, [x]| [t, x, x - sol(t)[0]]}).to_std())
+        .on_step(
+            Event::ode2(|t, [x]| [t, x])
+                .to_vecs([&mut t, &mut x])
+                .separated_by(0.05),
+        )
+        .on_step(
+            Event::ode2({
+                let sol = ic.clone();
+                move |t, [x]| [t, x, x - sol(t)[0]]
+            })
+            .to_std(),
+        )
         .run(equation, ic, range);
 
     println!("a={a}, b={b}");
@@ -34,4 +43,3 @@ fn main() {
 
     std::thread::sleep(std::time::Duration::from_secs(1))
 }
-

@@ -66,4 +66,3 @@ fn closure_mut_array_dispatch_type_inference() {
         [0, 0, 4]
     );
 }
-

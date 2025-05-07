@@ -1,14 +1,14 @@
-use std::time::Duration;
 use diffurch::{Equation, Event, Solver, rk};
+use std::time::Duration;
 
 fn main() {
     let k = 0.5;
 
     let eq = Equation::ode(|[x, dx]| [dx, -k * k * x]).with_delay(6.);
 
-    let ic = |t: f64| [(t * k).sin(), k * (t * k).cos()]; 
+    let ic = |t: f64| [(t * k).sin(), k * (t * k).cos()];
 
-    let range = 0. .. 50.;
+    let range = 0. ..50.;
 
     let mut points = Vec::new();
 
@@ -19,11 +19,14 @@ fn main() {
     // let mut max_radius_deviation = 0f64;
     // let mut max_true_solution_deviation = 0f64;
 
-
     Solver::new()
         .rk(&rk::RK98)
         .stepsize(1.)
-        .on_step(Event::ode2(|t, [x, _]| (t, x)).to_vec(&mut points).subdivide(10))
+        .on_step(
+            Event::ode2(|t, [x, _]| (t, x))
+                .to_vec(&mut points)
+                .subdivide(10),
+        )
         // .on_step(Event::new(|| "Hello").separated_by(0.99).to_std())
         // .on_step(Event::ode2(|t, [x, _dx]| (t, x)).to_vec(&mut points))
         // .on_step(Event::ode2(|t: f64, [x, _dx]: [f64; 2]| (t, x)).to_std())

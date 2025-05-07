@@ -79,25 +79,27 @@ where
     }
 }
 
-
-
-
-
 pub trait BoolTutle {
-    fn any(&self) -> bool; 
-    fn all(&self) -> bool; 
+    fn any(&self) -> bool;
+    fn all(&self) -> bool;
 }
 
 impl BoolTutle for Tutle<()> {
-    fn any(&self) -> bool { false }
-    fn all(&self) -> bool { true }
+    fn any(&self) -> bool {
+        false
+    }
+    fn all(&self) -> bool {
+        true
+    }
 }
 
 impl<Rest> BoolTutle for Tutle<(bool, Tutle<Rest>)>
-where Tutle<Rest>: BoolTutle {
+where
+    Tutle<Rest>: BoolTutle,
+{
     fn any(&self) -> bool {
         let Tutle((value, rest)) = self;
-        *value || rest.any() 
+        *value || rest.any()
     }
 
     fn all(&self) -> bool {
@@ -106,15 +108,12 @@ where Tutle<Rest>: BoolTutle {
     }
 }
 
-
 pub trait LazyBoolTutle<Args> {
     fn lazy_all(&mut self, arg: Args) -> bool;
     fn lazy_any(&mut self, arg: Args) -> bool;
 }
 
-
-impl<Args> LazyBoolTutle<Args> for Tutle<()> 
-{
+impl<Args> LazyBoolTutle<Args> for Tutle<()> {
     fn lazy_all(&mut self, _args: Args) -> bool {
         true
     }
@@ -124,8 +123,10 @@ impl<Args> LazyBoolTutle<Args> for Tutle<()>
     }
 }
 
-impl<Args: Tuple + Copy, F, Rest> LazyBoolTutle<Args> for Tutle<(F, Rest)> 
-where F: FnMut<Args, Output=bool>, Rest: LazyBoolTutle<Args>
+impl<Args: Tuple + Copy, F, Rest> LazyBoolTutle<Args> for Tutle<(F, Rest)>
+where
+    F: FnMut<Args, Output = bool>,
+    Rest: LazyBoolTutle<Args>,
 {
     fn lazy_all(&mut self, args: Args) -> bool {
         let Tutle((f, rest)) = self;

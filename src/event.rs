@@ -151,10 +151,11 @@ impl<C, S, F, D> Event<C, Tutle<S>, Tutle<F>, D> {
         })
     }
 
-
     pub fn to_table<const N: usize, Args, O>(
         self,
-        filename: &str, separator: &str, header: Option<&str>
+        filename: &str,
+        separator: &str,
+        header: Option<&str>,
     ) -> Event<C, Tutle<(impl FnMut<([O; N],)>, Tutle<S>)>, Tutle<F>, D>
     where
         Args: Tuple,
@@ -267,7 +268,6 @@ impl<C, S, F, D> Event<C, Tutle<S>, Tutle<F>, D> {
             }
         })
     }
-
 
     pub fn filter_by<Args, F_>(self, f: F_) -> Event<C, Tutle<S>, Tutle<(F_, Tutle<F>)>, D>
     where

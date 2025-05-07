@@ -38,4 +38,3 @@ where
 }
 
 impl<Ret, F: Fn(f64) -> Ret, DF: Fn(f64) -> Ret> WithDerivative<DF> for F {}
-

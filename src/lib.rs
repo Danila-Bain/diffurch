@@ -5,13 +5,13 @@
 
 pub mod event;
 
+pub mod equation;
 pub mod rk;
 pub mod solver;
 pub mod state;
 pub mod util;
-pub mod equation;
 
+pub use equation::*;
 pub use event::*;
 pub use solver::*;
 pub use state::*;
-pub use equation::*;

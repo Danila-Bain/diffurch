@@ -1,5 +1,6 @@
 use crate::{
-    util::tutle::{BoolTutle, LazyBoolTutle, TutleLevel}, Event
+    Event,
+    util::tutle::{BoolTutle, LazyBoolTutle, TutleLevel},
 };
 
 use super::{CoordFn, State, ToBoolStateTutle, ToStateTutle};
@@ -67,9 +68,8 @@ impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N], F, Ret>
 where
     F: for<'a> FnMut<(f64, [f64; N], [CoordFn<'a, N, S, IF>; N]), Output = Ret>,
 {
-
-    type StateFn = impl for<'b> FnMut<(&'b State<N,S,IF>,), Output = Ret>;
-    type StateEvalFn = impl for<'b> FnMut<(&'b State<N,S,IF>, f64), Output = Ret>;
+    type StateFn = impl for<'b> FnMut<(&'b State<N, S, IF>,), Output = Ret>;
+    type StateEvalFn = impl for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = Ret>;
     fn to_state_function(mut self) -> Self::StateFn {
         move |state| {
             self(
@@ -108,12 +108,8 @@ impl<
     StreamArg,
     FilterArgs,
     FilterRet,
->
-    ToStateFn<
-        State<N, S, IF>,
-        (CallbackArgs, StreamArg, FilterArgs, FilterRet),
-        (),
-    > for Event<Callback, Stream, Filter, ()>
+> ToStateFn<State<N, S, IF>, (CallbackArgs, StreamArg, FilterArgs, FilterRet), ()>
+    for Event<Callback, Stream, Filter, ()>
 where
     Callback: ToStateFn<State<N, S, IF>, CallbackArgs, StreamArg>,
     Stream: FnMut<(StreamArg,)>,
@@ -121,18 +117,15 @@ where
     Filter: ToBoolStateTutle<State<N, S, IF>, FilterArgs, FilterRet, Filter::Level>,
     FilterRet: BoolTutle,
     // Filter::StateTutle: TutleLevel, // works if we add TutleLevel to this associated type in
-                                    // ToStateTutle impl
+    // ToStateTutle impl
     // Filter::StateTutle: for <'a> FnMut<(&'a State<N, S, IF>,)>, // ok
     // Filter::StateTutle : for<'a> LazyBoolTutle<(&'a State<N,S,IF>,)>,
     // Filter::StateEvalTutle : for <'a> LazyBoolTutle<(&'a State<N,S,IF>, f64)>,
 {
+    type StateFn = impl for<'b> FnMut<(&'b State<N, S, IF>,), Output = ()>;
+    type StateEvalFn = impl for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = ()>;
 
-    type StateFn = impl for<'b> FnMut<(&'b State<N, S, IF>,), Output=()>;
-    type StateEvalFn = impl for<'b> FnMut<(&'b State<N, S, IF>, f64), Output=()>;
-
-    fn to_state_function(
-        self,
-    ) -> Self::StateFn {
+    fn to_state_function(self) -> Self::StateFn {
         let Self {
             callback,
             stream,
@@ -146,7 +139,7 @@ where
 
         move |state| {
             if filter.lazy_all((state,)) {
-            // if filter(state).all() {
+                // if filter(state).all() {
                 stream.call_mut((callback.call_mut((state,)),));
             }
         }
@@ -166,13 +159,12 @@ where
 
         move |state, t| {
             if filter.lazy_all((state, t)) {
-            // if filter(state, t).all() {
+                // if filter(state, t).all() {
                 stream.call_mut((callback.call_mut((state, t)),));
             }
         }
     }
 }
-
 
 impl<
     const N: usize,
@@ -185,12 +177,8 @@ impl<
     StreamArg,
     FilterArgs,
     FilterRet,
->
-    ToStateFn<
-        State<N, S, IF>,
-        (CallbackArgs, StreamArg, FilterArgs, FilterRet),
-        (),
-    > for Event<Callback, Stream, Filter, usize>
+> ToStateFn<State<N, S, IF>, (CallbackArgs, StreamArg, FilterArgs, FilterRet), ()>
+    for Event<Callback, Stream, Filter, usize>
 where
     Callback: ToStateFn<State<N, S, IF>, CallbackArgs, StreamArg>,
     Stream: FnMut<(StreamArg,)>,
@@ -198,19 +186,15 @@ where
     Filter: ToStateTutle<State<N, S, IF>, FilterArgs, FilterRet, Filter::Level>,
     FilterRet: BoolTutle,
 {
+    type StateFn = impl for<'b> FnMut<(&'b State<N, S, IF>,), Output = ()>;
+    type StateEvalFn = impl for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = ()>;
 
-
-    type StateFn = impl for<'b> FnMut<(&'b State<N, S, IF>,), Output = ()> ;
-    type StateEvalFn = impl for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = ()> ;
-
-    fn to_state_function(
-        self,
-    ) -> Self::StateFn {
+    fn to_state_function(self) -> Self::StateFn {
         let n = self.subdivision;
 
         let mut self_eval = self.to_state_eval_function();
 
-        move  |state| {
+        move |state| {
             let step = state.t - state.t_prev;
 
             for i in 1..=n {
@@ -239,12 +223,11 @@ where
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn new_state() -> State<1, 1, impl Fn(f64) -> [f64;1]> {
+    fn new_state() -> State<1, 1, impl Fn(f64) -> [f64; 1]> {
         let ic = |_: f64| [0.42];
         return State::new(0.69, ic, &crate::rk::EULER);
     }
@@ -256,7 +239,6 @@ mod tests {
         let mut f = f.to_state_function();
         assert_eq!(f(&state), 123.);
     }
-
 
     #[test]
     fn time_fn() {
@@ -285,7 +267,7 @@ mod tests {
     #[test]
     fn const_event() {
         let state = new_state();
-        let mut out = 0.;        
+        let mut out = 0.;
         {
             let f = Event::new(|| 123.).to_var(&mut out);
 

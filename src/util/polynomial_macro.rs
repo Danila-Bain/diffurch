@@ -35,7 +35,7 @@ macro_rules! polynomial_derivative_closure {
 macro_rules! polynomial {
     ($($coef:expr),*) => {
         $crate::util::with_derivative::Differentiable(
-            $crate::polynomial_closure![$($coef),*], 
+            $crate::polynomial_closure![$($coef),*],
             $crate::polynomial_derivative_closure![$($coef),*]
         )
     };

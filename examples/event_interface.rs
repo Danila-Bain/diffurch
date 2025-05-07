@@ -12,7 +12,7 @@
 // // start counting after 5th
 // Event::RejectedStep::new()
 //     .set(|| rejected_counter++;)
-//     .times(5..); 
+//     .times(5..);
 //
 // Event::Detected::new().by_zero_cross(|s| s.x).save(|s| s.t).range(0..5); // save only first 5 zero crosses
 // Event::Step::new().save(|s| s.t).which(|s| s.x > 0); // save steps only when x > 0;
@@ -45,7 +45,6 @@
 // .to_csv(&mut stream) ???
 // .to_hist(&mut histogram_handler)
 // ```
-
 
 // # Solver Interface:
 //

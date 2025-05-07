@@ -6,11 +6,18 @@ trait ToDoubleFunction {
     fn to_double_function(self) -> Self::DF;
 }
 
-impl<F> ToDoubleFunction for F where F: Fn() {
+impl<F> ToDoubleFunction for F
+where
+    F: Fn(),
+{
     type DF = impl Fn();
 
     fn to_double_function(self) -> Self::DF {
-        move || { println!("Twice:"); self(); self(); }
+        move || {
+            println!("Twice:");
+            self();
+            self();
+        }
     }
 }
 

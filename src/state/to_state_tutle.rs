@@ -15,7 +15,8 @@ where
     Tutle<()>: for<'b> Fn<(&'b State<N, S, IF>,), Output = Tutle<()>>,
 {
     type StateTutle = impl TutleLevel + for<'b> FnMut<(&'b State<N, S, IF>,), Output = Tutle<()>>;
-    type StateEvalTutle = impl TutleLevel + for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = Tutle<()>>;
+    type StateEvalTutle =
+        impl TutleLevel + for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = Tutle<()>>;
 
     fn to_state_tutle(self) -> Self::StateTutle {
         Tutle(())
@@ -27,19 +28,16 @@ where
 }
 
 impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N], H, T, HArg, TArg, HR, TR, TL>
-    ToStateTutle<
-        State<N, S, IF>,
-        Tutle<(HArg, TArg)>,
-        Tutle<(HR, TR)>,
-        TutleNextLevel<TL>,
-    > for Tutle<(H, T)>
+    ToStateTutle<State<N, S, IF>, Tutle<(HArg, TArg)>, Tutle<(HR, TR)>, TutleNextLevel<TL>>
+    for Tutle<(H, T)>
 where
     H: ToStateFn<State<N, S, IF>, HArg, HR>,
     T: ToStateTutle<State<N, S, IF>, TArg, TR, TL>,
     Tutle<(H, T)>: TutleLevel<Level = TutleNextLevel<TL>>,
     T: TutleLevel<Level = TL>,
 {
-    type StateTutle = impl TutleLevel + for<'b> FnMut<(&'b State<N, S, IF>,), Output = Tutle<(HR, TR)>>;
+    type StateTutle =
+        impl TutleLevel + for<'b> FnMut<(&'b State<N, S, IF>,), Output = Tutle<(HR, TR)>>;
     type StateEvalTutle =
         impl TutleLevel + for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = Tutle<(HR, TR)>>;
 
@@ -61,8 +59,12 @@ where
 //////////////////////////
 
 pub trait ToBoolStateTutle<S, Arg, R, Level> {
-    type StateTutle: TutleLevel + for<'b> FnMut<(&'b S,), Output = R> + for<'b> LazyBoolTutle<(&'b S,)>;
-    type StateEvalTutle: TutleLevel + for<'b> FnMut<(&'b S, f64), Output = R> + for<'b> LazyBoolTutle<(&'b S, f64)>;
+    type StateTutle: TutleLevel
+        + for<'b> FnMut<(&'b S,), Output = R>
+        + for<'b> LazyBoolTutle<(&'b S,)>;
+    type StateEvalTutle: TutleLevel
+        + for<'b> FnMut<(&'b S, f64), Output = R>
+        + for<'b> LazyBoolTutle<(&'b S, f64)>;
 
     fn to_state_tutle(self) -> Self::StateTutle;
     fn to_state_eval_tutle(self) -> Self::StateEvalTutle;
@@ -73,8 +75,12 @@ impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N]>
 where
     Tutle<()>: for<'b> Fn<(&'b State<N, S, IF>,), Output = Tutle<()>>,
 {
-    type StateTutle = impl TutleLevel + for<'b> FnMut<(&'b State<N, S, IF>,), Output = Tutle<()>> + for<'b> LazyBoolTutle<(&'b State<N,S,IF>,)>;
-    type StateEvalTutle = impl TutleLevel + for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = Tutle<()>> + for<'b> LazyBoolTutle<(&'b State<N,S,IF>, f64)>;
+    type StateTutle = impl TutleLevel
+        + for<'b> FnMut<(&'b State<N, S, IF>,), Output = Tutle<()>>
+        + for<'b> LazyBoolTutle<(&'b State<N, S, IF>,)>;
+    type StateEvalTutle = impl TutleLevel
+        + for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = Tutle<()>>
+        + for<'b> LazyBoolTutle<(&'b State<N, S, IF>, f64)>;
 
     fn to_state_tutle(self) -> Self::StateTutle {
         Tutle(())
@@ -86,22 +92,20 @@ where
 }
 
 impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N], H, T, HArg, TArg, TR, TL>
-    ToBoolStateTutle<
-        State<N, S, IF>,
-        Tutle<(HArg, TArg)>,
-        Tutle<(bool, TR)>,
-        TutleNextLevel<TL>,
-    > for Tutle<(H, T)>
+    ToBoolStateTutle<State<N, S, IF>, Tutle<(HArg, TArg)>, Tutle<(bool, TR)>, TutleNextLevel<TL>>
+    for Tutle<(H, T)>
 where
     H: ToStateFn<State<N, S, IF>, HArg, bool>,
     T: ToBoolStateTutle<State<N, S, IF>, TArg, TR, TL>,
     Tutle<(H, T)>: TutleLevel<Level = TutleNextLevel<TL>>,
     T: TutleLevel<Level = TL>,
 {
-
-    type StateTutle = impl TutleLevel + for<'b> FnMut<(&'b State<N, S, IF>,), Output = Tutle<(bool, TR)>>+ for<'b> LazyBoolTutle<(&'b State<N,S,IF>,)>;
-    type StateEvalTutle =
-        impl TutleLevel + for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = Tutle<(bool, TR)>>+ for<'b> LazyBoolTutle<(&'b State<N,S,IF>, f64)>;
+    type StateTutle = impl TutleLevel
+        + for<'b> FnMut<(&'b State<N, S, IF>,), Output = Tutle<(bool, TR)>>
+        + for<'b> LazyBoolTutle<(&'b State<N, S, IF>,)>;
+    type StateEvalTutle = impl TutleLevel
+        + for<'b> FnMut<(&'b State<N, S, IF>, f64), Output = Tutle<(bool, TR)>>
+        + for<'b> LazyBoolTutle<(&'b State<N, S, IF>, f64)>;
 
     fn to_state_tutle(self) -> Self::StateTutle {
         let Tutle((head, tail)) = self;
