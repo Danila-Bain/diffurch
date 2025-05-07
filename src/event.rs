@@ -153,6 +153,42 @@ impl<C, S, F, D> Event<C, Tutle<S>, Tutle<F>, D> {
         self.to(|v: Output| *value = v)
     }
 
+    pub fn to_range<Args, Output>(
+        self,
+        range: &mut std::ops::Range<Output>,
+    ) -> Event<C, Tutle<(impl FnMut<(Output,)>, Tutle<S>)>, Tutle<F>, D>
+    where
+        C: Fn<Args, Output = Output>,
+        Args: Tuple,
+        Output: num_traits::Float,
+    {
+        {
+            *range = Output::max_value()..Output::min_value();
+        }
+        self.to(|v: Output| *range = range.start.min(v) .. range.end.max(v))
+    }
+
+
+    pub fn to_ranges<const N: usize, Args, Output>(
+        self,
+        mut ranges: [&mut std::ops::Range<Output>; N],
+    ) -> Event<C, Tutle<(impl FnMut<([Output; N],)>, Tutle<S>)>, Tutle<F>, D>
+    where
+        C: Fn<Args, Output = [Output; N]>,
+        Args: Tuple,
+        Output: num_traits::Float,
+    {
+        for range in ranges.iter_mut() {
+            **range = Output::max_value()..Output::min_value();
+        }
+        self.to(move |values: [Output; N]|  {
+            for (range, v) in ranges.iter_mut().zip(values.iter()) {
+                **range = range.start.min(*v) .. range.end.max(*v)
+            }
+        }
+        )
+    }
+
     /// Like [Event::to_vec], but destributes 
     pub fn to_vecs<const N: usize, Args>(
         self,
