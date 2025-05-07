@@ -85,6 +85,7 @@ impl<const S: usize, StepE, StartE, StopE> Solver<S, Tutle<StepE>, Tutle<StartE>
 impl<const S: usize, StepE, StartE, StopE> Solver<S, StepE, StartE, StopE> {
     pub fn run<
         const N: usize,
+        Interval,
         IC,
         RHS,
         EquationE,
@@ -99,8 +100,9 @@ impl<const S: usize, StepE, StartE, StopE> Solver<S, StepE, StartE, StopE> {
         self,
         equation: Equation<N, RHS, EquationE>,
         initial_function: IC,
-        interval: std::ops::Range<f64>,
+        interval: Interval,
     ) where
+        Interval: std::ops::RangeBounds<f64>,
         IC: Fn(f64) -> [f64; N],
         StepE: TutleLevel,
         StepE: ToStateTutle<State<N, S, IC>, StepEA, StepER, StepE::Level>,
@@ -114,7 +116,21 @@ impl<const S: usize, StepE, StartE, StopE> Solver<S, StepE, StartE, StopE> {
         RHS: ToStateFn<State<N, S, IC>, EquationA, [f64; N]>,
     {
         /* initializations */
-        let mut state = State::new(interval.start, initial_function, self.rk);
+
+        let t_init = match interval.start_bound() {
+           std::ops::Bound::Unbounded => 0.,
+           std::ops::Bound::Included(value) => *value,
+           std::ops::Bound::Excluded(value) => *value,
+        };
+
+
+        let t_end = match interval.end_bound() {
+           std::ops::Bound::Unbounded => f64::MAX,
+           std::ops::Bound::Included(value) => *value,
+           std::ops::Bound::Excluded(value) => *value,
+        };
+
+        let mut state = State::new(t_init, initial_function, self.rk);
         state.t_step = self.stepsize;
         state.t_span = equation.max_delay;
 
@@ -129,13 +145,13 @@ impl<const S: usize, StepE, StartE, StopE> Solver<S, StepE, StartE, StopE> {
         start_events(&state);
         step_events(&state);
 
-        while state.t < interval.end {
+        while state.t < t_end {
             state.make_step(&mut rhs);
             state.push_current();
 
             step_events(&state);
 
-            state.t_step = state.t_step.min(interval.end - state.t);
+            state.t_step = state.t_step.min(t_end - state.t);
         }
 
         stop_events(&state);
