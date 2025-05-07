@@ -10,10 +10,7 @@ In each section, roughly in order of simplicity and necessity:
     [x] on_stop
     [ ] on_rejected_step
 
-[ ] add support for NDDEs
-
-<!-- Syntax: (|t, [x], [x_], [dx_]| [x_(t-1) - dx_(t-2)]) or (|t, [x], [x_]| [x_(t-1) - x_.1(t-1)]) -->
-<!-- or even (|t, [x]| [x() + x(t-1) - x.1(t-2)]) -->
+[x] add support for NDDEs
 
 [ ] add support for events that change state
 
@@ -91,7 +88,7 @@ Naming: `on_root(|t: f64, [x, dx]: [f64; 2]| x, Event::new(...)...)`
 
 [ ] on_root
 [ ] on_above_root, on_below_root (naming should change)
-[ ] on_period
+[ ] on_period (trigger event periodically)
 
 [ ] delay propagated events
 
@@ -103,7 +100,7 @@ Naming: `on_root(|t: f64, [x, dx]: [f64; 2]| x, Event::new(...)...)`
 
 [ ] equation! macro, which also saves the string representation of the equation
 
-[ ] allow .times(1..) for excluding the first step
+[x] allow .times(1..) for excluding the first step
 
 [ ] allow the initial function to have no arguments
 

@@ -341,7 +341,7 @@ impl<C, S, F, D> Event<C, Tutle<S>, Tutle<F>, D> {
 
     pub fn times(
         self,
-        range: std::ops::Range<usize>,
+        range: impl std::ops::RangeBounds<usize>,
     ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(), Output = bool>, Tutle<F>)>, D> {
         let mut counter = 0;
         self.filter_by(move || {
