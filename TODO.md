@@ -45,9 +45,9 @@ In each section, roughly in order of simplicity and necessity:
 [x] make filtering be iterative, such that .every(2).every(2) is equivallent to every(4), make the order of their calls correct (it is reversed at the time)
 
 [ ] implement more output handlers for events
-    [ ] to_file (output as in to_std)
-    [ ] to_csv (same as to_file, but formatted)
-    [ ] to_table (specify the separators manually)
+    [x] to_file (output as in to_std)
+    [x] to_csv (same as to_file, but formatted)
+    [x] to_table (specify the separators manually)
     [ ] to_hist (basic datashading), probably make a histogram class, that can grow for values outside of the current range
     [ ] to_plot(window: f64, realtime: true) (for crude accessible realtime plotting)
 
@@ -64,8 +64,8 @@ In each section, roughly in order of simplicity and necessity:
 
 # Differentiation
 
-[ ] support extending closures with the method like .with_derivative(||...), which produces and object that implements Fn to call the inital closure, and a method .d to invoke a derivative
-[ ] use that for a polynomial macro
+[x] support extending closures with the method like .with_derivative(||...), which produces and object that implements Fn to call the inital closure, and a method .d to invoke a derivative
+[x] use that for a polynomial macro
 
 # Solver
 

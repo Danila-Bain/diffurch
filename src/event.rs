@@ -118,8 +118,10 @@ impl<C, S, F, D> Event<C, Tutle<S>, Tutle<F>, D> {
         self.to(|value: O| println!("{:?}", value))
     }
 
-
-    pub fn to_file<Args, O>(self, filename: &str) -> Event<C, Tutle<(impl FnMut<(O,)>, Tutle<S>)>, Tutle<F>, D>
+    pub fn to_file<Args, O>(
+        self,
+        filename: &str,
+    ) -> Event<C, Tutle<(impl FnMut<(O,)>, Tutle<S>)>, Tutle<F>, D>
     where
         Args: Tuple,
         C: Fn<Args, Output = O>,
@@ -130,6 +132,48 @@ impl<C, S, F, D> Event<C, Tutle<S>, Tutle<F>, D> {
         self.to(move |value: O| writeln!(&mut file, "{:?}", value).unwrap())
     }
 
+    pub fn to_csv<const N: usize, Args, O>(
+        self,
+        filename: &str,
+    ) -> Event<C, Tutle<(impl FnMut<([O; N],)>, Tutle<S>)>, Tutle<F>, D>
+    where
+        Args: Tuple,
+        C: Fn<Args, Output = [O; N]>,
+        O: std::fmt::Display,
+    {
+        use std::io::Write;
+        let mut file = std::fs::File::create_buffered(filename).unwrap();
+        self.to(move |values: [O; N]| {
+            for val in values {
+                write!(&mut file, "{},", val).unwrap();
+            }
+            writeln!(&mut file, "").unwrap();
+        })
+    }
+
+
+    pub fn to_table<const N: usize, Args, O>(
+        self,
+        filename: &str, separator: &str, header: Option<&str>
+    ) -> Event<C, Tutle<(impl FnMut<([O; N],)>, Tutle<S>)>, Tutle<F>, D>
+    where
+        Args: Tuple,
+        C: Fn<Args, Output = [O; N]>,
+        O: std::fmt::Display,
+    {
+        use std::io::Write;
+        let mut file = std::fs::File::create_buffered(filename).unwrap();
+
+        if let Some(header) = header {
+            writeln!(&mut file, "{header}").unwrap();
+        }
+        self.to(move |values: [O; N]| {
+            for val in values {
+                write!(&mut file, "{}{separator}", val).unwrap();
+            }
+            writeln!(&mut file, "").unwrap();
+        })
+    }
 
     /// The function that pushes its argument to provided mutable vector is appended to `stream`
     /// field. The modified event is returned.
@@ -150,6 +194,31 @@ impl<C, S, F, D> Event<C, Tutle<S>, Tutle<F>, D> {
         C: Fn<Args, Output = Output>,
     {
         self.to(|value: Output| vec.push(value))
+    }
+
+    /// Like [Event::to_vec], but destributes its values across several vectors
+    ///
+    /// # Usage
+    /// ```
+    /// let mut t = Vec::new();
+    /// let mut x = Vec::new();
+    /// let mut y = Vec::new();
+    ///
+    /// let event = diffurch::Event::ode2(|t, [x, y]| [t, x, y]).to_vecs([&mut t, &mut x, &mut y]);
+    /// ```
+    pub fn to_vecs<const N: usize, Args>(
+        self,
+        vecs: [&mut Vec<f64>; N],
+    ) -> Event<C, Tutle<(impl FnMut<([f64; N],)>, Tutle<S>)>, Tutle<F>, D>
+    where
+        Args: Tuple,
+        C: Fn<Args, Output = [f64; N]>,
+    {
+        self.to(move |value: [f64; N]| {
+            for i in 0..N {
+                vecs[i].push(value[i]);
+            }
+        })
     }
 
     /// The function that writes its argument to provided mutable variable is appended to `stream`
@@ -177,9 +246,8 @@ impl<C, S, F, D> Event<C, Tutle<S>, Tutle<F>, D> {
         {
             *range = Output::max_value()..Output::min_value();
         }
-        self.to(|v: Output| *range = range.start.min(v) .. range.end.max(v))
+        self.to(|v: Output| *range = range.start.min(v)..range.end.max(v))
     }
-
 
     pub fn to_ranges<const N: usize, Args, Output>(
         self,
@@ -193,29 +261,13 @@ impl<C, S, F, D> Event<C, Tutle<S>, Tutle<F>, D> {
         for range in ranges.iter_mut() {
             **range = Output::max_value()..Output::min_value();
         }
-        self.to(move |values: [Output; N]|  {
+        self.to(move |values: [Output; N]| {
             for (range, v) in ranges.iter_mut().zip(values.iter()) {
-                **range = range.start.min(*v) .. range.end.max(*v)
-            }
-        }
-        )
-    }
-
-    /// Like [Event::to_vec], but destributes 
-    pub fn to_vecs<const N: usize, Args>(
-        self,
-        vecs: [&mut Vec<f64>; N],
-    ) -> Event<C, Tutle<(impl FnMut<([f64; N],)>, Tutle<S>)>, Tutle<F>, D>
-    where
-        Args: Tuple,
-        C: Fn<Args, Output = [f64; N]>,
-    {
-        self.to(move |value: [f64; N]| {
-            for i in 0..N {
-                vecs[i].push(value[i]);
+                **range = range.start.min(*v)..range.end.max(*v)
             }
         })
     }
+
 
     pub fn filter_by<Args, F_>(self, f: F_) -> Event<C, Tutle<S>, Tutle<(F_, Tutle<F>)>, D>
     where
