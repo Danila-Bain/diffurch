@@ -11,11 +11,16 @@ fn solution(epsilon: f64, alpha: f64, beta: f64) -> (Range<f64>, Range<f64>, Ran
     let equation = Equation::dde(|t, [x, _x_int, _dx_int], [x_, _, _]| {
         let dx = -x + (1. + epsilon) * x_.d(t - T) + A * x_.d(t - T).powi(3);
         [dx, x.powi(2) * beta.powi(2), dx.powi(2)]
-    });
+    }).with_delay(T);
     let ic = Differentiable(
         |t: f64| [alpha * (beta * t).sin(), 0., 0.],
         |t: f64| [alpha * beta * (beta * t).cos(), 0., 0.],
     );
+
+    // let ic = Differentiable(
+    //     |t: f64| [alpha * (beta * t).sin().asin()*2./PI, 0., 0.],
+    //     |t: f64| [alpha * (beta * t).cos().signum() * 2./PI , 0., 0.],
+    // );
 
     // | 0.25*pow(alpha,2) / beta * (2*beta*T - sin(2*beta*t) + sin(2*beta*(t-T)))
     // | 0.25*pow(alpha,2) * beta * (2*beta*T + sin(2*beta*t) - sin(2*beta*(t-T)));
@@ -55,32 +60,37 @@ fn solution(epsilon: f64, alpha: f64, beta: f64) -> (Range<f64>, Range<f64>, Ran
         )
         .run(equation, ic, range);
 
-    // let mut plot = pgfplots::axis::plot::Plot2D::new();
-    // plot.coordinates = (0..t.len()).map(|i| (t[i], x[i]).into()).collect();
-    // pgfplots::Picture::from(plot)
-    //     .show_pdf(pgfplots::Engine::PdfLatex)
-    //     .unwrap();
+    let mut plot = pgfplots::axis::plot::Plot2D::new();
+    plot.coordinates = (0..t.len()).map(|i| (t[i], x[i]).into()).collect();
+    pgfplots::Picture::from(plot)
+        .show_pdf(pgfplots::Engine::PdfLatex)
+        .unwrap();
 
     // std::thread::sleep(std::time::Duration::from_secs(1))
     (alpha_end, x_int, dx_int)
 }
 
 fn main() {
-    let epsilon = 0.02;
-    let mut alpha = 0.012;
+
+    // let epsilon = 0.01;
+    // let mut alpha = 0.012;
+    let epsilon = 0.0001;
+    let mut alpha = 0.00005180;
     let mut alphas = Vec::new();
     let mut x_ints = Vec::new();
     let mut dx_ints = Vec::new();
 
     use std::io::Write;
-    let mut file = std::fs::File::create_buffered(format!("integrals,eps={epsilon}.csv")).unwrap();
+    let mut file = std::fs::File::create_buffered(format!("integrals; eps={epsilon}.dat")).unwrap();
     writeln!(
         &mut file,
-        "beta, alpha, x_int, x_int_error, dx_int, dx_int_error"
+        "i beta alpha x_int x_int_error dx_int dx_int_error"
     )
     .unwrap();
+    file.flush().unwrap();
 
-    for i in (4..=100).step_by(2) {
+    for i in (74..=100).step_by(2) {
+    // for i in [36, 48, 84] {
         let beta = i as f64 * PI;
         let (alpha_end, x_int, dx_int) = solution(epsilon, alpha, beta);
         println!("{i} pi:    alpha = {alpha_end:?}, x_int = {x_int:?}, dx_int = {dx_int:?}");
@@ -101,9 +111,10 @@ fn main() {
         //
         writeln!(
             &mut file,
-            "{i} pi, {alpha}, {x_int}, {x_int_error}, {dx_int}, {dx_int_error}"
+            "{i} {beta} {alpha} {x_int} {x_int_error} {dx_int} {dx_int_error}"
         )
         .unwrap();
+        file.flush().unwrap();
     }
 
     let mut axis = pgfplots::axis::Axis::new();
