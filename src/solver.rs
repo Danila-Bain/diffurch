@@ -4,12 +4,13 @@ use crate::state::State;
 use crate::util::tutle::{Tutle, TutleLevel};
 use crate::{ToStateFn, ToStateTutle};
 
-pub struct Solver<const S: usize = 26, StepE = Tutle, StartE = Tutle, StopE = Tutle> {
+pub struct Solver<const S: usize = 26, StepE = Tutle, StartE = Tutle, StopE = Tutle, RootE = Tutle> {
     rk: &'static RungeKuttaTable<'static, S>,
     stepsize: f64,
     step_events: StepE,
     start_events: StartE,
     stop_events: StopE,
+    root_events: RootE,
 }
 
 impl Solver {
@@ -20,21 +21,23 @@ impl Solver {
             step_events: Tutle(()),
             start_events: Tutle(()),
             stop_events: Tutle(()),
+            root_events: Tutle(()),
         }
     }
 }
 
-impl<const S: usize, StepE, StartE, StopE> Solver<S, Tutle<StepE>, Tutle<StartE>, Tutle<StopE>> {
+impl<const S: usize, StepE, StartE, StopE, RootE> Solver<S, Tutle<StepE>, Tutle<StartE>, Tutle<StopE>, Tutle<RootE>> {
     pub fn rk<const S_NEW: usize>(
         self,
         rk: &'static RungeKuttaTable<'static, S_NEW>,
-    ) -> Solver<S_NEW, Tutle<StepE>, Tutle<StartE>, Tutle<StopE>> {
+    ) -> Solver<S_NEW, Tutle<StepE>, Tutle<StartE>, Tutle<StopE>, Tutle<RootE>> {
         Solver {
             rk,
             stepsize: self.stepsize,
             step_events: self.step_events,
             start_events: self.start_events,
             stop_events: self.stop_events,
+            root_events: self.root_events,
         }
     }
 
@@ -45,44 +48,63 @@ impl<const S: usize, StepE, StartE, StopE> Solver<S, Tutle<StepE>, Tutle<StartE>
     pub fn on_step<E>(
         self,
         event: E,
-    ) -> Solver<S, Tutle<(E, Tutle<StepE>)>, Tutle<StartE>, Tutle<StopE>> {
+    ) -> Solver<S, Tutle<(E, Tutle<StepE>)>, Tutle<StartE>, Tutle<StopE>, Tutle<RootE>> {
         Solver {
             rk: self.rk,
             stepsize: self.stepsize,
             step_events: self.step_events.append(event),
             start_events: self.start_events,
             stop_events: self.stop_events,
+            root_events: self.root_events,
         }
     }
 
     pub fn on_start<E>(
         self,
         event: E,
-    ) -> Solver<S, Tutle<StepE>, Tutle<(E, Tutle<StartE>)>, Tutle<StopE>> {
+    ) -> Solver<S, Tutle<StepE>, Tutle<(E, Tutle<StartE>)>, Tutle<StopE>, Tutle<RootE>> {
         Solver {
             rk: self.rk,
             stepsize: self.stepsize,
             step_events: self.step_events,
             start_events: self.start_events.append(event),
             stop_events: self.stop_events,
+            root_events: self.root_events,
         }
     }
 
     pub fn on_stop<E>(
         self,
         event: E,
-    ) -> Solver<S, Tutle<StepE>, Tutle<StartE>, Tutle<(E, Tutle<StopE>)>> {
+    ) -> Solver<S, Tutle<StepE>, Tutle<StartE>, Tutle<(E, Tutle<StopE>)>, Tutle<RootE>> {
         Solver {
             rk: self.rk,
             stepsize: self.stepsize,
             step_events: self.step_events,
             start_events: self.start_events,
             stop_events: self.stop_events.append(event),
+            root_events: self.root_events,
+        }
+    }
+
+
+    pub fn on_root<R,E>(
+        self,
+        root: R,
+        event: E,
+    ) -> Solver<S, Tutle<StepE>, Tutle<StartE>, Tutle<StopE>, Tutle<((R,E), Tutle<RootE>)>> {
+        Solver {
+            rk: self.rk,
+            stepsize: self.stepsize,
+            step_events: self.step_events,
+            start_events: self.start_events,
+            stop_events: self.stop_events,
+            root_events: self.root_events.append((root, event)),
         }
     }
 }
 
-impl<const S: usize, StepE, StartE, StopE> Solver<S, StepE, StartE, StopE> {
+impl<const S: usize, StepE, StartE, StopE, RootE> Solver<S, StepE, StartE, StopE, RootE> {
     pub fn run<
         const N: usize,
         Interval,
