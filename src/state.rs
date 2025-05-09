@@ -71,9 +71,7 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
             rhs: eq.rhs,
         }
     }
-}
 
-impl<'a, const N: usize, const S: usize> State<'a, N, S> {
     pub fn push_current(&mut self) {
         self.t_seq.push_back(self.t);
         self.x_seq.push_back(self.x);
@@ -200,6 +198,16 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
             return (0..S).fold(0., |acc, j| acc + self.rk.bi[j].d(theta) * k[j][coordinate]);
         }
     }
+
+    pub fn coord_fns(&'a self) -> [Box<dyn 'a + StateCoordFnTrait>; N] {
+        std::array::from_fn(|i| {
+            let coord_fn: Box<dyn 'a + StateCoordFnTrait> = Box::new(StateCoordFn::<'a, N, S> {
+                state: self,
+                coord: i,
+            });
+            coord_fn
+        })
+    }
 }
 
 pub enum StateFn<'a, const N: usize, Ret> {
@@ -217,15 +225,7 @@ impl<'a, const N: usize, Ret> StateFn<'a, N, Ret> {
             StateFn::Time(f) => f(state.t),
             StateFn::ODE(f) => f(state.x),
             StateFn::ODE2(f) => f(state.t, state.x),
-            StateFn::DDE(f) => f(
-                state.t,
-                state.x,
-                std::array::from_fn(|i| {
-                    let coord_fn: Box<dyn '_ + StateCoordFnTrait> =
-                        Box::new(StateCoordFn::<'b, N, S> { state, coord: i });
-                    coord_fn
-                }),
-            ),
+            StateFn::DDE(f) => f(state.t, state.x, state.coord_fns()),
         }
     }
 
@@ -235,15 +235,7 @@ impl<'a, const N: usize, Ret> StateFn<'a, N, Ret> {
             StateFn::Time(f) => f(t),
             StateFn::ODE(f) => f(state.eval_all(t)),
             StateFn::ODE2(f) => f(t, state.eval_all(t)),
-            StateFn::DDE(f) => f(
-                t,
-                state.eval_all(t),
-                std::array::from_fn(|i| {
-                    let coord_fn: Box<dyn '_ + StateCoordFnTrait> =
-                        Box::new(StateCoordFn::<'b, N, S> { state, coord: i });
-                    coord_fn
-                }),
-            ),
+            StateFn::DDE(f) => f(t, state.eval_all(t), state.coord_fns()),
         }
     }
 }
@@ -251,11 +243,13 @@ impl<'a, const N: usize, Ret> StateFn<'a, N, Ret> {
 pub enum StateFnMut<'a, const N: usize, Ret> {
     Constant(Box<dyn 'a + FnMut() -> Ret>),
     Time(Box<dyn 'a + FnMut(f64) -> Ret>),
-    ODE(Box<dyn 'a + FnMut([f64; N]) -> Ret>),
-    ODE2(Box<dyn 'a + FnMut(f64, [f64; N]) -> Ret>),
-    DDE(Box<dyn 'a + Fn(f64, [f64; N], [Box<dyn '_ + StateCoordFnTrait>; N]) -> Ret>),
-
     TimeMut(Box<dyn 'a + FnMut(&mut f64) -> Ret>),
+    ODE(Box<dyn 'a + FnMut([f64; N]) -> Ret>),
+    ODEMut(Box<dyn 'a + FnMut(&mut [f64; N]) -> Ret>),
+    ODE2(Box<dyn 'a + FnMut(f64, [f64; N]) -> Ret>),
+    ODE2Mut(Box<dyn 'a + FnMut(&mut f64, &mut [f64; N]) -> Ret>),
+    DDE(Box<dyn 'a + Fn(f64, [f64; N], [Box<dyn '_ + StateCoordFnTrait>; N]) -> Ret>),
+    // DDEMut(Box<dyn 'a + Fn(&mut f64, &mut [f64; N], [Box<dyn '_ + StateCoordFnTrait>; N]) -> Ret>),
 }
 
 impl<'a, const N: usize, Ret> StateFnMut<'a, N, Ret> {
@@ -265,16 +259,11 @@ impl<'a, const N: usize, Ret> StateFnMut<'a, N, Ret> {
             StateFnMut::Time(f) => f(state.t),
             StateFnMut::TimeMut(f) => f(&mut state.t),
             StateFnMut::ODE(f) => f(state.x),
+            StateFnMut::ODEMut(f) => f(&mut state.x),
             StateFnMut::ODE2(f) => f(state.t, state.x),
-            StateFnMut::DDE(f) => f(
-                state.t,
-                state.x,
-                std::array::from_fn(|i| {
-                    let coord_fn: Box<dyn '_ + StateCoordFnTrait> =
-                        Box::new(StateCoordFn::<'b, N, S> { state, coord: i });
-                    coord_fn
-                }),
-            ),
+            StateFnMut::ODE2Mut(f) => f(&mut state.t, &mut state.x),
+            StateFnMut::DDE(f) => f(state.t, state.x, state.coord_fns()),
+            // StateFnMut::DDEMut(f) => {f(&mut state.t, &mut state.x, state.coord_fns()) } // Bad borrowing
         }
     }
 
@@ -284,16 +273,11 @@ impl<'a, const N: usize, Ret> StateFnMut<'a, N, Ret> {
             StateFnMut::Time(f) => f(t),
             StateFnMut::TimeMut(f) => f(&mut t),
             StateFnMut::ODE(f) => f(state.eval_all(t)),
+            StateFnMut::ODEMut(f) => f(&mut state.eval_all(t)),
             StateFnMut::ODE2(f) => f(t, state.eval_all(t)),
-            StateFnMut::DDE(f) => f(
-                t,
-                state.eval_all(t),
-                std::array::from_fn(|i| {
-                    let coord_fn: Box<dyn '_ + StateCoordFnTrait> =
-                        Box::new(StateCoordFn::<'b, N, S> { state, coord: i });
-                    coord_fn
-                }),
-            ),
+            StateFnMut::ODE2Mut(f) => {let t2 = t; f(&mut t, &mut state.eval_all(t2))},
+            StateFnMut::DDE(f) => f(t, state.eval_all(t), state.coord_fns()),
+            // StateFnMut::DDEMut(f) =>  {let t2 = t; f(&mut t, &mut state.eval_all(t2), state.coord_fns())},
         }
     }
 }
@@ -362,4 +346,3 @@ impl<'a, const N: usize, const S: usize> StateCoordFnTrait for StateCoordFn<'a, 
 //         return self.state_ref.eval_derivative(t, self.coordinate);
 //     }
 // }
-

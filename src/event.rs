@@ -43,8 +43,14 @@ impl<'a, const N: usize, Output> Event<'a, N, Output> {
     pub fn ode(callback: impl 'a + FnMut([f64; N]) -> Output) -> Self {
         Event::new(StateFnMut::ODE(Box::new(callback)))
     }
+    pub fn ode_mut(callback: impl 'a + FnMut(&mut [f64; N]) -> Output) -> Self {
+        Event::new(StateFnMut::ODEMut(Box::new(callback)))
+    }
     pub fn ode2(callback: impl 'a + FnMut(f64, [f64; N]) -> Output) -> Self {
         Event::new(StateFnMut::ODE2(Box::new(callback)))
+    }
+    pub fn ode2_mut(callback: impl 'a + FnMut(&mut f64, &mut [f64; N]) -> Output) -> Self {
+        Event::new(StateFnMut::ODE2Mut(Box::new(callback)))
     }
 
 
