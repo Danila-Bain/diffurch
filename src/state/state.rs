@@ -198,7 +198,10 @@ impl<const N: usize, const S: usize> State<N, S> {
 //     }
 // }
 
+
+
 pub enum StateFn<'a, const N: usize, Ret> {
+    // State<const S: usize>(Box<dyn 'a + FnMut(State<N, S>) -> Ret>),
     Constant(Box<dyn 'a + FnMut() -> Ret>),
     Time(Box<dyn 'a +  FnMut(f64) -> Ret>),
     ODE(Box<dyn 'a + FnMut([f64; N]) -> Ret>),
@@ -212,6 +215,7 @@ impl<const N: usize, Ret> StateFn<'_, N, Ret> {
             StateFn::Time(f) => f(state.t),
             StateFn::ODE(f) => f(state.x),
             StateFn::ODE2(f) => f(state.t, state.x),
+            // StateFn::Self(f) => f(state),
         }
     }
 }
