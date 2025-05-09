@@ -1,3 +1,5 @@
+use std::ops::Bound;
+
 use crate::Event;
 use crate::State;
 use crate::equation::Equation;
@@ -41,7 +43,6 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
         mut event: Event<'c, N, Output>,
     ) -> Box<dyn 'c + for<'b> FnMut(&'b State<N, S>)> {
         Box::new(move |state: &State<N, S>| {
-
             let Event {
                 ref mut callback,
                 ref mut stream,
@@ -85,26 +86,21 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
         initial_function: impl 'static + Fn(f64) -> [f64; N],
         interval: impl std::ops::RangeBounds<f64>,
     ) {
-        /* initializations */
-
+        use std::ops::Bound::*;
         let t_init = match interval.start_bound() {
-            std::ops::Bound::Unbounded => 0.,
-            std::ops::Bound::Included(value) => *value,
-            std::ops::Bound::Excluded(value) => *value,
+            Unbounded => 0.,
+            Included(&value) | Excluded(&value) => value,
         };
-
         let t_end = match interval.end_bound() {
-            std::ops::Bound::Unbounded => f64::MAX,
-            std::ops::Bound::Included(value) => *value,
-            std::ops::Bound::Excluded(value) => *value,
+            Unbounded => f64::INFINITY,
+            Included(&value) | Excluded(&value) => value,
         };
 
         let mut state = State::new(t_init, initial_function, equation, &self.rk);
+        let mut stepsize = self.stepsize;
 
         self.start_events.iter_mut().for_each(|event| event(&state));
         self.step_events.iter_mut().for_each(|event| event(&state));
-
-        let mut stepsize = self.stepsize;
 
         while state.t < t_end {
             state.make_step(stepsize);
