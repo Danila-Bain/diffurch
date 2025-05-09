@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use diffurch::{Equation, Event, InitialCondition, Solver, rk};
+use diffurch::{Equation, Event, Solver, rk};
 
 fn main() {
     // let theta = 0.5f64;

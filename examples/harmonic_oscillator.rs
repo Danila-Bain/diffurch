@@ -2,7 +2,6 @@
 //     todo!()
 // }
 use diffurch::{Equation, Event, Solver, rk, InitialCondition};
-use std::time::Duration;
 
 fn main() {
     let k = 0.5;

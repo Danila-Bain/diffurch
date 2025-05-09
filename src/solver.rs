@@ -1,5 +1,3 @@
-use std::ops::Bound;
-
 use crate::Event;
 use crate::InitialCondition;
 use crate::State;

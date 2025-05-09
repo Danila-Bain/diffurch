@@ -331,7 +331,3 @@ impl<'a, const N: usize, const S: usize> Fn<(f64,)> for StateCoordFn<'a, N, S> {
 //     }
 // }
 
-#[cfg(test)]
-mod tests {
-    // use super::*;
-}

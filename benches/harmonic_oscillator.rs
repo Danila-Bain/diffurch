@@ -16,7 +16,6 @@ fn get_eq() -> (
     let eq = Equation::ode(move |[x, dx]| [dx, -k * k * x]);
     let ic = move |t: f64| [(t * k).sin(), k * (t * k).cos()];
     let range = RANGE;
-
     (eq, ic, range)
 }
 
@@ -195,5 +194,25 @@ fn subdivide_compensate_20(b: &mut Bencher) {
             )
             .run(eq, ic, range);
         var
+    })
+}
+
+fn get_eq_delay() -> (
+    Equation<'static, 2>,
+    impl Fn(f64) -> [f64; 2],
+    std::ops::Range<f64>,
+) {
+    let k = 1.;
+    let eq = Equation::dde(move |t, [_x, dx], [x_, _]| [dx, -k * k * x_(t - 1.)]).with_delay(2.);
+    let ic = move |t: f64| [(t * k).sin(), k * (t * k).cos()];
+    let range = RANGE;
+    (eq, ic, range)
+}
+
+#[bench]
+fn eq_with_delay(b: &mut Bencher) {
+    b.iter(|| {
+        let (eq, ic, range) = get_eq_delay();
+        Solver::rk(&rk::RK98).stepsize(STEPSIZE).run(eq, ic, range);
     })
 }
