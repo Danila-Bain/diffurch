@@ -23,6 +23,21 @@ pub struct State<const N: usize, const S: usize> {
     rhs: Box<dyn Fn(&Self) -> [f64; N]>,
 }
 
+// pub trait StateTrait<const N: usize> {
+//     fn x(&self) -> [f64; N];
+//     fn t(&self) -> f64;
+// }
+
+// impl<const N: usize, const S:usize> StateTrait<N> for State<N,S> {
+//     fn x(&self) -> [f64; N] {
+//         self.x
+//     }
+//
+//     fn t(&self) -> f64 {
+//         self.t
+//     }
+// } 
+
 impl<const N: usize, const S: usize> State<N, S> {
     pub fn new(t_init: f64, x_init: impl 'static + Fn(f64) -> [f64; N], rhs: impl 'static + Fn(&Self) -> [f64; N], rk: &'static RungeKuttaTable<S>) -> Self {
         let x = x_init(t_init);

@@ -1,13 +1,13 @@
-fn main() {
-    todo!()
-}
+// fn main() {
+//     todo!()
+// }
 // use diffurch::{Equation, Event, Solver, rk};
 // use std::time::Duration;
 //
-// fn main() {
-//     let k = 0.5;
-//
-//     let eq = Equation::ode(|[x, dx]| [dx, -k * k * x]).with_delay(6.);
+fn main() {
+    // let k = 0.5;
+
+    // let eq = Equation::ode(|[x, dx]| [dx, -k * k * x]).with_delay(6.);
 //
 //     let ic = |t: f64| [(t * k).sin(), k * (t * k).cos()];
 //
@@ -66,4 +66,4 @@ fn main() {
 //         .unwrap();
 //
 //     std::thread::sleep(Duration::from_secs(1));
-// }
+}

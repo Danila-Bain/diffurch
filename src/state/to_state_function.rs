@@ -9,60 +9,116 @@
 
 use super::State;
 
-pub trait StateFn<const N: usize, Ret> {
-    fn eval<const S:usize>(&self, state: &State<N,S>) -> Ret;
-    fn eval_at<const S:usize>(&self, state: &State<N,S>, t: f64) -> Ret;
+pub enum StateFn<const N: usize, Ret> {
+    Constant(Box<dyn Fn() -> Ret>),
+    Time(Box<dyn Fn(f64) -> Ret>),
+    ODE(Box<dyn Fn([f64; N]) -> Ret>),
+    ODE2(Box<dyn Fn(f64, [f64; N]) -> Ret>),
 }
 
-
-macro_rules! state_fn_impl {
-    (args: $args_tuple:ty, t: $t:ident, state: $state:ident, pass: $pass:expr, pass_at: $pass_at:expr $(,)?) => {
-        impl<const N: usize, Ret> StateFn<N, Ret> for dyn Fn<$args_tuple, Output=Ret> {
-            fn eval<const S:usize>(&self, $state: &State<N,S>) -> Ret {
-                self.call($pass)
-            }
-
-            fn eval_at<const S:usize>(&self, $state: &State<N,S>, $t: f64) -> Ret {
-                self.call($pass_at)
-            }
+impl<const N: usize, Ret> StateFn<N, Ret> {
+    pub fn eval<const S: usize>(&self, state: &State<N,S>) -> Ret {
+        match self {
+            StateFn::Constant(f) => f(),
+            StateFn::Time(f) => f(state.t),
+            StateFn::ODE(f) => f(state.x),
+            StateFn::ODE2(f) => f(state.t, state.x),
         }
-    };
+    }
 }
 
-state_fn_impl!( args: (), t: _t, state: _state, pass: (), pass_at: (),);
-state_fn_impl!( args: (f64,), t: _t, state: _state, pass: (_state.t,), pass_at: (_t,),);
-state_fn_impl!( args: ([f64; N],), t: t, state: state, pass: (state.x,), pass_at: (state.eval_all(t),),);
-state_fn_impl!( args: (f64, [f64; N]), t: t, state: state, pass: (state.t, state.x), pass_at: (t, state.eval_all(t)),);
+// pub struct StateFn<const N: usize, F> {
+//     f: F
+// }
+//
+// impl<const N: usize, Ret> StateFn<N, &dyn Fn(f64) -> Ret> {
+//     pub fn eval<const S: usize>(&self, state: &State<N,S>) -> Ret {
+//         (self.f)(state.t)
+//     }
+// }
+//
+// impl<const N: usize, Ret> StateFn<N, &dyn Fn(f64, [f64; N]) -> Ret> {
+//     pub fn eval<const S: usize>(&self, state: &State<N,S>) -> Ret {
+//         (self.f)(state.t, state.x)
+//     }
+// }
+//
+// impl<const N: usize, Ret> StateFn<N, &dyn Fn([f64; N]) -> Ret> {
+//     pub fn eval<const S: usize>(&self, state: &State<N,S>) -> Ret {
+//         (self.f)(state.x)
+//     }
+// }
+
+// trait StateFnTrait<const N: usize, Ret> {
+//     fn eval<const S: usize>(&self, state: &State<N,S>) -> Ret;
+// }
+//
+// impl<const N: usize, Ret> StateFnTrait<N, Ret> for StateFn<N, &dyn Fn(f64) -> Ret> {
+//     fn eval<const S: usize>(&self, state: &State<N,S>) -> Ret {
+//         (self.f)(state.t)
+//     }
+// }
+//
+// impl<const N: usize, Ret> StateFnTrait<N, Ret> for StateFn<N, &dyn Fn([f64; N]) -> Ret> {
+//     fn eval<const S: usize>(&self, state: &State<N,S>) -> Ret {
+//         (self.f)(state.x)
+//     }
+// }
+
+// pub trait StateFn<const N: usize, Ret> {
+//     fn eval<const S:usize>(&self, state: &State<N,S>) -> Ret;
+//     fn eval_at<const S:usize>(&self, state: &State<N,S>, t: f64) -> Ret;
+// }
+//
+//
+// macro_rules! state_fn_impl {
+//     (args: $args_tuple:ty, t: $t:ident, state: $state:ident, pass: $pass:expr, pass_at: $pass_at:expr $(,)?) => {
+//         impl<const N: usize, Ret> StateFn<N, Ret> for dyn Fn<$args_tuple, Output=Ret> {
+//             fn eval<const S:usize>(&self, $state: &State<N,S>) -> Ret {
+//                 self.call($pass)
+//             }
+//
+//             fn eval_at<const S:usize>(&self, $state: &State<N,S>, $t: f64) -> Ret {
+//                 self.call($pass_at)
+//             }
+//         }
+//     };
+// }
+//
+// state_fn_impl!( args: (), t: _t, state: _state, pass: (), pass_at: (),);
+// state_fn_impl!( args: (f64,), t: _t, state: _state, pass: (_state.t,), pass_at: (_t,),);
+// state_fn_impl!( args: ([f64; N],), t: t, state: state, pass: (state.x,), pass_at: (state.eval_all(t),),);
+// state_fn_impl!( args: (f64, [f64; N]), t: t, state: state, pass: (state.t, state.x), pass_at: (t, state.eval_all(t)),);
 
 
 
-pub trait ToStateFn<const N: usize, const S: usize, Args, Ret> {
-    fn to_state_function(self) -> Box<dyn Fn(&State<N, S>) -> Ret>;
-    fn to_state_eval_function(self) -> Box<dyn Fn(&State<N, S>, f64) -> Ret>;
-}
-
-macro_rules! to_state_function_impl {
-    ($(lifetime: $lifetime:tt,)? args: $args_tuple:ty, t: $t:ident, state: $state:ident, body: $body:expr, body_eval: $body_eval:expr,) => {
-        impl<const N: usize, const S: usize, Ret, F> ToStateFn<N, S, $args_tuple, Ret> for F
-        where
-            F: 'static + $(for<$lifetime>)? Fn<$args_tuple, Output = Ret>,
-        {
-            fn to_state_function(self) -> Box<dyn Fn(&State<N, S>) -> Ret> {
-                Box::new(move |$state| self.call($body))
-            }
-
-            fn to_state_eval_function(self) -> Box<dyn Fn(&State<N, S>, f64) -> Ret> {
-                Box::new(move |$state, $t| self.call($body_eval))
-            }
-        }
-    };
-}
-
-// to_state_function_impl!( lifetime: 'a, args: (&'a State<N,S>,), t: _t, state: _state, body: (_state,), body_eval: (_state, _t,),);
-to_state_function_impl!( args: (), t: _t, state: _state, body: (), body_eval: (),);
-to_state_function_impl!( args: (f64,), t: _t, state: _state, body: (_state.t,), body_eval: (_t,),);
-to_state_function_impl!( args: ([f64; N],), t: t, state: state, body: (state.x,), body_eval: (state.eval_all(t),),);
-to_state_function_impl!( args: (f64, [f64; N]), t: t, state: state, body: (state.t, state.x), body_eval: (t, state.eval_all(t)),);
+// pub trait ToStateFn<const N: usize, const S: usize, Args, Ret> {
+//     fn to_state_function(self) -> Box<dyn Fn(&State<N, S>) -> Ret>;
+//     fn to_state_eval_function(self) -> Box<dyn Fn(&State<N, S>, f64) -> Ret>;
+// }
+//
+// macro_rules! to_state_function_impl {
+//     ($(lifetime: $lifetime:tt,)? args: $args_tuple:ty, t: $t:ident, state: $state:ident, body: $body:expr, body_eval: $body_eval:expr,) => {
+//         impl<const N: usize, const S: usize, Ret, F> ToStateFn<N, S, $args_tuple, Ret> for F
+//         where
+//             F: 'static + $(for<$lifetime>)? Fn<$args_tuple, Output = Ret>,
+//         {
+//             fn to_state_function(self) -> Box<dyn Fn(&State<N, S>) -> Ret> {
+//                 Box::new(move |$state| self.call($body))
+//             }
+//
+//             fn to_state_eval_function(self) -> Box<dyn Fn(&State<N, S>, f64) -> Ret> {
+//                 Box::new(move |$state, $t| self.call($body_eval))
+//             }
+//         }
+//     };
+// }
+//
+// // to_state_function_impl!( lifetime: 'a, args: (&'a State<N,S>,), t: _t, state: _state, body: (_state,), body_eval: (_state, _t,),);
+// to_state_function_impl!( args: (), t: _t, state: _state, body: (), body_eval: (),);
+// to_state_function_impl!( args: (f64,), t: _t, state: _state, body: (_state.t,), body_eval: (_t,),);
+// to_state_function_impl!( args: ([f64; N],), t: t, state: state, body: (state.x,), body_eval: (state.eval_all(t),),);
+// to_state_function_impl!( args: (f64, [f64; N]), t: t, state: state, body: (state.t, state.x), body_eval: (t, state.eval_all(t)),);
 
 // impl<const N: usize, const S: usize, IF: Fn(f64) -> [f64; N], F, Ret>
 //     ToStateFn<State<N, S, IF>, (f64, [f64; N], [CoordFn<'_, N, S, IF>; N]), Ret> for F

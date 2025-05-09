@@ -1,4 +1,4 @@
-use crate::{State, ToStateFn};
+use crate::{State, StateFn};
 // use std::marker::Tuple;
 
 /// Event type holds several handlers that determine *what* happens when the event happens. Event
@@ -6,7 +6,7 @@ use crate::{State, ToStateFn};
 /// in [crate::solver::Solver] struct.
 pub struct Event<const N: usize = 0, const S: usize = 0, Output = ()> {
     /// Function, which is called on a state. Its output is then fed to `stream`.
-    pub callback: Box<dyn for<'a> Fn(&'a State<N, S>) -> Output>,
+    pub callback: StateFn<N, Output>,
     /// Function (or rather a collection of functions), which handles the output destination and
     /// formatting provided by `callback`. It takes a single argument: the return type of `callback`.
     pub stream: Vec<Box<dyn Fn(Output)>>,
@@ -14,7 +14,7 @@ pub struct Event<const N: usize = 0, const S: usize = 0, Output = ()> {
     /// more sparse output (such that there are not too many output points), or limit outputing
     /// values to a certain range, etc. It is a function, that is invoked on a state and returns
     /// bool.
-    pub filter: Vec<Box<dyn for<'a> Fn<&'a State<N, S>, Output = bool>>>,
+    pub filter: Vec<StateFn<N, bool>>,
     /// When it has unit type it does nothing, when it has type `usize`, it produces dense output:
     /// the event's "filter->stream->callback" sequence is triggered not on the current state, but
     /// on `subdivision` number of points of the current step in the state, making use of dense
@@ -35,7 +35,7 @@ impl Event {
     // /// ```
     pub fn new<const N: usize, const S: usize, Args, Output, C>(callback: C) -> Event<N, S, Output>
     where
-        C: 'static + ToStateFn<N, S, Args, Output>,
+        // C: 'static + State<N, S, Args, Output>,
     {
         Event {
             callback: callback.to_state_function(),

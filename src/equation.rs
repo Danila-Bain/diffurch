@@ -1,60 +1,56 @@
-use crate::{State, ToStateFn};
+use crate::{State, StateFn};
 
 // use crate::state::CoordFn;
 //
-pub struct Equation<const N: usize = 1, const S: usize = 0> {
-    pub rhs: Box<dyn for<'a> Fn(&'a State<N, S>) -> [f64; N]>,
+pub struct Equation<const N: usize = 1> {
+    pub rhs: StateFn<N, [f64; N]>,
     pub max_delay: f64,
 }
 
-
 impl Equation {
+    // pub fn new<const N: usize, const S: usize, Args, RHS>(rhs: RHS) -> Equation<N>
+    // where
+    //     RHS: 'static + ToStateFn<N, S, Args, [f64; N]>,
+    // {
+    //     Equation {rhs: rhs.to_state_function(), max_delay: f64::NAN}
+    // }
 
-
-
-    pub fn new<const N: usize, const S: usize, Args, RHS>(rhs: RHS) -> Equation<N, S>
-    where
-        RHS: 'static + ToStateFn<N, S, Args, [f64; N]>,
-    {
-        Equation {rhs: rhs.to_state_function(), max_delay: f64::NAN}
-    }
-
-//
-//     // ordinary differential equation
-//     pub fn ode<const N: usize, RHS>(rhs: RHS) -> Equation<N, RHS, ()>
-//     where
-//         RHS: Fn<([f64; N],), Output = [f64; N]>,
-//     {
-//         Equation::<N, RHS, ()> {
-//             rhs,
-//             events: (),
-//             max_delay: 0.,
-//         }
-//     }
-//
-//     pub fn ode2<const N: usize, RHS>(rhs: RHS) -> Equation<N, RHS, ()>
-//     where
-//         RHS: Fn(f64, [f64; N]) -> [f64; N],
-//     {
-//         Equation::<N, RHS, ()> {
-//             rhs,
-//             events: (),
-//             max_delay: 0.,
-//         }
-//     }
-//
-//     pub fn dde<const N: usize, RHS, const S: usize, IF: Fn(f64) -> [f64; N]>(
-//         rhs: RHS,
-//     ) -> Equation<N, RHS, ()>
-//     where
-//         RHS: for<'a> Fn(f64, [f64; N], [CoordFn<'a, N, S, IF>; N]) -> [f64; N],
-//     {
-//         Equation::<N, RHS, ()> {
-//             rhs,
-//             events: (),
-//             max_delay: f64::NAN,
-//         }
-//     }
+    //
+    //     // ordinary differential equation
+    //     pub fn ode<const N: usize, RHS>(rhs: RHS) -> Equation<N, RHS, ()>
+    //     where
+    //         RHS: Fn<([f64; N],), Output = [f64; N]>,
+    //     {
+    //         Equation::<N, RHS, ()> {
+    //             rhs,
+    //             events: (),
+    //             max_delay: 0.,
+    //         }
+    //     }
+    //
+    //     pub fn ode2<const N: usize, RHS>(rhs: RHS) -> Equation<N, RHS, ()>
+    //     where
+    //         RHS: Fn(f64, [f64; N]) -> [f64; N],
+    //     {
+    //         Equation::<N, RHS, ()> {
+    //             rhs,
+    //             events: (),
+    //             max_delay: 0.,
+    //         }
+    //     }
+    //
+    //     pub fn dde<const N: usize, RHS, const S: usize, IF: Fn(f64) -> [f64; N]>(
+    //         rhs: RHS,
+    //     ) -> Equation<N, RHS, ()>
+    //     where
+    //         RHS: for<'a> Fn(f64, [f64; N], [CoordFn<'a, N, S, IF>; N]) -> [f64; N],
+    //     {
+    //         Equation::<N, RHS, ()> {
+    //             rhs,
+    //             events: (),
+    //             max_delay: f64::NAN,
+    //         }
+    //     }
 }
 //
 // impl<const N: usize, RHS, Events> Equation<N, RHS, Events> {

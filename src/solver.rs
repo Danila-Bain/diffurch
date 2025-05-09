@@ -1,43 +1,43 @@
-use crate::Event;
-use crate::State;
-use crate::ToStateFn;
-use crate::equation::Equation;
-use crate::rk::{RK98, RungeKuttaTable};
+// use crate::Event;
+// use crate::State;
+// use crate::ToStateFn;
+// use crate::equation::Equation;
+// use crate::rk::{RK98, RungeKuttaTable};
+// //
+// pub struct Solver<const N: usize = 0, const S: usize = 26> {
+//     rk: &'static RungeKuttaTable<'static, S>,
+//     stepsize: f64,
+//     step_events: Vec<Box<dyn for<'a> Fn(&'a State<N, S>)>>,
+//     start_events: Vec<Box<dyn for<'a> Fn(&'a State<N, S>)>>,
+//     stop_events: Vec<Box<dyn for<'a> Fn(&'a State<N, S>)>>,
+// }
 //
-pub struct Solver<const N: usize = 0, const S: usize = 26> {
-    rk: &'static RungeKuttaTable<'static, S>,
-    stepsize: f64,
-    step_events: Vec<Box<dyn for<'a> Fn(&'a State<N, S>)>>,
-    start_events: Vec<Box<dyn for<'a> Fn(&'a State<N, S>)>>,
-    stop_events: Vec<Box<dyn for<'a> Fn(&'a State<N, S>)>>,
-}
-
-impl<const N:usize> Solver<N,26> {
-    pub fn new() -> Self {
-        Self {
-            rk: &RK98,
-            stepsize: 0.05,
-            step_events: Vec::new(),
-            start_events: Vec::new(),
-            stop_events: Vec::new(),
-        }
-    }
-}
-
-
-impl<const N: usize, const S: usize> Solver<N,S> {
-    pub fn rk<const S_NEW: usize>(
-        self,
-        rk: &'static RungeKuttaTable<'static, S_NEW>,
-    ) -> Solver<N, S_NEW> {
-        Solver {
-            rk,
-            stepsize: self.stepsize,
-            step_events: self.step_events,
-            start_events: self.start_events,
-            stop_events: self.stop_events,
-        }
-    }
+// impl<const N:usize> Solver<N,26> {
+//     pub fn new() -> Self {
+//         Self {
+//             rk: &RK98,
+//             stepsize: 0.05,
+//             step_events: Vec::new(),
+//             start_events: Vec::new(),
+//             stop_events: Vec::new(),
+//         }
+//     }
+// }
+//
+//
+// impl<const N: usize, const S: usize> Solver<N,S> {
+//     pub fn rk<const S_NEW: usize>(
+//         self,
+//         rk: &'static RungeKuttaTable<'static, S_NEW>,
+//     ) -> Solver<N, S_NEW> {
+//         Solver {
+//             rk,
+//             stepsize: self.stepsize,
+//             step_events: self.step_events,
+//             start_events: self.start_events,
+//             stop_events: self.stop_events,
+//         }
+//     }
 //
 //     pub fn stepsize(self, stepsize: f64) -> Self {
 //         Self { stepsize, ..self }
@@ -100,7 +100,7 @@ impl<const N: usize, const S: usize> Solver<N,S> {
 //             root_events: self.root_events.append((root, event)),
 //         }
 //     }
-}
+// }
 //
 // impl<const S: usize, StepE, StartE, StopE, RootE> Solver<S, StepE, StartE, StopE, RootE> {
 //     pub fn run<
