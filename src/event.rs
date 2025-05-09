@@ -208,5 +208,3 @@ impl<'a, const N: usize, Item, const M: usize> Event<'a, N, [Item; M]> {
         })
     }
 }
-//
-// }
