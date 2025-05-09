@@ -74,6 +74,81 @@ impl<'a, const N: usize, Output> Event<'a, N, Output> {
     pub fn to_var(self, value: &'a mut Output) -> Self {
         self.to(|v: Output| *value = v)
     }
+
+    pub fn to_float_range(self, range: &'a mut std::ops::Range<Output>) -> Self
+    where
+        Output: num_traits::Float,
+    {
+        *range = Output::max_value()..Output::min_value();
+        self.to(|v: Output| *range = range.start.min(v)..range.end.max(v))
+    }
+
+    pub fn filter_by(mut self, f: StateFn<'a, N, bool>) -> Self {
+        self.filter.push(f);
+        self
+    }
+
+    pub fn every(self, n: usize) -> Self {
+        let mut counter = n - 1;
+        self.filter_by(StateFn::Constant(Box::new(move || {
+            counter += 1;
+            counter -= n * (counter >= n) as usize;
+            return counter == 0;
+        })))
+    }
+    pub fn separated_by(self, delta: f64) -> Self {
+        let mut last_trigger = f64::NEG_INFINITY;
+        self.filter_by(StateFn::Time(Box::new(move |t| {
+            if t >= last_trigger + delta {
+                last_trigger = t;
+                true
+            } else {
+                false
+            }
+        })))
+    }
+
+    pub fn in_range(self, interval: std::ops::Range<f64>) -> Self {
+        self.filter_by(StateFn::Time(Box::new(move |t| interval.contains(&t))))
+    }
+    pub fn once(self) -> Self {
+        let mut flag = true;
+        self.filter_by(StateFn::Constant(Box::new(move || {
+            if flag {
+                flag = false;
+                true
+            } else {
+                false
+            }
+        })))
+    }
+
+    pub fn take(self, n: usize) -> Self {
+        let mut counter = 0;
+        self.filter_by(StateFn::Constant(Box::new(move || {
+            counter += 1;
+            counter <= n
+        })))
+    }
+
+    pub fn times(self, range: impl 'a + std::ops::RangeBounds<usize>) -> Self {
+        let mut counter = 0;
+        self.filter_by(StateFn::Constant(Box::new(move || {
+            let ret = range.contains(&counter);
+            counter += 1;
+            ret
+        })))
+    }
+
+    // impl<C, S, F> Event<C, Tutle<S>, Tutle<F>, ()> {
+    //     pub fn subdivide(self, n: usize) -> Event<C, Tutle<S>, Tutle<F>, usize> {
+    //         Event {
+    //             callback: self.callback,
+    //             stream: self.stream,
+    //             filter: self.filter,
+    //             subdivision: n,
+    //         }
+    //     }
 }
 
 impl<'a, const N: usize, Item, const M: usize> Event<'a, N, [Item; M]> {
@@ -118,131 +193,20 @@ impl<'a, const N: usize, Item, const M: usize> Event<'a, N, [Item; M]> {
             }
         })
     }
+
+    pub fn to_float_ranges(self, mut ranges: [&'a mut std::ops::Range<Item>; M]) -> Self
+    where
+        Item: num_traits::Float,
+    {
+        for range in ranges.iter_mut() {
+            **range = Item::max_value()..Item::min_value();
+        }
+        self.to(move |values: [Item; M]| {
+            for (range, v) in ranges.iter_mut().zip(values.iter()) {
+                **range = range.start.min(*v)..range.end.max(*v)
+            }
+        })
+    }
 }
 //
-//     pub fn to_range<Args, Output>(
-//         self,
-//         range: &mut std::ops::Range<Output>,
-//     ) -> Event<C, Tutle<(impl FnMut<(Output,)>, Tutle<S>)>, Tutle<F>, D>
-//     where
-//         C: Fn<Args, Output = Output>,
-//         Args: Tuple,
-//         Output: num_traits::Float,
-//     {
-//         {
-//             *range = Output::max_value()..Output::min_value();
-//         }
-//         self.to(|v: Output| *range = range.start.min(v)..range.end.max(v))
-//     }
-//
-//     pub fn to_ranges<const N: usize, Args, Output>(
-//         self,
-//         mut ranges: [&mut std::ops::Range<Output>; N],
-//     ) -> Event<C, Tutle<(impl FnMut<([Output; N],)>, Tutle<S>)>, Tutle<F>, D>
-//     where
-//         C: Fn<Args, Output = [Output; N]>,
-//         Args: Tuple,
-//         Output: num_traits::Float,
-//     {
-//         for range in ranges.iter_mut() {
-//             **range = Output::max_value()..Output::min_value();
-//         }
-//         self.to(move |values: [Output; N]| {
-//             for (range, v) in ranges.iter_mut().zip(values.iter()) {
-//                 **range = range.start.min(*v)..range.end.max(*v)
-//             }
-//         })
-//     }
-//
-//     pub fn filter_by<Args, F_>(self, f: F_) -> Event<C, Tutle<S>, Tutle<(F_, Tutle<F>)>, D>
-//     where
-//         Args: Tuple,
-//         F_: FnMut<Args, Output = bool>,
-//     {
-//         Event {
-//             callback: self.callback,
-//             stream: self.stream,
-//             filter: self.filter.append(f),
-//             subdivision: self.subdivision,
-//         }
-//     }
-//
-//     pub fn every(
-//         self,
-//         n: usize,
-//     ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(), Output = bool>, Tutle<F>)>, D> {
-//         let mut counter = n - 1;
-//         self.filter_by(move || {
-//             counter += 1;
-//             counter -= n * (counter >= n) as usize;
-//             return counter == 0;
-//         })
-//     }
-//
-//     pub fn separated_by(
-//         self,
-//         delta: f64,
-//     ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(f64,), Output = bool>, Tutle<F>)>, D> {
-//         let mut last_trigger = f64::NEG_INFINITY;
-//         self.filter_by(move |t| {
-//             if t >= last_trigger + delta {
-//                 last_trigger = t;
-//                 true
-//             } else {
-//                 false
-//             }
-//         })
-//     }
-//
-//     pub fn in_range(
-//         self,
-//         interval: std::ops::Range<f64>,
-//     ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(f64,), Output = bool>, Tutle<F>)>, D> {
-//         self.filter_by(move |t| interval.contains(&t))
-//     }
-//
-//     pub fn once(self) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(), Output = bool>, Tutle<F>)>, D> {
-//         let mut flag = true;
-//         self.filter_by(move || {
-//             if flag {
-//                 flag = false;
-//                 true
-//             } else {
-//                 false
-//             }
-//         })
-//     }
-//
-//     pub fn take(
-//         self,
-//         n: usize,
-//     ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(), Output = bool>, Tutle<F>)>, D> {
-//         let mut counter = 0;
-//         self.filter_by(move || {
-//             counter += 1;
-//             counter <= n
-//         })
-//     }
-//
-//     pub fn times(
-//         self,
-//         range: impl std::ops::RangeBounds<usize>,
-//     ) -> Event<C, Tutle<S>, Tutle<(impl FnMut<(), Output = bool>, Tutle<F>)>, D> {
-//         let mut counter = 0;
-//         self.filter_by(move || {
-//             let ret = range.contains(&counter);
-//             counter += 1;
-//             ret
-//         })
-//     }
-
-// impl<C, S, F> Event<C, Tutle<S>, Tutle<F>, ()> {
-//     pub fn subdivide(self, n: usize) -> Event<C, Tutle<S>, Tutle<F>, usize> {
-//         Event {
-//             callback: self.callback,
-//             stream: self.stream,
-//             filter: self.filter,
-//             subdivision: n,
-//         }
-//     }
 // }

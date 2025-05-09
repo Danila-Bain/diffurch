@@ -199,14 +199,14 @@ impl<const N: usize, const S: usize> State<N, S> {
 // }
 
 pub enum StateFn<'a, const N: usize, Ret> {
-    Constant(Box<dyn 'a + Fn() -> Ret>),
-    Time(Box<dyn 'a +  Fn(f64) -> Ret>),
-    ODE(Box<dyn 'a + Fn([f64; N]) -> Ret>),
-    ODE2(Box<dyn 'a + Fn(f64, [f64; N]) -> Ret>),
+    Constant(Box<dyn 'a + FnMut() -> Ret>),
+    Time(Box<dyn 'a +  FnMut(f64) -> Ret>),
+    ODE(Box<dyn 'a + FnMut([f64; N]) -> Ret>),
+    ODE2(Box<dyn 'a + FnMut(f64, [f64; N]) -> Ret>),
 }
 
 impl<const N: usize, Ret> StateFn<'_, N, Ret> {
-    pub fn eval<const S: usize>(&self, state: &State<N,S>) -> Ret {
+    pub fn eval<const S: usize>(&mut self, state: &State<N,S>) -> Ret {
         match self {
             StateFn::Constant(f) => f(),
             StateFn::Time(f) => f(state.t),
