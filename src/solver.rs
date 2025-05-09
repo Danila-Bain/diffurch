@@ -5,7 +5,7 @@ use crate::equation::Equation;
 use crate::rk::{RK98, RungeKuttaTable};
 //
 pub struct Solver<'a, const N: usize, const S: usize> {
-    rk: &'a RungeKuttaTable<'static, S>,
+    rk: &'a RungeKuttaTable<'a, S>,
     stepsize: f64,
     // step_events: Vec<StateFn<'a, N, ()>>,
     step_events: Vec<Box<dyn 'a + for<'s> FnMut(&'s State<N, S>)>>,
@@ -24,7 +24,7 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
         }
     }
 
-    pub fn rk(rk: &'a RungeKuttaTable<'static, S>) -> Solver<'a, N, S> {
+    pub fn rk(rk: &'a RungeKuttaTable<'a, S>) -> Solver<'a, N, S> {
         Solver {
             rk,
             stepsize: 0.05,
