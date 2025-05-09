@@ -46,12 +46,22 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
                 ref mut callback,
                 ref mut stream,
                 ref mut filter,
-                subdivision: _,
+                subdivision,
             } = event;
 
-            if filter.iter_mut().all(|f| f.eval(state)) {
-                let output = callback.eval(state);
-                stream.iter_mut().for_each(|stream| stream(output));
+            if let Some(n) = subdivision {
+                for i in 1..=n {
+                    let t = state.t_prev + (state.t - state.t_prev) * (i as f64) / (n as f64);
+                    if filter.iter_mut().all(|f| f.eval_at(state, t)) {
+                        let output = callback.eval_at(state, t);
+                        stream.iter_mut().for_each(|stream| stream(output));
+                    }
+                }
+            } else {
+                if filter.iter_mut().all(|f| f.eval(state)) {
+                    let output = callback.eval(state);
+                    stream.iter_mut().for_each(|stream| stream(output));
+                }
             }
         })
     }

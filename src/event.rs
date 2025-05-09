@@ -153,15 +153,10 @@ impl<'a, const N: usize, Output> Event<'a, N, Output> {
         })
     }
 
-    // impl<C, S, F> Event<C, Tutle<S>, Tutle<F>, ()> {
-    //     pub fn subdivide(self, n: usize) -> Event<C, Tutle<S>, Tutle<F>, usize> {
-    //         Event {
-    //             callback: self.callback,
-    //             stream: self.stream,
-    //             filter: self.filter,
-    //             subdivision: n,
-    //         }
-    //     }
+        pub fn subdivide(mut self, n: usize) -> Self {
+            self.subdivision = Some(n);
+            self
+        }
 }
 
 impl<'a, const N: usize, Item, const M: usize> Event<'a, N, [Item; M]> {

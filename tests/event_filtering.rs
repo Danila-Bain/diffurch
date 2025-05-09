@@ -23,8 +23,8 @@ fn main() {
     let mut p_g_100 = Vec::new();
     let mut p_g_100_last = (0., 0.);
     let mut p_g_100_first = (0., 0.);
-    // let mut p13 = Vec::new();
-    // let mut p14 = Vec::new();
+    let mut p13 = Vec::new();
+    let mut p14 = Vec::new();
 
     let event = Event::ode2(f).to_vec(&mut p);
     let event_e2 = Event::ode2(f).to_vec(&mut p_e2).every(2);
@@ -47,8 +47,8 @@ fn main() {
         .to_var(&mut p_g_100_first)
         .filter_by_ode(|[x]| x > 100.)
         .once();
-    // let event13 = Event::ode2(f).to_vec(&mut p13).subdivide(2);
-    // let event14 = Event::ode2(f).to_vec(&mut p14).subdivide(4);
+    let event13 = Event::ode2(f).to_vec(&mut p13).subdivide(2);
+    let event14 = Event::ode2(f).to_vec(&mut p14).subdivide(4);
 
     Solver::rk(&rk::RK98) // it is exact for polynomials up to 8th or 9th order
         .stepsize(1.)
@@ -66,8 +66,8 @@ fn main() {
         .on_step(event_g_100)
         .on_step(event_g_100_last)
         .on_step(event_g_100_first)
-        // .on_step(event13)
-        // .on_step(event14)
+        .on_step(event13)
+        .on_step(event14)
         .run(eq, solution, interval);
 
     let f_i = |i| (i as f64, solution(i as f64)[0]);
@@ -90,25 +90,25 @@ fn main() {
     assert_eq!(p_g_100, (5..=50).map(f_i).collect::<Vec<_>>());
     assert_eq!(p_g_100_last, f_t(50.));
     assert_eq!(p_g_100_first, f_t(5.));
-    //
-    // assert!(
-    //     (0..=100)
-    //         .map(|i| {
-    //             let t = i as f64 * 0.5;
-    //             (p13[i + 1].1 - f_t(t).1).abs()
-    //         })
-    //         .fold(0f64, |acc, x| acc.max(x))
-    //         < 1e-7
-    // );
-    // assert!(
-    //     (0..=200)
-    //         .map(|i| {
-    //             let t = i as f64 * 0.25;
-    //             (p14[i + 3].1 - f_t(t).1).abs()
-    //         })
-    //         .fold(0f64, |acc, x| acc.max(x))
-    //         < 1e-7
-    // );
+
+    assert!(
+        (0..=100)
+            .map(|i| {
+                let t = i as f64 * 0.5;
+                (p13[i + 1].1 - f_t(t).1).abs()
+            })
+            .fold(0f64, |acc, x| acc.max(x))
+            < 1e-7
+    );
+    assert!(
+        (0..=200)
+            .map(|i| {
+                let t = i as f64 * 0.25;
+                (p14[i + 3].1 - f_t(t).1).abs()
+            })
+            .fold(0f64, |acc, x| acc.max(x))
+            < 1e-7
+    );
 }
 
 

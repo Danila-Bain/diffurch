@@ -215,6 +215,16 @@ impl<const N: usize, Ret> StateFn<'_, N, Ret> {
             StateFn::ODE2(f) => f(state.t, state.x),
         }
     }
+
+
+    pub fn eval_at<const S: usize>(&self, state: &State<N, S>, t: f64) -> Ret {
+        match self {
+            StateFn::Constant(f) => f(),
+            StateFn::Time(f) => f(t),
+            StateFn::ODE(f) => f(state.eval_all(t)),
+            StateFn::ODE2(f) => f(t, state.eval_all(t)),
+        }
+    }
 }
 
 pub enum StateFnMut<'a, const N: usize, Ret> {
@@ -231,6 +241,15 @@ impl<const N: usize, Ret> StateFnMut<'_, N, Ret> {
             StateFnMut::Time(f) => f(state.t),
             StateFnMut::ODE(f) => f(state.x),
             StateFnMut::ODE2(f) => f(state.t, state.x),
+        }
+    }
+
+    pub fn eval_at<const S: usize>(&mut self, state: &State<N, S>, t: f64) -> Ret {
+        match self {
+            StateFnMut::Constant(f) => f(),
+            StateFnMut::Time(f) => f(t),
+            StateFnMut::ODE(f) => f(state.eval_all(t)),
+            StateFnMut::ODE2(f) => f(t, state.eval_all(t)),
         }
     }
 }
