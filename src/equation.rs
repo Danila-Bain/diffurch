@@ -1,4 +1,4 @@
-use crate::StateFn;
+use crate::{StateCoordFnTrait, StateFn};
 
 // use crate::state::CoordFn;
 //
@@ -58,7 +58,7 @@ impl<'a, const N: usize> Equation<'a, N> {
 
     pub fn dde<RHS>(rhs: RHS) -> Self
     where
-        RHS: 'a + Fn(f64, [f64; N], [Box<dyn '_ + Fn(f64) -> f64>; N]) -> [f64; N],
+        RHS: 'a + Fn(f64, [f64; N], [Box<dyn '_ + StateCoordFnTrait>; N]) -> [f64; N],
     {
         Equation {
             rhs: StateFn::DDE(Box::new(rhs)),

@@ -207,7 +207,7 @@ pub enum StateFn<'a, const N: usize, Ret> {
     Time(Box<dyn 'a + Fn(f64) -> Ret>),
     ODE(Box<dyn 'a + Fn([f64; N]) -> Ret>),
     ODE2(Box<dyn 'a + Fn(f64, [f64; N]) -> Ret>),
-    DDE(Box<dyn 'a + Fn(f64, [f64; N], [Box<dyn '_ + Fn(f64) -> f64>; N]) -> Ret>),
+    DDE(Box<dyn 'a + Fn(f64, [f64; N], [Box<dyn '_ + StateCoordFnTrait>; N]) -> Ret>),
 }
 
 impl<'a, const N: usize, Ret> StateFn<'a, N, Ret> {
@@ -221,7 +221,7 @@ impl<'a, const N: usize, Ret> StateFn<'a, N, Ret> {
                 state.t,
                 state.x,
                 std::array::from_fn(|i| {
-                    let coord_fn: Box<dyn Fn(f64) -> f64> =
+                    let coord_fn: Box<dyn '_ + StateCoordFnTrait> =
                         Box::new(StateCoordFn::<'b, N, S> { state, coord: i });
                     coord_fn
                 }),
@@ -239,7 +239,7 @@ impl<'a, const N: usize, Ret> StateFn<'a, N, Ret> {
                 t,
                 state.eval_all(t),
                 std::array::from_fn(|i| {
-                    let coord_fn: Box<dyn Fn(f64) -> f64> =
+                    let coord_fn: Box<dyn '_ + StateCoordFnTrait> =
                         Box::new(StateCoordFn::<'b, N, S> { state, coord: i });
                     coord_fn
                 }),
@@ -278,6 +278,10 @@ impl<'a, const N: usize, Ret> StateFnMut<'a, N, Ret> {
 pub struct StateCoordFn<'a, const N: usize, const S: usize> {
     pub state: &'a State<'a, N, S>,
     pub coord: usize,
+}
+
+pub trait StateCoordFnTrait: Fn() -> f64 + Fn(f64) -> f64 {
+    fn d(&self, t: f64) -> f64;
 }
 
 impl<'a, const N: usize, const S: usize> FnOnce<()> for StateCoordFn<'a, N, S> {
@@ -323,6 +327,11 @@ impl<'a, const N: usize, const S: usize> Fn<(f64,)> for StateCoordFn<'a, N, S> {
     }
 }
 
+impl<'a, const N: usize, const S: usize> StateCoordFnTrait for StateCoordFn<'a, N, S> {
+    fn d(&self, t: f64) -> f64 {
+        self.state.eval_derivative(t, self.coord)
+    }
+}
 // impl<'state, const N: usize, const S: usize, IF: Fn(f64) -> [f64; N], DIF: Fn(f64) -> [f64; N]>
 //     CoordFn<'state, N, S, crate::util::with_derivative::Differentiable<IF, DIF>>
 // {
