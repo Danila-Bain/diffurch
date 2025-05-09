@@ -8,9 +8,9 @@ pub struct Solver<'a, const N: usize, const S: usize> {
     rk: &'a RungeKuttaTable<'a, S>,
     stepsize: f64,
     // step_events: Vec<StateFn<'a, N, ()>>,
-    step_events: Vec<Box<dyn 'a + for<'s> FnMut(&'s State<N, S>)>>,
-    start_events: Vec<Box<dyn 'a + for<'s> FnMut(&'s State<N, S>)>>,
-    stop_events: Vec<Box<dyn 'a + for<'s> FnMut(&'s State<N, S>)>>,
+    step_events: Vec<Box<dyn 'a + for<'s> FnMut(&'s mut State<N, S>)>>,
+    start_events: Vec<Box<dyn 'a + for<'s> FnMut(&'s mut State<N, S>)>>,
+    stop_events: Vec<Box<dyn 'a + for<'s> FnMut(&'s mut State<N, S>)>>,
 }
 
 impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
@@ -40,8 +40,8 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
 
     fn event_to_state_function<'c, Output: 'c + Copy>(
         mut event: Event<'c, N, Output>,
-    ) -> Box<dyn 'c + for<'b> FnMut(&'b State<N, S>)> {
-        Box::new(move |state: &State<N, S>| {
+    ) -> Box<dyn 'c + for<'b> FnMut(&'b mut State<N, S>)> {
+        Box::new(move |state: &mut State<N, S>| {
             let Event {
                 ref mut callback,
                 ref mut stream,
@@ -98,16 +98,16 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
         let mut state = State::new(t_init, ic.into(), eq, &self.rk);
         let mut stepsize = self.stepsize;
 
-        self.start_events.iter_mut().for_each(|event| event(&state));
-        self.step_events.iter_mut().for_each(|event| event(&state));
+        self.start_events.iter_mut().for_each(|event| event(&mut state));
+        self.step_events.iter_mut().for_each(|event| event(&mut state));
 
         while state.t < t_end {
             state.make_step(stepsize);
             state.push_current();
-            self.step_events.iter_mut().for_each(|event| event(&state));
+            self.step_events.iter_mut().for_each(|event| event(&mut state));
             stepsize = stepsize.min(t_end - state.t);
         }
 
-        self.stop_events.iter_mut().for_each(|event| event(&state));
+        self.stop_events.iter_mut().for_each(|event| event(&mut state));
     }
 }

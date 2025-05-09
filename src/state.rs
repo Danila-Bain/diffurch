@@ -256,7 +256,7 @@ pub enum StateFnMut<'a, const N: usize, Ret> {
 }
 
 impl<'a, const N: usize, Ret> StateFnMut<'a, N, Ret> {
-    pub fn eval<const S: usize>(&mut self, state: &State<N, S>) -> Ret {
+    pub fn eval<const S: usize>(&mut self, state: &mut State<N, S>) -> Ret {
         match self {
             StateFnMut::Constant(f) => f(),
             StateFnMut::Time(f) => f(state.t),
