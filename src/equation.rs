@@ -8,36 +8,34 @@ pub struct Equation<const N: usize = 1> {
 }
 
 impl Equation {
-    // pub fn new<const N: usize, const S: usize, Args, RHS>(rhs: RHS) -> Equation<N>
-    // where
-    //     RHS: 'static + ToStateFn<N, S, Args, [f64; N]>,
-    // {
-    //     Equation {rhs: rhs.to_state_function(), max_delay: f64::NAN}
-    // }
+    pub fn new<const N: usize>(rhs: StateFn<N, [f64; N]>) -> Equation<N> {
+        Equation {
+            rhs,
+            max_delay: f64::NAN,
+        }
+    }
 
-    //
-    //     // ordinary differential equation
-    //     pub fn ode<const N: usize, RHS>(rhs: RHS) -> Equation<N, RHS, ()>
-    //     where
-    //         RHS: Fn<([f64; N],), Output = [f64; N]>,
-    //     {
-    //         Equation::<N, RHS, ()> {
-    //             rhs,
-    //             events: (),
-    //             max_delay: 0.,
-    //         }
-    //     }
-    //
-    //     pub fn ode2<const N: usize, RHS>(rhs: RHS) -> Equation<N, RHS, ()>
-    //     where
-    //         RHS: Fn(f64, [f64; N]) -> [f64; N],
-    //     {
-    //         Equation::<N, RHS, ()> {
-    //             rhs,
-    //             events: (),
-    //             max_delay: 0.,
-    //         }
-    //     }
+    // ordinary differential equation
+    pub fn ode<const N: usize, RHS>(rhs: RHS) -> Equation<N>
+    where
+        RHS: 'static + Fn<([f64; N],), Output = [f64; N]>,
+    {
+        Equation {
+            rhs: StateFn::ODE(Box::new(rhs)),
+            max_delay: 0.,
+        }
+    }
+
+
+    pub fn ode2<const N: usize, RHS>(rhs: RHS) -> Equation<N>
+    where
+        RHS: 'static + Fn<(f64, [f64; N],), Output = [f64; N]>,
+    {
+        Equation {
+            rhs: StateFn::ODE2(Box::new(rhs)),
+            max_delay: 0.,
+        }
+    }
     //
     //     pub fn dde<const N: usize, RHS, const S: usize, IF: Fn(f64) -> [f64; N]>(
     //         rhs: RHS,
@@ -52,13 +50,29 @@ impl Equation {
     //         }
     //     }
 }
-//
-// impl<const N: usize, RHS, Events> Equation<N, RHS, Events> {
-//     pub fn with_delay(self, value: f64) -> Self {
-//         Self {
-//             rhs: self.rhs,
-//             events: self.events,
-//             max_delay: value,
-//         }
-//     }
-// }
+
+impl<const N: usize> Equation<N> {
+    pub fn with_delay(self, value: f64) -> Self {
+        Self {
+            rhs: self.rhs,
+            max_delay: value,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn creation() {
+        let _eq = Equation {
+            rhs: StateFn::ODE2(Box::new(|t, [x, y]| [-y / t, x])),
+            max_delay: f64::NAN,
+        };
+
+        let _eq = Equation::new(StateFn::Constant(Box::new(|| [42.])));
+        let _eq = Equation::ode(|[x, y]| [-y, x]);
+        let _eq = Equation::ode2(|t, [x, y, z]| [t-y, z-x, x - z/t]);
+    }
+}

@@ -197,3 +197,48 @@ impl<const N: usize, const S: usize> State<N, S> {
 //         }
 //     }
 // }
+
+pub enum StateFn<const N: usize, Ret> {
+    Constant(Box<dyn Fn() -> Ret>),
+    Time(Box<dyn Fn(f64) -> Ret>),
+    ODE(Box<dyn Fn([f64; N]) -> Ret>),
+    ODE2(Box<dyn Fn(f64, [f64; N]) -> Ret>),
+}
+
+impl<const N: usize, Ret> StateFn<N, Ret> {
+    pub fn eval<const S: usize>(&self, state: &State<N,S>) -> Ret {
+        match self {
+            StateFn::Constant(f) => f(),
+            StateFn::Time(f) => f(state.t),
+            StateFn::ODE(f) => f(state.x),
+            StateFn::ODE2(f) => f(state.t, state.x),
+        }
+    }
+}
+
+impl<const N: usize, Ret> From<Box<dyn Fn() -> Ret>> for StateFn<N, Ret> {
+    fn from(value: Box<dyn Fn() -> Ret>) -> Self {
+        Self::Constant(value)
+    }
+}
+impl<const N: usize, Ret> From<Box<dyn Fn(f64) -> Ret>> for StateFn<N, Ret> {
+    fn from(value: Box<dyn Fn(f64) -> Ret>) -> Self {
+        Self::Time(value)
+    }
+}
+impl<const N: usize, Ret> From<Box<dyn Fn([f64; N]) -> Ret>> for StateFn<N, Ret> {
+    fn from(value: Box<dyn Fn([f64; N]) -> Ret>) -> Self {
+        Self::ODE(value)
+    }
+}
+impl<const N: usize, Ret> From<Box<dyn Fn(f64, [f64; N]) -> Ret>> for StateFn<N, Ret> {
+    fn from(value: Box<dyn Fn(f64, [f64; N]) -> Ret>) -> Self {
+        Self::ODE2(value)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // use super::*;
+
+}
