@@ -1,7 +1,7 @@
 // fn main() {
 //     todo!()
 // }
-use diffurch::{Equation, Event, Solver, rk};
+use diffurch::{Equation, Event, Solver, rk, InitialCondition};
 use std::time::Duration;
 
 fn main() {
@@ -9,7 +9,8 @@ fn main() {
 
     let eq = Equation::ode(|[x, dx]| [dx, -k * k * x]).with_delay(6.);
 
-    let ic = move |t: f64| [(t * k).sin(), k * (t * k).cos()];
+    let ic = InitialCondition::Function(Box::new(move |t: f64| [(t * k).sin(), k * (t * k).cos()]));
+    let solution =move |t: f64| [(t * k).sin(), k * (t * k).cos()];
 
     let range = 0. ..50.;
 
@@ -37,7 +38,7 @@ fn main() {
         // )
         .on_step(
             Event::ode2(|t, [x, dx]| {
-                let [xx, dxx] = ic(t);
+                let [xx, dxx] = solution(t);
                 (t, x, dx, f64::max((x - xx).abs(), (dx - dxx).abs()))
             })
             // .subdivide(10)

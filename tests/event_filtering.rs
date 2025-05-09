@@ -1,10 +1,11 @@
-use diffurch::polynomial;
+use diffurch::{polynomial, InitialCondition};
 use diffurch::{Equation, Event, Solver, rk};
 
 #[test]
 fn main() {
     let eq = Equation::time(|t: f64| [polynomial![t => 1.,-2.,3.]]);
     let solution = |t: f64| [polynomial![t => 0.,1.,-1.,1.]];
+    let ic = InitialCondition::Function(Box::new(|t: f64| [polynomial![t => 0.,1.,-1.,1.]]));
     let interval = 0. ..50.;
 
     let f = |t: f64, [x]: [f64; 1]| (t, x);
@@ -68,7 +69,7 @@ fn main() {
         .on_step(event_g_100_first)
         .on_step(event13)
         .on_step(event14)
-        .run(eq, solution, interval);
+        .run(eq, ic, interval);
 
     let f_i = |i| (i as f64, solution(i as f64)[0]);
     let f_t = |t| (t, solution(t)[0]);

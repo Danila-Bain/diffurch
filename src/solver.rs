@@ -1,6 +1,7 @@
 use std::ops::Bound;
 
 use crate::Event;
+use crate::InitialCondition;
 use crate::State;
 use crate::equation::Equation;
 use crate::rk::{RK98, RungeKuttaTable};
@@ -82,8 +83,8 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
 
     pub fn run(
         mut self,
-        equation: Equation<'a, N>,
-        initial_function: impl 'static + Fn(f64) -> [f64; N],
+        eq: Equation<'a, N>,
+        ic: impl Into<InitialCondition<'a, N>>,
         interval: impl std::ops::RangeBounds<f64>,
     ) {
         use std::ops::Bound::*;
@@ -96,7 +97,7 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
             Included(&value) | Excluded(&value) => value,
         };
 
-        let mut state = State::new(t_init, initial_function, equation, &self.rk);
+        let mut state = State::new(t_init, ic.into(), eq, &self.rk);
         let mut stepsize = self.stepsize;
 
         self.start_events.iter_mut().for_each(|event| event(&state));

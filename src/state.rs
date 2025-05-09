@@ -1,4 +1,4 @@
-use crate::{Equation, rk::RungeKuttaTable};
+use crate::{Equation, InitialCondition, rk::RungeKuttaTable};
 
 use std::collections::VecDeque;
 
@@ -10,7 +10,7 @@ pub struct State<'a, const N: usize, const S: usize> {
     pub t_seq: VecDeque<f64>,
 
     pub x: [f64; N],
-    pub x_init: Box<dyn 'a + Fn(f64) -> [f64; N]>,
+    pub x_init: InitialCondition<'a, N>,
     pub x_prev: [f64; N],
     pub x_err: [f64; N],
     pub x_seq: VecDeque<[f64; N]>,
@@ -40,11 +40,16 @@ pub struct State<'a, const N: usize, const S: usize> {
 impl<'a, const N: usize, const S: usize> State<'a, N, S> {
     pub fn new(
         t_init: f64,
-        x_init: impl 'a + Fn(f64) -> [f64; N],
+        x_init: InitialCondition<'a, N>,
         eq: Equation<'a, N>,
         rk: &'a RungeKuttaTable<'a, S>,
     ) -> Self {
-        let x = x_init(t_init);
+        let x = match &x_init {
+            &InitialCondition::Point(value) => value,
+            InitialCondition::Function(f) | InitialCondition::FunctionWithDerivative(f, _) => {
+                f(t_init)
+            }
+        };
 
         Self {
             t_init,
@@ -53,7 +58,7 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
             t_span: eq.max_delay,
             t_seq: VecDeque::from([t_init]),
 
-            x_init: Box::new(x_init),
+            x_init,
             x,
             x_prev: x.clone(),
             x_err: [0.; N],
@@ -113,7 +118,7 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
 
     pub fn eval_all(&self, t: f64) -> [f64; N] {
         if t <= self.t_init {
-            return (self.x_init)(t);
+            self.x_init.eval(t)
         } else {
             let i = self.t_seq.partition_point(|t_i| t_i < &t); // first i : t_seq[i] >= t
             if i == 0 {
@@ -143,7 +148,7 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
 
     pub fn eval(&self, t: f64, coordinate: usize) -> f64 {
         if t <= self.t_init {
-            return (self.x_init)(t)[coordinate];
+            self.x_init.eval(t)[coordinate]
         } else {
             let i = self.t_seq.partition_point(|t_i| t_i < &t); // first i : t_seq[i] >= t
             if i == 0 {
@@ -168,36 +173,34 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
                 + t_step * (0..S).fold(0., |acc, j| acc + self.rk.bi[j](theta) * k[j][coordinate]);
         }
     }
-}
 
-// impl<const N: usize, const S: usize> State<N, S> {
-//     pub fn eval_derivative(&self, t: f64, coordinate: usize) -> f64 {
-//         if t <= self.t_init {
-//             return self.x_init.d(t)[coordinate];
-//         } else {
-//             let i = self.t_seq.partition_point(|t_i| t_i < &t); // first i : t_seq[i] >= t
-//             if i == 0 {
-//                 panic!(
-//                     "Evaluation of state in deleted time range. Try adding .with_delay({}) to your equation.",
-//                     self.t - t
-//                 );
-//             } else if i == self.t_seq.len() {
-//                 panic!(
-//                     "Evaluation of state in a not yet computed time range at {t} while state.t is {}.",
-//                     self.t
-//                 );
-//             }
-//
-//             // let x_prev = &self.x_seq[i - 1][coordinate];
-//             let k = &self.k_seq[i - 1];
-//             let t_prev = self.t_seq[i - 1];
-//             let t_next = self.t_seq[i];
-//             let t_step = t_next - t_prev;
-//             let theta = (t - t_prev) / t_step;
-//             return (0..S).fold(0., |acc, j| acc + self.rk.bi[j].d(theta) * k[j][coordinate]);
-//         }
-//     }
-// }
+    pub fn eval_derivative(&self, t: f64, coordinate: usize) -> f64 {
+        if t <= self.t_init {
+            self.x_init.eval_d(t)[coordinate]
+        } else {
+            let i = self.t_seq.partition_point(|t_i| t_i < &t); // first i : t_seq[i] >= t
+            if i == 0 {
+                panic!(
+                    "Evaluation of state in deleted time range. Try adding .with_delay({}) to your equation.",
+                    self.t - t
+                );
+            } else if i == self.t_seq.len() {
+                panic!(
+                    "Evaluation of state in a not yet computed time range at {t} while state.t is {}.",
+                    self.t
+                );
+            }
+
+            // let x_prev = &self.x_seq[i - 1][coordinate];
+            let k = &self.k_seq[i - 1];
+            let t_prev = self.t_seq[i - 1];
+            let t_next = self.t_seq[i];
+            let t_step = t_next - t_prev;
+            let theta = (t - t_prev) / t_step;
+            return (0..S).fold(0., |acc, j| acc + self.rk.bi[j].d(theta) * k[j][coordinate]);
+        }
+    }
+}
 
 pub enum StateFn<'a, const N: usize, Ret> {
     Constant(Box<dyn 'a + Fn() -> Ret>),
@@ -218,7 +221,7 @@ impl<'a, const N: usize, Ret> StateFn<'a, N, Ret> {
                 state.t,
                 state.x,
                 std::array::from_fn(|i| {
-                    let coord_fn: Box<dyn  Fn(f64) -> f64> =
+                    let coord_fn: Box<dyn Fn(f64) -> f64> =
                         Box::new(StateCoordFn::<'b, N, S> { state, coord: i });
                     coord_fn
                 }),
@@ -236,7 +239,7 @@ impl<'a, const N: usize, Ret> StateFn<'a, N, Ret> {
                 t,
                 state.eval_all(t),
                 std::array::from_fn(|i| {
-                    let coord_fn: Box<dyn  Fn(f64) -> f64> =
+                    let coord_fn: Box<dyn Fn(f64) -> f64> =
                         Box::new(StateCoordFn::<'b, N, S> { state, coord: i });
                     coord_fn
                 }),

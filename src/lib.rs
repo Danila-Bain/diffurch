@@ -10,8 +10,10 @@ pub mod rk;
 pub mod solver;
 pub mod state;
 pub mod util;
+pub mod initial_condition;
 
 pub use equation::*;
 pub use event::*;
 pub use solver::*;
 pub use state::*;
+pub use initial_condition::*;
