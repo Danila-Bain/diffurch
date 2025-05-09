@@ -11,7 +11,7 @@ fn main() {
     let b = -k / (k * tau).sin();
 
     let equation = Equation::dde(|t, [x], [x_]| [a * x + b * x_(t - tau)]);
-    let ic = InitialCondition::Function(Box::new(move |t: f64| [(k * t).sin()]));
+    let ic = move |t: f64| [(k * t).sin()];
     let solution = move |t: f64| [(k * t).sin()];
     let range = 0. ..10.;
 

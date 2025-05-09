@@ -26,3 +26,23 @@ impl<'a, const N: usize> InitialCondition<'a, N> {
         }
     }
 }
+
+impl<'a, const N: usize> From<[f64; N]> for InitialCondition<'a, N> {
+    fn from(value: [f64; N]) -> Self {
+        Self::Point(value)
+    }
+}
+
+impl<'a, const N: usize, F: 'a + Fn(f64) -> [f64; N]> From<F> for InitialCondition<'a, N> {
+    fn from(value: F) -> Self {
+        Self::Function(Box::new(value))
+    }
+}
+
+impl<'a, const N: usize, F: 'a + Fn(f64) -> [f64; N], DF: 'a + Fn(f64) -> [f64; N]> From<(F, DF)>
+    for InitialCondition<'a, N>
+{
+    fn from(value: (F, DF)) -> Self {
+        Self::FunctionWithDerivative(Box::new(value.0), Box::new(value.1))
+    }
+}
