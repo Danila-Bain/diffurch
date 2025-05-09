@@ -1,6 +1,5 @@
 use crate::Event;
 use crate::State;
-use crate::StateFn;
 use crate::equation::Equation;
 use crate::rk::{RK98, RungeKuttaTable};
 //
@@ -42,6 +41,7 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
         mut event: Event<'c, N, Output>,
     ) -> Box<dyn 'c + for<'b> FnMut(&'b State<N, S>)> {
         Box::new(move |state: &State<N, S>| {
+
             let Event {
                 ref mut callback,
                 ref mut stream,

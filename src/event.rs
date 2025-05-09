@@ -1,4 +1,4 @@
-use crate::{State, StateFn, StateFnMut};
+use crate::{StateFn, StateFnMut};
 
 /// Event type holds several handlers that determine *what* happens when the event happens. Event
 /// struct does not specify under what conditions event is triggered, the "when" part is determined
@@ -153,10 +153,10 @@ impl<'a, const N: usize, Output> Event<'a, N, Output> {
         })
     }
 
-        pub fn subdivide(mut self, n: usize) -> Self {
-            self.subdivision = Some(n);
-            self
-        }
+    pub fn subdivide(mut self, n: usize) -> Self {
+        self.subdivision = Some(n);
+        self
+    }
 }
 
 impl<'a, const N: usize, Item, const M: usize> Event<'a, N, [Item; M]> {
@@ -196,7 +196,7 @@ impl<'a, const N: usize, Item, const M: usize> Event<'a, N, [Item; M]> {
         Item: Copy,
     {
         self.to(move |value: [Item; M]| {
-            for i in 0..N {
+            for i in 0..M {
                 vecs[i].push(value[i]);
             }
         })

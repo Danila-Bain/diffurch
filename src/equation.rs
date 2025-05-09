@@ -1,4 +1,4 @@
-use crate::{State, StateFn};
+use crate::StateFn;
 
 // use crate::state::CoordFn;
 //
@@ -15,7 +15,7 @@ impl<'a, const N: usize> Equation<'a, N> {
         }
     }
 
-    pub fn constant< RHS>(rhs: RHS) -> Self
+    pub fn constant<RHS>(rhs: RHS) -> Self
     where
         RHS: 'a + Fn<(), Output = [f64; N]>,
     {
@@ -25,7 +25,7 @@ impl<'a, const N: usize> Equation<'a, N> {
         }
     }
 
-    pub fn time< RHS>(rhs: RHS) -> Self
+    pub fn time<RHS>(rhs: RHS) -> Self
     where
         RHS: 'a + Fn<(f64,), Output = [f64; N]>,
     {
@@ -35,7 +35,7 @@ impl<'a, const N: usize> Equation<'a, N> {
         }
     }
 
-    pub fn ode< RHS>(rhs: RHS) -> Self
+    pub fn ode<RHS>(rhs: RHS) -> Self
     where
         RHS: 'a + Fn<([f64; N],), Output = [f64; N]>,
     {
@@ -45,14 +45,24 @@ impl<'a, const N: usize> Equation<'a, N> {
         }
     }
 
-
-    pub fn ode2< RHS>(rhs: RHS) -> Self
+    pub fn ode2<RHS>(rhs: RHS) -> Self
     where
-        RHS: 'a + Fn<(f64, [f64; N],), Output = [f64; N]>,
+        RHS: 'a + Fn<(f64, [f64; N]), Output = [f64; N]>,
     {
         Equation {
             rhs: StateFn::ODE2(Box::new(rhs)),
             max_delay: 0.,
+        }
+    }
+
+
+    pub fn dde<RHS>(rhs: RHS) -> Self
+    where
+        RHS: 'a + Fn(f64, [f64; N], [Box<dyn '_ + Fn(f64) -> f64>; N]) -> [f64; N],
+    {
+        Equation {
+            rhs: StateFn::DDE(Box::new(rhs)),
+            max_delay: f64::INFINITY,
         }
     }
     //
@@ -76,7 +86,6 @@ impl<'a, const N: usize> Equation<'a, N> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -90,6 +99,6 @@ mod tests {
 
         let _eq = Equation::new(StateFn::Constant(Box::new(|| [42.])));
         let _eq = Equation::ode(|[x, y]| [-y, x]);
-        let _eq = Equation::ode2(|t, [x, y, z]| [t-y, z-x, x - z/t]);
+        let _eq = Equation::ode2(|t, [x, y, z]| [t - y, z - x, x - z / t]);
     }
 }

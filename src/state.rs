@@ -204,25 +204,43 @@ pub enum StateFn<'a, const N: usize, Ret> {
     Time(Box<dyn 'a + Fn(f64) -> Ret>),
     ODE(Box<dyn 'a + Fn([f64; N]) -> Ret>),
     ODE2(Box<dyn 'a + Fn(f64, [f64; N]) -> Ret>),
+    DDE(Box<dyn 'a + Fn(f64, [f64; N], [Box<dyn '_ + Fn(f64) -> f64>; N]) -> Ret>),
 }
 
-impl<const N: usize, Ret> StateFn<'_, N, Ret> {
-    pub fn eval<const S: usize>(&self, state: &State<N, S>) -> Ret {
+impl<'a, const N: usize, Ret> StateFn<'a, N, Ret> {
+    pub fn eval<'b, const S: usize>(&self, state: &'b State<'b, N, S>) -> Ret {
         match self {
             StateFn::Constant(f) => f(),
             StateFn::Time(f) => f(state.t),
             StateFn::ODE(f) => f(state.x),
             StateFn::ODE2(f) => f(state.t, state.x),
+            StateFn::DDE(f) => f(
+                state.t,
+                state.x,
+                std::array::from_fn(|i| {
+                    let coord_fn: Box<dyn  Fn(f64) -> f64> =
+                        Box::new(StateCoordFn::<'b, N, S> { state, coord: i });
+                    coord_fn
+                }),
+            ),
         }
     }
 
-
-    pub fn eval_at<const S: usize>(&self, state: &State<N, S>, t: f64) -> Ret {
+    pub fn eval_at<'b, const S: usize>(&self, state: &'b State<'b, N, S>, t: f64) -> Ret {
         match self {
             StateFn::Constant(f) => f(),
             StateFn::Time(f) => f(t),
             StateFn::ODE(f) => f(state.eval_all(t)),
             StateFn::ODE2(f) => f(t, state.eval_all(t)),
+            StateFn::DDE(f) => f(
+                t,
+                state.eval_all(t),
+                std::array::from_fn(|i| {
+                    let coord_fn: Box<dyn  Fn(f64) -> f64> =
+                        Box::new(StateCoordFn::<'b, N, S> { state, coord: i });
+                    coord_fn
+                }),
+            ),
         }
     }
 }
@@ -234,7 +252,7 @@ pub enum StateFnMut<'a, const N: usize, Ret> {
     ODE2(Box<dyn 'a + FnMut(f64, [f64; N]) -> Ret>),
 }
 
-impl<const N: usize, Ret> StateFnMut<'_, N, Ret> {
+impl<'a, const N: usize, Ret> StateFnMut<'a, N, Ret> {
     pub fn eval<const S: usize>(&mut self, state: &State<N, S>) -> Ret {
         match self {
             StateFnMut::Constant(f) => f(),
@@ -254,24 +272,59 @@ impl<const N: usize, Ret> StateFnMut<'_, N, Ret> {
     }
 }
 
-// impl<'a, const N: usize, Ret> From<Box<dyn Fn() -> Ret>> for StateFn<'a, N, Ret> {
-//     fn from(value: Box<dyn 'a + Fn() -> Ret>) -> Self {
-//         Self::Constant(value)
-//     }
-// }
-// impl<'a, const N: usize, Ret> From<Box<dyn Fn(f64) -> Ret>> for StateFn<'a, N, Ret> {
-//     fn from(value: Box<dyn 'a + Fn(f64) -> Ret>) -> Self {
-//         Self::Time(value)
-//     }
-// }
-// impl<'a, const N: usize, Ret> From<Box<dyn Fn([f64; N]) -> Ret>> for StateFn<'a, N, Ret> {
-//     fn from(value: Box<dyn 'a + Fn([f64; N]) -> Ret>) -> Self {
-//         Self::ODE(value)
-//     }
-// }
-// impl<'a, const N: usize, Ret> From<Box<dyn Fn(f64, [f64; N]) -> Ret>> for StateFn<'a, N, Ret> {
-//     fn from(value: Box<dyn 'a + Fn(f64, [f64; N]) -> Ret>) -> Self {
-//         Self::ODE2(value)
+pub struct StateCoordFn<'a, const N: usize, const S: usize> {
+    pub state: &'a State<'a, N, S>,
+    pub coord: usize,
+}
+
+impl<'a, const N: usize, const S: usize> FnOnce<()> for StateCoordFn<'a, N, S> {
+    type Output = f64;
+    #[inline]
+    extern "rust-call" fn call_once(self, _: ()) -> Self::Output {
+        self.state.x[self.coord]
+    }
+}
+
+impl<'a, const N: usize, const S: usize> FnMut<()> for StateCoordFn<'a, N, S> {
+    #[inline]
+    extern "rust-call" fn call_mut(&mut self, _: ()) -> Self::Output {
+        self.state.x[self.coord]
+    }
+}
+
+impl<'a, const N: usize, const S: usize> Fn<()> for StateCoordFn<'a, N, S> {
+    #[inline]
+    extern "rust-call" fn call(&self, _: ()) -> Self::Output {
+        self.state.x[self.coord]
+    }
+}
+
+impl<'a, const N: usize, const S: usize> FnOnce<(f64,)> for StateCoordFn<'a, N, S> {
+    type Output = f64;
+    #[inline]
+    extern "rust-call" fn call_once(self, arg: (f64,)) -> Self::Output {
+        self.state.eval(arg.0, self.coord)
+    }
+}
+
+impl<'a, const N: usize, const S: usize> FnMut<(f64,)> for StateCoordFn<'a, N, S> {
+    #[inline]
+    extern "rust-call" fn call_mut(&mut self, arg: (f64,)) -> Self::Output {
+        self.state.eval(arg.0, self.coord)
+    }
+}
+
+impl<'a, const N: usize, const S: usize> Fn<(f64,)> for StateCoordFn<'a, N, S> {
+    extern "rust-call" fn call(&self, arg: (f64,)) -> Self::Output {
+        self.state.eval(arg.0, self.coord)
+    }
+}
+
+// impl<'state, const N: usize, const S: usize, IF: Fn(f64) -> [f64; N], DIF: Fn(f64) -> [f64; N]>
+//     CoordFn<'state, N, S, crate::util::with_derivative::Differentiable<IF, DIF>>
+// {
+//     pub fn d(&self, t: f64) -> f64 {
+//         return self.state_ref.eval_derivative(t, self.coordinate);
 //     }
 // }
 
