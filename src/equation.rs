@@ -15,7 +15,26 @@ impl<'a, const N: usize> Equation<'a, N> {
         }
     }
 
-    // ordinary differential equation
+    pub fn constant< RHS>(rhs: RHS) -> Self
+    where
+        RHS: 'a + Fn<(), Output = [f64; N]>,
+    {
+        Equation {
+            rhs: StateFn::Constant(Box::new(rhs)),
+            max_delay: 0.,
+        }
+    }
+
+    pub fn time< RHS>(rhs: RHS) -> Self
+    where
+        RHS: 'a + Fn<(f64,), Output = [f64; N]>,
+    {
+        Equation {
+            rhs: StateFn::Time(Box::new(rhs)),
+            max_delay: 0.,
+        }
+    }
+
     pub fn ode< RHS>(rhs: RHS) -> Self
     where
         RHS: 'a + Fn<([f64; N],), Output = [f64; N]>,
