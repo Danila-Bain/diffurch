@@ -69,123 +69,40 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
         self
     }
 
-//     pub fn run(
-//         self,
-//         equation: Equation<'a, N>,
-//         initial_function: f64,
-//         interval: impl std::ops::RangeBounds<f64>,
-//     ) {
-//
-//         /* initializations */
-//
-//         let t_init = match interval.start_bound() {
-//             std::ops::Bound::Unbounded => 0.,
-//             std::ops::Bound::Included(value) => *value,
-//             std::ops::Bound::Excluded(value) => *value,
-//         };
-//
-//         let t_end = match interval.end_bound() {
-//             std::ops::Bound::Unbounded => f64::MAX,
-//             std::ops::Bound::Included(value) => *value,
-//             std::ops::Bound::Excluded(value) => *value,
-//         };
-//
-//         let mut state = State::new(t_init, initial_function, self.rk);
-//         state.t_step = self.stepsize;
-//         state.t_span = equation.max_delay;
-//
-//         // ToStateFn::<&State<N, S, IC>, EquationA, [f64; N]>::to_state_function(equation.rhs);
-//         let mut rhs = equation.rhs.to_state_function();
-//         let mut step_events = self.step_events.to_state_tutle();
-//         let mut start_events = self.start_events.to_state_tutle();
-//         let mut stop_events = self.stop_events.to_state_tutle();
-//
-//         let _equation_events = equation.events;
-//
-//         start_events(&state);
-//         step_events(&state);
-//
-//         while state.t < t_end {
-//             state.make_step(&mut rhs);
-//             state.push_current();
-//             step_events(&state);
-//             state.t_step = state.t_step.min(t_end - state.t);
-//         }
-//
-//         stop_events(&state);
-//     }
-// }
-}
+    pub fn run(
+        mut self,
+        equation: Equation<'a, N>,
+        initial_function: impl 'static + Fn(f64) -> [f64; N],
+        interval: impl std::ops::RangeBounds<f64>,
+    ) {
+        /* initializations */
 
-// impl<const S: usize, StepE, StartE, StopE, RootE> Solver<S, StepE, StartE, StopE, RootE> {
-//     pub fn run<
-//         const N: usize,
-//         Interval,
-//         IC,
-//         RHS,
-//         EquationE,
-//         EquationA,
-//         StepEA,
-//         StepER,
-//         StartEA,
-//         StartER,
-//         StopEA,
-//         StopER,
-//     >(
-//         self,
-//         equation: Equation<N, RHS, EquationE>,
-//         initial_function: IC,
-//         interval: Interval,
-//     ) where
-//         Interval: std::ops::RangeBounds<f64>,
-//         IC: Fn(f64) -> [f64; N],
-//         StepE: TutleLevel,
-//         StepE: ToStateTutle<State<N, S, IC>, StepEA, StepER, StepE::Level>,
-//         StartE: TutleLevel,
-//         StartE: ToStateTutle<State<N, S, IC>, StartEA, StartER, StartE::Level>,
-//         StopE: TutleLevel,
-//         StopE: ToStateTutle<State<N, S, IC>, StopEA, StopER, StopE::Level>,
-//         RHS: Fn<EquationA, Output = [f64; N]>,
-//         EquationA: std::marker::Tuple,
-//         // EquationA: for<'a> FromState<&'a State<N, S, IC>>,
-//         RHS: ToStateFn<State<N, S, IC>, EquationA, [f64; N]>,
-//     {
-//         /* initializations */
-//
-//         let t_init = match interval.start_bound() {
-//             std::ops::Bound::Unbounded => 0.,
-//             std::ops::Bound::Included(value) => *value,
-//             std::ops::Bound::Excluded(value) => *value,
-//         };
-//
-//         let t_end = match interval.end_bound() {
-//             std::ops::Bound::Unbounded => f64::MAX,
-//             std::ops::Bound::Included(value) => *value,
-//             std::ops::Bound::Excluded(value) => *value,
-//         };
-//
-//         let mut state = State::new(t_init, initial_function, self.rk);
-//         state.t_step = self.stepsize;
-//         state.t_span = equation.max_delay;
-//
-//         // ToStateFn::<&State<N, S, IC>, EquationA, [f64; N]>::to_state_function(equation.rhs);
-//         let mut rhs = equation.rhs.to_state_function();
-//         let mut step_events = self.step_events.to_state_tutle();
-//         let mut start_events = self.start_events.to_state_tutle();
-//         let mut stop_events = self.stop_events.to_state_tutle();
-//
-//         let _equation_events = equation.events;
-//
-//         start_events(&state);
-//         step_events(&state);
-//
-//         while state.t < t_end {
-//             state.make_step(&mut rhs);
-//             state.push_current();
-//             step_events(&state);
-//             state.t_step = state.t_step.min(t_end - state.t);
-//         }
-//
-//         stop_events(&state);
-//     }
-// }
+        let t_init = match interval.start_bound() {
+            std::ops::Bound::Unbounded => 0.,
+            std::ops::Bound::Included(value) => *value,
+            std::ops::Bound::Excluded(value) => *value,
+        };
+
+        let t_end = match interval.end_bound() {
+            std::ops::Bound::Unbounded => f64::MAX,
+            std::ops::Bound::Included(value) => *value,
+            std::ops::Bound::Excluded(value) => *value,
+        };
+
+        let mut state = State::new(t_init, initial_function, equation, &self.rk);
+
+        self.start_events.iter_mut().for_each(|event| event(&state));
+        self.step_events.iter_mut().for_each(|event| event(&state));
+
+        let mut stepsize = self.stepsize;
+
+        while state.t < t_end {
+            state.make_step(stepsize);
+            state.push_current();
+            self.step_events.iter_mut().for_each(|event| event(&state));
+            stepsize = stepsize.min(t_end - state.t);
+        }
+
+        self.stop_events.iter_mut().for_each(|event| event(&state));
+    }
+}

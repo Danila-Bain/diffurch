@@ -1,17 +1,16 @@
-use crate::rk::RungeKuttaTable;
+use crate::{Equation, rk::RungeKuttaTable};
 
 use std::collections::VecDeque;
 
-pub struct State<const N: usize, const S: usize> {
+pub struct State<'a, const N: usize, const S: usize> {
     pub t: f64,
     pub t_init: f64,
     pub t_prev: f64,
-    pub t_step: f64,
     pub t_span: f64,
     pub t_seq: VecDeque<f64>,
 
     pub x: [f64; N],
-    pub x_init: Box<dyn Fn(f64) -> [f64; N]>,
+    pub x_init: Box<dyn 'a + Fn(f64) -> [f64; N]>,
     pub x_prev: [f64; N],
     pub x_err: [f64; N],
     pub x_seq: VecDeque<[f64; N]>,
@@ -19,8 +18,8 @@ pub struct State<const N: usize, const S: usize> {
     k: [[f64; N]; S],
     k_seq: VecDeque<[[f64; N]; S]>,
 
-    rk: &'static RungeKuttaTable<'static, S>,
-    rhs: Box<dyn Fn(&Self) -> [f64; N]>,
+    rk: &'a RungeKuttaTable<'a, S>,
+    rhs: StateFn<'a, N, [f64; N]>,
 }
 
 // pub trait StateTrait<const N: usize> {
@@ -36,18 +35,22 @@ pub struct State<const N: usize, const S: usize> {
 //     fn t(&self) -> f64 {
 //         self.t
 //     }
-// } 
+// }
 
-impl<const N: usize, const S: usize> State<N, S> {
-    pub fn new(t_init: f64, x_init: impl 'static + Fn(f64) -> [f64; N], rhs: impl 'static + Fn(&Self) -> [f64; N], rk: &'static RungeKuttaTable<S>) -> Self {
+impl<'a, const N: usize, const S: usize> State<'a, N, S> {
+    pub fn new(
+        t_init: f64,
+        x_init: impl 'a + Fn(f64) -> [f64; N],
+        eq: Equation<'a, N>,
+        rk: &'a RungeKuttaTable<'a, S>,
+    ) -> Self {
         let x = x_init(t_init);
 
         Self {
             t_init,
             t: t_init,
             t_prev: t_init,
-            t_step: f64::MAX,
-            t_span: 0.,
+            t_span: eq.max_delay,
             t_seq: VecDeque::from([t_init]),
 
             x_init: Box::new(x_init),
@@ -59,18 +62,18 @@ impl<const N: usize, const S: usize> State<N, S> {
             k: [[0.; N]; S],
             k_seq: VecDeque::new(),
 
-            rk: &rk,
-            rhs: Box::new(rhs),
+            rk,
+            rhs: eq.rhs,
         }
     }
 }
 
-impl<const N: usize, const S: usize> State<N, S> {
+impl<'a, const N: usize, const S: usize> State<'a, N, S> {
     pub fn push_current(&mut self) {
         self.t_seq.push_back(self.t);
         self.x_seq.push_back(self.x);
         self.k_seq.push_back(self.k);
-        while self.t - self.t_span - 2. * self.t_step
+        while self.t_prev - self.t_span
             > *self
                 .t_seq
                 .front()
@@ -82,8 +85,7 @@ impl<const N: usize, const S: usize> State<N, S> {
         }
     }
 
-    pub fn make_step(&mut self, t_step: f64)
-    {
+    pub fn make_step(&mut self, t_step: f64) {
         self.t_prev = self.t;
         self.x_prev = self.x;
 
@@ -94,12 +96,11 @@ impl<const N: usize, const S: usize> State<N, S> {
                 self.x_prev[k]
                     + t_step * (0..i).fold(0., |acc, j| acc + self.rk.a[i][j] * self.k[j][k])
             });
-            self.k[i] = (self.rhs)(self);
+            self.k[i] = self.rhs.eval(self);
         }
 
         self.x = std::array::from_fn(|k| {
-            self.x_prev[k]
-                + t_step * (0..S).fold(0., |acc, j| acc + self.rk.b[j] * self.k[j][k])
+            self.x_prev[k] + t_step * (0..S).fold(0., |acc, j| acc + self.rk.b[j] * self.k[j][k])
         });
         self.t = self.t_prev + t_step;
     }
@@ -198,51 +199,64 @@ impl<const N: usize, const S: usize> State<N, S> {
 //     }
 // }
 
-
-
 pub enum StateFn<'a, const N: usize, Ret> {
-    // State<const S: usize>(Box<dyn 'a + FnMut(State<N, S>) -> Ret>),
-    Constant(Box<dyn 'a + FnMut() -> Ret>),
-    Time(Box<dyn 'a +  FnMut(f64) -> Ret>),
-    ODE(Box<dyn 'a + FnMut([f64; N]) -> Ret>),
-    ODE2(Box<dyn 'a + FnMut(f64, [f64; N]) -> Ret>),
+    Constant(Box<dyn 'a + Fn() -> Ret>),
+    Time(Box<dyn 'a + Fn(f64) -> Ret>),
+    ODE(Box<dyn 'a + Fn([f64; N]) -> Ret>),
+    ODE2(Box<dyn 'a + Fn(f64, [f64; N]) -> Ret>),
 }
 
 impl<const N: usize, Ret> StateFn<'_, N, Ret> {
-    pub fn eval<const S: usize>(&mut self, state: &State<N,S>) -> Ret {
+    pub fn eval<const S: usize>(&self, state: &State<N, S>) -> Ret {
         match self {
             StateFn::Constant(f) => f(),
             StateFn::Time(f) => f(state.t),
             StateFn::ODE(f) => f(state.x),
             StateFn::ODE2(f) => f(state.t, state.x),
-            // StateFn::Self(f) => f(state),
         }
     }
 }
 
-impl<'a, const N: usize, Ret> From<Box<dyn Fn() -> Ret>> for StateFn<'a, N, Ret> {
-    fn from(value: Box<dyn 'a + Fn() -> Ret>) -> Self {
-        Self::Constant(value)
+pub enum StateFnMut<'a, const N: usize, Ret> {
+    Constant(Box<dyn 'a + FnMut() -> Ret>),
+    Time(Box<dyn 'a + FnMut(f64) -> Ret>),
+    ODE(Box<dyn 'a + FnMut([f64; N]) -> Ret>),
+    ODE2(Box<dyn 'a + FnMut(f64, [f64; N]) -> Ret>),
+}
+
+impl<const N: usize, Ret> StateFnMut<'_, N, Ret> {
+    pub fn eval<const S: usize>(&mut self, state: &State<N, S>) -> Ret {
+        match self {
+            StateFnMut::Constant(f) => f(),
+            StateFnMut::Time(f) => f(state.t),
+            StateFnMut::ODE(f) => f(state.x),
+            StateFnMut::ODE2(f) => f(state.t, state.x),
+        }
     }
 }
-impl<'a, const N: usize, Ret> From<Box<dyn Fn(f64) -> Ret>> for StateFn<'a, N, Ret> {
-    fn from(value: Box<dyn 'a + Fn(f64) -> Ret>) -> Self {
-        Self::Time(value)
-    }
-}
-impl<'a, const N: usize, Ret> From<Box<dyn Fn([f64; N]) -> Ret>> for StateFn<'a, N, Ret> {
-    fn from(value: Box<dyn 'a + Fn([f64; N]) -> Ret>) -> Self {
-        Self::ODE(value)
-    }
-}
-impl<'a, const N: usize, Ret> From<Box<dyn Fn(f64, [f64; N]) -> Ret>> for StateFn<'a, N, Ret> {
-    fn from(value: Box<dyn 'a + Fn(f64, [f64; N]) -> Ret>) -> Self {
-        Self::ODE2(value)
-    }
-}
+
+// impl<'a, const N: usize, Ret> From<Box<dyn Fn() -> Ret>> for StateFn<'a, N, Ret> {
+//     fn from(value: Box<dyn 'a + Fn() -> Ret>) -> Self {
+//         Self::Constant(value)
+//     }
+// }
+// impl<'a, const N: usize, Ret> From<Box<dyn Fn(f64) -> Ret>> for StateFn<'a, N, Ret> {
+//     fn from(value: Box<dyn 'a + Fn(f64) -> Ret>) -> Self {
+//         Self::Time(value)
+//     }
+// }
+// impl<'a, const N: usize, Ret> From<Box<dyn Fn([f64; N]) -> Ret>> for StateFn<'a, N, Ret> {
+//     fn from(value: Box<dyn 'a + Fn([f64; N]) -> Ret>) -> Self {
+//         Self::ODE(value)
+//     }
+// }
+// impl<'a, const N: usize, Ret> From<Box<dyn Fn(f64, [f64; N]) -> Ret>> for StateFn<'a, N, Ret> {
+//     fn from(value: Box<dyn 'a + Fn(f64, [f64; N]) -> Ret>) -> Self {
+//         Self::ODE2(value)
+//     }
+// }
 
 #[cfg(test)]
 mod tests {
     // use super::*;
-
 }
