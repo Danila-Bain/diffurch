@@ -9,6 +9,33 @@
 
 use super::State;
 
+pub trait StateFn<const N: usize, Ret> {
+    fn eval<const S:usize>(&self, state: &State<N,S>) -> Ret;
+    fn eval_at<const S:usize>(&self, state: &State<N,S>, t: f64) -> Ret;
+}
+
+
+macro_rules! state_fn_impl {
+    (args: $args_tuple:ty, t: $t:ident, state: $state:ident, pass: $pass:expr, pass_at: $pass_at:expr $(,)?) => {
+        impl<const N: usize, Ret> StateFn<N, Ret> for dyn Fn<$args_tuple, Output=Ret> {
+            fn eval<const S:usize>(&self, $state: &State<N,S>) -> Ret {
+                self.call($pass)
+            }
+
+            fn eval_at<const S:usize>(&self, $state: &State<N,S>, $t: f64) -> Ret {
+                self.call($pass_at)
+            }
+        }
+    };
+}
+
+state_fn_impl!( args: (), t: _t, state: _state, pass: (), pass_at: (),);
+state_fn_impl!( args: (f64,), t: _t, state: _state, pass: (_state.t,), pass_at: (_t,),);
+state_fn_impl!( args: ([f64; N],), t: t, state: state, pass: (state.x,), pass_at: (state.eval_all(t),),);
+state_fn_impl!( args: (f64, [f64; N]), t: t, state: state, pass: (state.t, state.x), pass_at: (t, state.eval_all(t)),);
+
+
+
 pub trait ToStateFn<const N: usize, const S: usize, Args, Ret> {
     fn to_state_function(self) -> Box<dyn Fn(&State<N, S>) -> Ret>;
     fn to_state_eval_function(self) -> Box<dyn Fn(&State<N, S>, f64) -> Ret>;
