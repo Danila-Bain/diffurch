@@ -1,5 +1,13 @@
 In each section, roughly in order of simplicity and necessity:
 
+# Questions
+
+[ ] (Yes) Should the State own RHS?
+    - for now RHS is only used by passing it to State, and will not be used anywhere else in the future, because user manages the sover inner workings by defining the events that act on a state
+    - for now, only one RHS is passed to State during integration, in the future one might want to switch the RHS from time to time to support discontinuous equations, but it makes more sense if we modify the RHS branch in the state itself
+    - can State use RHS outside of the make_step function? Where else the derivative of the solution might be usefull? It might or might not be cheaper for outputing the derivative of the solution, comparing to interpolants, but it also may be used to compute the derivative at points, where step is not finished, so answer is maybe.
+    - Overall, the answer is yes.
+
 # Equation types support
 
 [x] implement to_state_function for functions with signatures fn(f64) and fn()
@@ -30,7 +38,6 @@ In each section, roughly in order of simplicity and necessity:
 
 
 # Event Output
-
 
 [x] add filtering of the events, which is a closure that returns bool
     [x] filter_by(...), like filter_by(|t| t >= 10.)

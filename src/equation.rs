@@ -1,69 +1,69 @@
-use crate::state::CoordFn;
-
-pub struct Equation<const N: usize = 1, RHS = (), Events = ()> {
-    pub rhs: RHS,
-    pub events: Events,
-    pub max_delay: f64,
-}
-
-impl Equation {
-    pub fn new<const N: usize, Args, RHS>(rhs: RHS) -> Equation<N, RHS, ()>
-    where
-        // for<'a> &'a crate::state::State<N, 1, fn(f64) -> [f64; N]>: crate::state::StateInto<Args>,
-        RHS: Fn<Args, Output = [f64; N]>,
-        Args: std::marker::Tuple,
-        // Args: for<'a> FromState<&'a State<N, 1, fn(f64) -> [f64; N]>>,
-    {
-        Equation::<N, RHS, ()> {
-            rhs,
-            events: (),
-            max_delay: f64::NAN,
-        }
-    }
-
-    // ordinary differential equation
-    pub fn ode<const N: usize, RHS>(rhs: RHS) -> Equation<N, RHS, ()>
-    where
-        RHS: Fn<([f64; N],), Output = [f64; N]>,
-    {
-        Equation::<N, RHS, ()> {
-            rhs,
-            events: (),
-            max_delay: 0.,
-        }
-    }
-
-    pub fn ode2<const N: usize, RHS>(rhs: RHS) -> Equation<N, RHS, ()>
-    where
-        RHS: Fn(f64, [f64; N]) -> [f64; N],
-    {
-        Equation::<N, RHS, ()> {
-            rhs,
-            events: (),
-            max_delay: 0.,
-        }
-    }
-
-    pub fn dde<const N: usize, RHS, const S: usize, IF: Fn(f64) -> [f64; N]>(
-        rhs: RHS,
-    ) -> Equation<N, RHS, ()>
-    where
-        RHS: for<'a> Fn(f64, [f64; N], [CoordFn<'a, N, S, IF>; N]) -> [f64; N],
-    {
-        Equation::<N, RHS, ()> {
-            rhs,
-            events: (),
-            max_delay: f64::NAN,
-        }
-    }
-}
-
-impl<const N: usize, RHS, Events> Equation<N, RHS, Events> {
-    pub fn with_delay(self, value: f64) -> Self {
-        Self {
-            rhs: self.rhs,
-            events: self.events,
-            max_delay: value,
-        }
-    }
-}
+// use crate::state::CoordFn;
+//
+// pub struct Equation<const N: usize = 1, RHS = (), Events = ()> {
+//     pub rhs: RHS,
+//     pub events: Events,
+//     pub max_delay: f64,
+// }
+//
+// impl Equation {
+//     pub fn new<const N: usize, Args, RHS>(rhs: RHS) -> Equation<N, RHS, ()>
+//     where
+//         // for<'a> &'a crate::state::State<N, 1, fn(f64) -> [f64; N]>: crate::state::StateInto<Args>,
+//         RHS: Fn<Args, Output = [f64; N]>,
+//         Args: std::marker::Tuple,
+//         // Args: for<'a> FromState<&'a State<N, 1, fn(f64) -> [f64; N]>>,
+//     {
+//         Equation::<N, RHS, ()> {
+//             rhs,
+//             events: (),
+//             max_delay: f64::NAN,
+//         }
+//     }
+//
+//     // ordinary differential equation
+//     pub fn ode<const N: usize, RHS>(rhs: RHS) -> Equation<N, RHS, ()>
+//     where
+//         RHS: Fn<([f64; N],), Output = [f64; N]>,
+//     {
+//         Equation::<N, RHS, ()> {
+//             rhs,
+//             events: (),
+//             max_delay: 0.,
+//         }
+//     }
+//
+//     pub fn ode2<const N: usize, RHS>(rhs: RHS) -> Equation<N, RHS, ()>
+//     where
+//         RHS: Fn(f64, [f64; N]) -> [f64; N],
+//     {
+//         Equation::<N, RHS, ()> {
+//             rhs,
+//             events: (),
+//             max_delay: 0.,
+//         }
+//     }
+//
+//     pub fn dde<const N: usize, RHS, const S: usize, IF: Fn(f64) -> [f64; N]>(
+//         rhs: RHS,
+//     ) -> Equation<N, RHS, ()>
+//     where
+//         RHS: for<'a> Fn(f64, [f64; N], [CoordFn<'a, N, S, IF>; N]) -> [f64; N],
+//     {
+//         Equation::<N, RHS, ()> {
+//             rhs,
+//             events: (),
+//             max_delay: f64::NAN,
+//         }
+//     }
+// }
+//
+// impl<const N: usize, RHS, Events> Equation<N, RHS, Events> {
+//     pub fn with_delay(self, value: f64) -> Self {
+//         Self {
+//             rhs: self.rhs,
+//             events: self.events,
+//             max_delay: value,
+//         }
+//     }
+// }
