@@ -5,7 +5,7 @@ use crate::{StateFn, StateFnMut};
 /// in [crate::solver::Solver] struct.
 pub struct Event<'a, const N: usize = 0, Output = ()> {
     /// Function, which is called on a state. Its output is then fed to `stream`.
-    pub callback: StateFn<'a, N, Output>,
+    pub callback: StateFnMut<'a, N, Output>,
     /// Function (or rather a collection of functions), which handles the output destination and
     /// formatting provided by `callback`. It takes a single argument: the return type of `callback`.
     pub stream: Vec<Box<dyn 'a + FnMut(Output)>>,
@@ -22,7 +22,7 @@ pub struct Event<'a, const N: usize = 0, Output = ()> {
 }
 
 impl<'a, const N: usize, Output> Event<'a, N, Output> {
-    pub fn new(callback: StateFn<'a, N, Output>) -> Self {
+    pub fn new(callback: StateFnMut<'a, N, Output>) -> Self {
         Event {
             callback,
             stream: Vec::new(),
@@ -31,18 +31,23 @@ impl<'a, const N: usize, Output> Event<'a, N, Output> {
         }
     }
 
-    pub fn constant(callback: impl 'a + Fn() -> Output) -> Self {
-        Event::new(StateFn::Constant(Box::new(callback)))
+    pub fn constant(callback: impl 'a + FnMut() -> Output) -> Self {
+        Event::new(StateFnMut::Constant(Box::new(callback)))
     }
-    pub fn time(callback: impl 'a + Fn(f64) -> Output) -> Self {
-        Event::new(StateFn::Time(Box::new(callback)))
+    pub fn time(callback: impl 'a + FnMut(f64) -> Output) -> Self {
+        Event::new(StateFnMut::Time(Box::new(callback)))
     }
-    pub fn ode(callback: impl 'a + Fn([f64; N]) -> Output) -> Self {
-        Event::new(StateFn::ODE(Box::new(callback)))
+    pub fn time_mut(callback: impl 'a + FnMut(&mut f64) -> Output) -> Self {
+        Event::new(StateFnMut::TimeMut(Box::new(callback)))
     }
-    pub fn ode2(callback: impl 'a + Fn(f64, [f64; N]) -> Output) -> Self {
-        Event::new(StateFn::ODE2(Box::new(callback)))
+    pub fn ode(callback: impl 'a + FnMut([f64; N]) -> Output) -> Self {
+        Event::new(StateFnMut::ODE(Box::new(callback)))
     }
+    pub fn ode2(callback: impl 'a + FnMut(f64, [f64; N]) -> Output) -> Self {
+        Event::new(StateFnMut::ODE2(Box::new(callback)))
+    }
+
+
 
     pub fn to(mut self, s: impl 'a + FnMut(Output)) -> Self {
         self.stream.push(Box::new(s));
@@ -121,7 +126,7 @@ impl<'a, const N: usize, Output> Event<'a, N, Output> {
         })
     }
 
-    pub fn in_range(self, interval: std::ops::Range<f64>) -> Self {
+    pub fn in_range(self, interval: impl 'a + std::ops::RangeBounds<f64>) -> Self {
         self.filter_by_time(move |t| interval.contains(&t))
     }
     pub fn once(self) -> Self {
@@ -156,6 +161,13 @@ impl<'a, const N: usize, Output> Event<'a, N, Output> {
     pub fn subdivide(mut self, n: usize) -> Self {
         self.subdivision = Some(n);
         self
+    }
+}
+
+
+impl<'a, const N: usize> Event<'a, N, ()> {
+    pub fn stop_integration() -> Self {
+        Event::time_mut(|t| {*t = f64::INFINITY;})
     }
 }
 

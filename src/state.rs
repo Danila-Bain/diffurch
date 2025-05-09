@@ -253,24 +253,47 @@ pub enum StateFnMut<'a, const N: usize, Ret> {
     Time(Box<dyn 'a + FnMut(f64) -> Ret>),
     ODE(Box<dyn 'a + FnMut([f64; N]) -> Ret>),
     ODE2(Box<dyn 'a + FnMut(f64, [f64; N]) -> Ret>),
+    DDE(Box<dyn 'a + Fn(f64, [f64; N], [Box<dyn '_ + StateCoordFnTrait>; N]) -> Ret>),
+
+    TimeMut(Box<dyn 'a + FnMut(&mut f64) -> Ret>),
 }
 
 impl<'a, const N: usize, Ret> StateFnMut<'a, N, Ret> {
-    pub fn eval<const S: usize>(&mut self, state: &mut State<N, S>) -> Ret {
+    pub fn eval<'b, const S: usize>(&mut self, state: &'b mut State<N, S>) -> Ret {
         match self {
             StateFnMut::Constant(f) => f(),
             StateFnMut::Time(f) => f(state.t),
+            StateFnMut::TimeMut(f) => f(&mut state.t),
             StateFnMut::ODE(f) => f(state.x),
             StateFnMut::ODE2(f) => f(state.t, state.x),
+            StateFnMut::DDE(f) => f(
+                state.t,
+                state.x,
+                std::array::from_fn(|i| {
+                    let coord_fn: Box<dyn '_ + StateCoordFnTrait> =
+                        Box::new(StateCoordFn::<'b, N, S> { state, coord: i });
+                    coord_fn
+                }),
+            ),
         }
     }
 
-    pub fn eval_at<const S: usize>(&mut self, state: &State<N, S>, t: f64) -> Ret {
+    pub fn eval_at<'b, const S: usize>(&mut self, state: &'b State<N, S>, mut t: f64) -> Ret {
         match self {
             StateFnMut::Constant(f) => f(),
             StateFnMut::Time(f) => f(t),
+            StateFnMut::TimeMut(f) => f(&mut t),
             StateFnMut::ODE(f) => f(state.eval_all(t)),
             StateFnMut::ODE2(f) => f(t, state.eval_all(t)),
+            StateFnMut::DDE(f) => f(
+                t,
+                state.eval_all(t),
+                std::array::from_fn(|i| {
+                    let coord_fn: Box<dyn '_ + StateCoordFnTrait> =
+                        Box::new(StateCoordFn::<'b, N, S> { state, coord: i });
+                    coord_fn
+                }),
+            ),
         }
     }
 }

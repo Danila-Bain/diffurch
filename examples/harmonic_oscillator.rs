@@ -43,6 +43,10 @@ fn main() {
             // .subdivide(10)
             .to_std(),
         )
+        .on_step(
+            Event::stop_integration().in_range(22.5 ..)
+        )
+        // .on_step(Event::time_mut(|t| {*t = f64::INFINITY; *t}).to_std().times(23..))
         // .on_step(Event::new(|| "Step finished").to_std())
         // .on_step(Event::ode2(|t, [x, dx]| (t, x, dx)).to(
         //     |(t, x, dx): (f64, f64, f64)| {
