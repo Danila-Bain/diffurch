@@ -198,14 +198,14 @@ impl<const N: usize, const S: usize> State<N, S> {
 //     }
 // }
 
-pub enum StateFn<const N: usize, Ret> {
-    Constant(Box<dyn Fn() -> Ret>),
-    Time(Box<dyn Fn(f64) -> Ret>),
-    ODE(Box<dyn Fn([f64; N]) -> Ret>),
-    ODE2(Box<dyn Fn(f64, [f64; N]) -> Ret>),
+pub enum StateFn<'a, const N: usize, Ret> {
+    Constant(Box<dyn 'a + Fn() -> Ret>),
+    Time(Box<dyn 'a +  Fn(f64) -> Ret>),
+    ODE(Box<dyn 'a + Fn([f64; N]) -> Ret>),
+    ODE2(Box<dyn 'a + Fn(f64, [f64; N]) -> Ret>),
 }
 
-impl<const N: usize, Ret> StateFn<N, Ret> {
+impl<const N: usize, Ret> StateFn<'_, N, Ret> {
     pub fn eval<const S: usize>(&self, state: &State<N,S>) -> Ret {
         match self {
             StateFn::Constant(f) => f(),
@@ -216,23 +216,23 @@ impl<const N: usize, Ret> StateFn<N, Ret> {
     }
 }
 
-impl<const N: usize, Ret> From<Box<dyn Fn() -> Ret>> for StateFn<N, Ret> {
-    fn from(value: Box<dyn Fn() -> Ret>) -> Self {
+impl<'a, const N: usize, Ret> From<Box<dyn Fn() -> Ret>> for StateFn<'a, N, Ret> {
+    fn from(value: Box<dyn 'a + Fn() -> Ret>) -> Self {
         Self::Constant(value)
     }
 }
-impl<const N: usize, Ret> From<Box<dyn Fn(f64) -> Ret>> for StateFn<N, Ret> {
-    fn from(value: Box<dyn Fn(f64) -> Ret>) -> Self {
+impl<'a, const N: usize, Ret> From<Box<dyn Fn(f64) -> Ret>> for StateFn<'a, N, Ret> {
+    fn from(value: Box<dyn 'a + Fn(f64) -> Ret>) -> Self {
         Self::Time(value)
     }
 }
-impl<const N: usize, Ret> From<Box<dyn Fn([f64; N]) -> Ret>> for StateFn<N, Ret> {
-    fn from(value: Box<dyn Fn([f64; N]) -> Ret>) -> Self {
+impl<'a, const N: usize, Ret> From<Box<dyn Fn([f64; N]) -> Ret>> for StateFn<'a, N, Ret> {
+    fn from(value: Box<dyn 'a + Fn([f64; N]) -> Ret>) -> Self {
         Self::ODE(value)
     }
 }
-impl<const N: usize, Ret> From<Box<dyn Fn(f64, [f64; N]) -> Ret>> for StateFn<N, Ret> {
-    fn from(value: Box<dyn Fn(f64, [f64; N]) -> Ret>) -> Self {
+impl<'a, const N: usize, Ret> From<Box<dyn Fn(f64, [f64; N]) -> Ret>> for StateFn<'a, N, Ret> {
+    fn from(value: Box<dyn 'a + Fn(f64, [f64; N]) -> Ret>) -> Self {
         Self::ODE2(value)
     }
 }

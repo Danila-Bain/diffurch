@@ -3,17 +3,17 @@ use crate::{State, StateFn};
 /// Event type holds several handlers that determine *what* happens when the event happens. Event
 /// struct does not specify under what conditions event is triggered, the "when" part is determined
 /// in [crate::solver::Solver] struct.
-pub struct Event<const N: usize = 0, Output = ()> {
+pub struct Event<'a, const N: usize = 0, Output = ()> {
     /// Function, which is called on a state. Its output is then fed to `stream`.
-    pub callback: StateFn<N, Output>,
+    pub callback: StateFn<'a, N, Output>,
     /// Function (or rather a collection of functions), which handles the output destination and
     /// formatting provided by `callback`. It takes a single argument: the return type of `callback`.
-    pub stream: Vec<Box<dyn FnMut(Output)>>,
+    pub stream: Vec<Box<dyn 'a + FnMut(Output)>>,
     /// Function, that filters invocations of `callback` and `stream`. Can be used to produce a
     /// more sparse output (such that there are not too many output points), or limit outputing
     /// values to a certain range, etc. It is a function, that is invoked on a state and returns
     /// bool.
-    pub filter: Vec<StateFn<N, bool>>,
+    pub filter: Vec<StateFn<'a, N, bool>>,
     /// When it has unit type it does nothing, when it has type `usize`, it produces dense output:
     /// the event's "filter->stream->callback" sequence is triggered not on the current state, but
     /// on `subdivision` number of points of the current step in the state, making use of dense
@@ -21,9 +21,9 @@ pub struct Event<const N: usize = 0, Output = ()> {
     pub subdivision: Option<usize>,
 }
 
-impl Event {
-    pub fn new<const N: usize, Output>(callback: StateFn<N, Output>) -> Event<N, Output> {
-        Event::<N, Output> {
+impl<'a, const N: usize, Output> Event<'a, N, Output> {
+    pub fn new(callback: StateFn<'a, N, Output>) -> Self {
+        Event {
             callback,
             stream: Vec::new(),
             filter: Vec::new(),
@@ -31,30 +31,20 @@ impl Event {
         }
     }
 
-    pub fn constant<const N: usize, Output>(
-        callback: impl 'static + Fn() -> Output,
-    ) -> Event<N, Output> {
+    pub fn constant(callback: impl 'a + Fn() -> Output) -> Self {
         Event::new(StateFn::Constant(Box::new(callback)))
     }
-    pub fn time<const N: usize, Output>(
-        callback: impl 'static + Fn(f64) -> Output,
-    ) -> Event<N, Output> {
+    pub fn time(callback: impl 'a + Fn(f64) -> Output) -> Self {
         Event::new(StateFn::Time(Box::new(callback)))
     }
-    pub fn ode<const N: usize, Output>(
-        callback: impl 'static + Fn([f64; N]) -> Output,
-    ) -> Event<N, Output> {
+    pub fn ode(callback: impl 'a + Fn([f64; N]) -> Output) -> Self {
         Event::new(StateFn::ODE(Box::new(callback)))
     }
-    pub fn ode2<const N: usize, Output>(
-        callback: impl 'static + Fn(f64, [f64; N]) -> Output,
-    ) -> Event<N, Output> {
+    pub fn ode2(callback: impl 'a + Fn(f64, [f64; N]) -> Output) -> Self {
         Event::new(StateFn::ODE2(Box::new(callback)))
     }
-}
 
-impl<const N: usize, Output> Event<N, Output> {
-    pub fn to(mut self, s: impl 'static + FnMut(Output)) -> Self {
+    pub fn to(mut self, s: impl 'a + FnMut(Output)) -> Self {
         self.stream.push(Box::new(s));
         self
     }
@@ -75,13 +65,18 @@ impl<const N: usize, Output> Event<N, Output> {
         self.to(move |value: Output| writeln!(&mut file, "{:?}", value).unwrap())
     }
 
-    // pub fn to_vec<'a>(self, vec: &'a mut Vec<Output>) -> Self 
-    // {
-    //     self.to(|value: Output| vec.push(value))
-    // }
+    pub fn to_vec(self, vec: &'a mut Vec<Output>) -> Self {
+        self.to(|value: Output| vec.push(value))
+    }
+
+    /// The function that writes its argument to provided mutable variable is appended to `stream`
+    /// field. The modified event is returned.
+    pub fn to_var(self, value: &'a mut Output) -> Self {
+        self.to(|v: Output| *value = v)
+    }
 }
 
-impl<const N: usize, Item, const M: usize> Event<N, [Item; M]> {
+impl<'a, const N: usize, Item, const M: usize> Event<'a, N, [Item; M]> {
     pub fn to_csv(self, filename: &str) -> Self
     where
         Item: std::fmt::Display,
@@ -95,7 +90,7 @@ impl<const N: usize, Item, const M: usize> Event<N, [Item; M]> {
             writeln!(&mut file, "").unwrap();
         })
     }
-    pub fn to_table(self, filename: &str, separator: &'static str, header: Option<&str>) -> Self
+    pub fn to_table(self, filename: &str, separator: &'a str, header: Option<&str>) -> Self
     where
         Item: std::fmt::Display,
     {
@@ -112,45 +107,18 @@ impl<const N: usize, Item, const M: usize> Event<N, [Item; M]> {
             writeln!(&mut file, "").unwrap();
         })
     }
+
+    pub fn to_vecs(self, vecs: [&'a mut Vec<Item>; M]) -> Self
+    where
+        Item: Copy,
+    {
+        self.to(move |value: [Item; M]| {
+            for i in 0..N {
+                vecs[i].push(value[i]);
+            }
+        })
+    }
 }
-//
-//     /// Like [Event::to_vec], but destributes its values across several vectors
-//     ///
-//     /// # Usage
-//     /// ```
-//     /// let mut t = Vec::new();
-//     /// let mut x = Vec::new();
-//     /// let mut y = Vec::new();
-//     ///
-//     /// let event = diffurch::Event::ode2(|t, [x, y]| [t, x, y]).to_vecs([&mut t, &mut x, &mut y]);
-//     /// ```
-//     pub fn to_vecs<const N: usize, Args>(
-//         self,
-//         vecs: [&mut Vec<f64>; N],
-//     ) -> Event<C, Tutle<(impl FnMut<([f64; N],)>, Tutle<S>)>, Tutle<F>, D>
-//     where
-//         Args: Tuple,
-//         C: Fn<Args, Output = [f64; N]>,
-//     {
-//         self.to(move |value: [f64; N]| {
-//             for i in 0..N {
-//                 vecs[i].push(value[i]);
-//             }
-//         })
-//     }
-//
-//     /// The function that writes its argument to provided mutable variable is appended to `stream`
-//     /// field. The modified event is returned.
-//     pub fn to_var<Args, Output>(
-//         self,
-//         value: &mut Output,
-//     ) -> Event<C, Tutle<(impl FnMut<(Output,)>, Tutle<S>)>, Tutle<F>, D>
-//     where
-//         C: Fn<Args, Output = Output>,
-//         Args: Tuple,
-//     {
-//         self.to(|v: Output| *value = v)
-//     }
 //
 //     pub fn to_range<Args, Output>(
 //         self,

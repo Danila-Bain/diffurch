@@ -2,13 +2,13 @@ use crate::{State, StateFn};
 
 // use crate::state::CoordFn;
 //
-pub struct Equation<const N: usize = 1> {
-    pub rhs: StateFn<N, [f64; N]>,
+pub struct Equation<'a, const N: usize = 1> {
+    pub rhs: StateFn<'a, N, [f64; N]>,
     pub max_delay: f64,
 }
 
-impl Equation {
-    pub fn new<const N: usize>(rhs: StateFn<N, [f64; N]>) -> Equation<N> {
+impl<'a, const N: usize> Equation<'a, N> {
+    pub fn new(rhs: StateFn<'a, N, [f64; N]>) -> Self {
         Equation {
             rhs,
             max_delay: f64::NAN,
@@ -16,9 +16,9 @@ impl Equation {
     }
 
     // ordinary differential equation
-    pub fn ode<const N: usize, RHS>(rhs: RHS) -> Equation<N>
+    pub fn ode< RHS>(rhs: RHS) -> Self
     where
-        RHS: 'static + Fn<([f64; N],), Output = [f64; N]>,
+        RHS: 'a + Fn<([f64; N],), Output = [f64; N]>,
     {
         Equation {
             rhs: StateFn::ODE(Box::new(rhs)),
@@ -27,9 +27,9 @@ impl Equation {
     }
 
 
-    pub fn ode2<const N: usize, RHS>(rhs: RHS) -> Equation<N>
+    pub fn ode2< RHS>(rhs: RHS) -> Self
     where
-        RHS: 'static + Fn<(f64, [f64; N],), Output = [f64; N]>,
+        RHS: 'a + Fn<(f64, [f64; N],), Output = [f64; N]>,
     {
         Equation {
             rhs: StateFn::ODE2(Box::new(rhs)),
@@ -49,9 +49,6 @@ impl Equation {
     //             max_delay: f64::NAN,
     //         }
     //     }
-}
-
-impl<const N: usize> Equation<N> {
     pub fn with_delay(self, value: f64) -> Self {
         Self {
             rhs: self.rhs,
@@ -59,6 +56,7 @@ impl<const N: usize> Equation<N> {
         }
     }
 }
+
 
 #[cfg(test)]
 mod tests {
