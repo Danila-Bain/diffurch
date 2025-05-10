@@ -152,15 +152,15 @@ impl<'a, const N: usize> Loc<'a, N> {
                 | Detection::SignNeg(f) => {
                     let mut l = state.t_prev;
                     let mut r = state.t;
-                    if f.eval_prev(state) > 0. {
+                    if f.eval(state) < 0. {
                         swap(&mut l, &mut r);
                     }
 
                     for _ in 0..f64::MANTISSA_DIGITS {
                         let m = 0.5 * (l + r);
-                        match f.eval_at(state, m) > 0. {
-                            false => l = m,
-                            true => r = m,
+                        match f.eval_at(state, m) < 0. {
+                            true => l = m,
+                            false => r = m,
                         }
                     }
                     return f64::max(l, r);
