@@ -173,6 +173,25 @@ impl<'a, const N: usize, Output> Event<'a, N, Output> {
     }
 }
 
+impl<'a, const N: usize> Event<'a, N, [f64; N]> {
+    pub fn ode_state() -> Self {
+        Event::new(StateFnMut::ode(|x| x))
+    }
+}
+
+impl<'a, const N: usize> Event<'a, N, [f64; N + 1]> {
+    pub fn ode2_state() -> Self {
+        Event::new(StateFnMut::ode2(|t, x| {
+            let mut res = [0.; N + 1];
+            res[0] = t;
+            for i in 1..=N {
+                res[i] = x[i - 1];
+            }
+            res
+        }))
+    }
+}
+
 impl<'a, const N: usize> Event<'a, N, ()> {
     pub fn stop_integration() -> Self {
         Event::time_mut(|t| {

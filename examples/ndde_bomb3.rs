@@ -1,63 +1,47 @@
+use std::cell::Cell;
+
+use core::f64::consts::PI;
+use diffurch::*;
+
 fn main() {
-    todo!()
+    let alpha = 0.15;
+    let beta = 2. * PI;
+
+    const T: f64 = 1.;
+    const A: f64 = 1.;
+    let epsilon = Cell::new(0.5);
+    let k = 1.;
+
+    let eq = Equation::dde(|t, [x], [x_]| {
+        let dx_ = x_.d(t - T);
+        let dx = -x + (1. + epsilon.get()) * dx_ + A * dx_.powi(3);
+        [dx]
+    })
+    .with_delay(2.*T);
+    let ic = (
+        |t: f64| [alpha * (beta * t).sin()],
+        |t: f64| [alpha * beta * (beta * t).cos()],
+    );
+
+    let stepsize = 1. / (beta * 10.).round();
+
+    Solver::rk(&rk::RK98)
+        .stepsize(stepsize)
+        .on_step(Event::ode_state().to_std())
+        .on_step(
+            Event::dde(|t, [x], [x_]| {
+                epsilon.set(epsilon.get() * k);
+                let mut amp = 0f64;
+                let n = 50;
+                for i in 0..n {
+                    let t = t - T*(i as f64)/(n as f64);
+                    amp = amp.max(x_(t).abs());
+                }
+                [t, epsilon.get(), x, amp]
+            })
+            .separated_by(100.)
+            .to_std(),
+        )
+        .on_step(Event::stop_integration().filter_by_constant(|| epsilon.get() <= 0.1))
+        .run(eq, ic, 0. .. 10000.)
 }
-// #![feature(file_buffered)]
-// use core::f64::consts::PI;
-// use std::ops::Range;
-//
-// use diffurch::{Equation, Event, Solver, rk, util::with_derivative::Differentiable};
-//
-// const A: f64 = -1.;
-// const T: f64 = 1.;
-//
-// fn main() {
-//     let epsilon = 0.002;
-//     let alpha = 0.005;
-//     let beta = 0.005;
-//
-//     let equation = Equation::dde(|t, [x], [x_]| {
-//         [-x + (1. + epsilon) * x_.d(t - T) + A * x_.d(t - T).powi(3)]
-//     });
-//     let ic = Differentiable(
-//         |t: f64| [alpha * (beta * t).sin()],
-//         |t: f64| [alpha * beta * (beta * t).cos()],
-//     );
-//
-//     let range = 0. ..1000.;
-//
-//     let stepsize = 1. / (beta * 10.).round();
-//     // for now, delay should be an integer mutiple of a stepsize for NDDEs, due to the initial
-//     // discontinuities
-//
-//
-//     Solver::new()
-//         .stepsize(stepsize)
-//         .rk(&rk::RK98)
-//         // .on_period(100., Event::ode_mut(|t, [x, eps]| {*eps *= 0.9; amplitude}))
-//         .run(equation, ic, range);
-//
-//     // let mut plot = pgfplots::axis::plot::Plot2D::new();
-//     // plot.coordinates = (0..t.len()).map(|i| (t[i], x[i]).into()).collect();
-//     // pgfplots::Picture::from(plot)
-//     //     .show_pdf(pgfplots::Engine::PdfLatex)
-//     //     .unwrap();
-//
-// }
-//
-//     //
-//     // use std::io::Write;
-//     // let mut file = std::fs::File::create_buffered(format!("integrals; eps={epsilon}.dat")).unwrap();
-//     // writeln!(
-//     //     &mut file,
-//     //     "i beta alpha x_int x_int_error dx_int dx_int_error"
-//     // )
-//     // .unwrap();
-//     // file.flush().unwrap();
-//     //
-//     //     writeln!(
-//     //         &mut file,
-//     //         "{i} {beta} {alpha} {x_int} {x_int_error} {dx_int} {dx_int_error}"
-//     //     )
-//     //     .unwrap();
-//     //     file.flush().unwrap();
-//     //
