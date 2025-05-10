@@ -76,7 +76,8 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
         self.t_seq.push_back(self.t);
         self.x_seq.push_back(self.x);
         self.k_seq.push_back(self.k);
-        while self.t_prev - self.t_span
+        let t_tail = self.t_prev - self.t_span - (self.t - self.t_prev);
+        while t_tail
             > *self
                 .t_seq
                 .front()
