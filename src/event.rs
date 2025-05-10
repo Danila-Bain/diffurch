@@ -1,4 +1,4 @@
-use crate::{StateFn, StateFnMut};
+use crate::{StateCoordFnTrait, StateFnMut};
 
 /// Event type holds several handlers that determine *what* happens when the event happens. Event
 /// struct does not specify under what conditions event is triggered, the "when" part is determined
@@ -32,28 +32,31 @@ impl<'a, const N: usize, Output> Event<'a, N, Output> {
     }
 
     pub fn constant(callback: impl 'a + FnMut() -> Output) -> Self {
-        Event::new(StateFnMut::Constant(Box::new(callback)))
+        Event::new(StateFnMut::constant(callback))
     }
     pub fn time(callback: impl 'a + FnMut(f64) -> Output) -> Self {
-        Event::new(StateFnMut::Time(Box::new(callback)))
+        Event::new(StateFnMut::time(callback))
     }
     pub fn time_mut(callback: impl 'a + FnMut(&mut f64) -> Output) -> Self {
-        Event::new(StateFnMut::TimeMut(Box::new(callback)))
+        Event::new(StateFnMut::time_mut(callback))
     }
     pub fn ode(callback: impl 'a + FnMut([f64; N]) -> Output) -> Self {
-        Event::new(StateFnMut::ODE(Box::new(callback)))
+        Event::new(StateFnMut::ode(callback))
     }
     pub fn ode_mut(callback: impl 'a + FnMut(&mut [f64; N]) -> Output) -> Self {
-        Event::new(StateFnMut::ODEMut(Box::new(callback)))
+        Event::new(StateFnMut::ode_mut(callback))
     }
     pub fn ode2(callback: impl 'a + FnMut(f64, [f64; N]) -> Output) -> Self {
-        Event::new(StateFnMut::ODE2(Box::new(callback)))
+        Event::new(StateFnMut::ode2(callback))
     }
     pub fn ode2_mut(callback: impl 'a + FnMut(&mut f64, &mut [f64; N]) -> Output) -> Self {
-        Event::new(StateFnMut::ODE2Mut(Box::new(callback)))
+        Event::new(StateFnMut::ode2_mut(callback))
     }
-
-
+    pub fn dde(
+        callback: impl 'a + FnMut(f64, [f64; N], [Box<dyn '_ + StateCoordFnTrait>; N]) -> Output,
+    ) -> Self {
+        Event::new(StateFnMut::dde(callback))
+    }
 
     pub fn to(mut self, s: impl 'a + FnMut(Output)) -> Self {
         self.stream.push(Box::new(s));
@@ -170,10 +173,11 @@ impl<'a, const N: usize, Output> Event<'a, N, Output> {
     }
 }
 
-
 impl<'a, const N: usize> Event<'a, N, ()> {
     pub fn stop_integration() -> Self {
-        Event::time_mut(|t| {*t = f64::INFINITY;})
+        Event::time_mut(|t| {
+            *t = f64::INFINITY;
+        })
     }
 }
 

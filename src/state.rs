@@ -269,7 +269,6 @@ impl<'a, const N: usize, Ret> StateFn<'a, N, Ret> {
         }
     }
 
-
     pub fn eval_prev<'b, const S: usize>(&self, state: &'b State<'b, N, S>) -> Ret {
         match self {
             StateFn::Constant(f) => f(),
@@ -278,6 +277,24 @@ impl<'a, const N: usize, Ret> StateFn<'a, N, Ret> {
             StateFn::ODE2(f) => f(state.t_prev, state.x_prev),
             StateFn::DDE(f) => f(state.t_prev, state.x_prev, state.coord_fns()),
         }
+    }
+
+    pub fn constant(f: impl 'a + Fn() -> Ret) -> Self {
+        StateFn::Constant(Box::new(f))
+    }
+    pub fn time(f: impl 'a + Fn(f64) -> Ret) -> Self {
+        StateFn::Time(Box::new(f))
+    }
+    pub fn ode(f: impl 'a + Fn([f64; N]) -> Ret) -> Self {
+        StateFn::ODE(Box::new(f))
+    }
+    pub fn ode2(f: impl 'a + Fn(f64, [f64; N]) -> Ret) -> Self {
+        StateFn::ODE2(Box::new(f))
+    }
+    pub fn dde(
+        f: impl 'a + Fn(f64, [f64; N], [Box<dyn '_ + StateCoordFnTrait>; N]) -> Ret,
+    ) -> Self {
+        StateFn::DDE(Box::new(f))
     }
 }
 
@@ -289,7 +306,7 @@ pub enum StateFnMut<'a, const N: usize, Ret> {
     ODEMut(Box<dyn 'a + FnMut(&mut [f64; N]) -> Ret>),
     ODE2(Box<dyn 'a + FnMut(f64, [f64; N]) -> Ret>),
     ODE2Mut(Box<dyn 'a + FnMut(&mut f64, &mut [f64; N]) -> Ret>),
-    DDE(Box<dyn 'a + Fn(f64, [f64; N], [Box<dyn '_ + StateCoordFnTrait>; N]) -> Ret>),
+    DDE(Box<dyn 'a + FnMut(f64, [f64; N], [Box<dyn '_ + StateCoordFnTrait>; N]) -> Ret>),
     // DDEMut(Box<dyn 'a + Fn(&mut f64, &mut [f64; N], [Box<dyn '_ + StateCoordFnTrait>; N]) -> Ret>),
 }
 
@@ -316,10 +333,40 @@ impl<'a, const N: usize, Ret> StateFnMut<'a, N, Ret> {
             StateFnMut::ODE(f) => f(state.eval_all(t)),
             StateFnMut::ODEMut(f) => f(&mut state.eval_all(t)),
             StateFnMut::ODE2(f) => f(t, state.eval_all(t)),
-            StateFnMut::ODE2Mut(f) => {let t2 = t; f(&mut t, &mut state.eval_all(t2))},
+            StateFnMut::ODE2Mut(f) => {
+                let t2 = t;
+                f(&mut t, &mut state.eval_all(t2))
+            }
             StateFnMut::DDE(f) => f(t, state.eval_all(t), state.coord_fns()),
             // StateFnMut::DDEMut(f) =>  {let t2 = t; f(&mut t, &mut state.eval_all(t2), state.coord_fns())},
         }
+    }
+
+    pub fn constant(f: impl 'a + FnMut() -> Ret) -> Self {
+        StateFnMut::Constant(Box::new(f))
+    }
+    pub fn time(f: impl 'a + FnMut(f64) -> Ret) -> Self {
+        StateFnMut::Time(Box::new(f))
+    }
+    pub fn time_mut(f: impl 'a + FnMut(&mut f64) -> Ret) -> Self {
+        StateFnMut::TimeMut(Box::new(f))
+    }
+    pub fn ode(f: impl 'a + FnMut([f64; N]) -> Ret) -> Self {
+        StateFnMut::ODE(Box::new(f))
+    }
+    pub fn ode_mut(f: impl 'a + FnMut(&mut [f64; N]) -> Ret) -> Self {
+        StateFnMut::ODEMut(Box::new(f))
+    }
+    pub fn ode2(f: impl 'a + FnMut(f64, [f64; N]) -> Ret) -> Self {
+        StateFnMut::ODE2(Box::new(f))
+    }
+    pub fn ode2_mut(f: impl 'a + FnMut(&mut f64, &mut [f64; N]) -> Ret) -> Self {
+        StateFnMut::ODE2Mut(Box::new(f))
+    }
+    pub fn dde(
+        f: impl 'a + FnMut(f64, [f64; N], [Box<dyn '_ + StateCoordFnTrait>; N]) -> Ret,
+    ) -> Self {
+        StateFnMut::DDE(Box::new(f))
     }
 }
 

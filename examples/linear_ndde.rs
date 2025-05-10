@@ -1,4 +1,4 @@
-use diffurch::{Equation, Event, Solver, rk, util::with_derivative::WithDerivative};
+use diffurch::{Equation, Event, Solver, rk};
 
 fn main() {
     // let theta = 0.5f64;

@@ -84,7 +84,7 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
         self
     }
 
-    pub fn on<Output: Copy + 'a>(mut self, event_locator: EventLocator<'a, N>, event: Event<'a, N, Output>) -> Self {
+    pub fn on_loc<Output: Copy + 'a>(mut self, event_locator: EventLocator<'a, N>, event: Event<'a, N, Output>) -> Self {
         self.loc_events.push((event_locator, Self::event_to_state_function(event)));
         self
     }
