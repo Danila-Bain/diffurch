@@ -1,4 +1,5 @@
 use crate::Event;
+use crate::EventLocator;
 use crate::InitialCondition;
 use crate::State;
 use crate::equation::Equation;
@@ -11,6 +12,8 @@ pub struct Solver<'a, const N: usize, const S: usize> {
     step_events: Vec<Box<dyn 'a + for<'s> FnMut(&'s mut State<N, S>)>>,
     start_events: Vec<Box<dyn 'a + for<'s> FnMut(&'s mut State<N, S>)>>,
     stop_events: Vec<Box<dyn 'a + for<'s> FnMut(&'s mut State<N, S>)>>,
+    loc_events: Vec<(EventLocator<'a, N>, Box<dyn 'a + for<'s> FnMut(&'s mut State<N, S>)>)>,
+
 }
 
 impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
@@ -21,6 +24,7 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
             step_events: Vec::new(),
             start_events: Vec::new(),
             stop_events: Vec::new(),
+            loc_events: Vec::new(),
         }
     }
 
@@ -31,6 +35,7 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
             step_events: Vec::new(),
             start_events: Vec::new(),
             stop_events: Vec::new(),
+            loc_events: Vec::new(),
         }
     }
 
@@ -79,6 +84,11 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
         self
     }
 
+    pub fn on<Output: Copy + 'a>(mut self, event_locator: EventLocator<'a, N>, event: Event<'a, N, Output>) -> Self {
+        self.loc_events.push((event_locator, Self::event_to_state_function(event)));
+        self
+    }
+
     pub fn run(
         mut self,
         eq: Equation<'a, N>,
@@ -103,6 +113,40 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
 
         while state.t < t_end {
             state.make_step(stepsize);
+
+            self.loc_events.iter_mut().for_each(|(locator, event)| {
+                if locator.detect(&state) {
+                    let t = locator.locate(&state);
+                    if t > state.t_prev {
+                        state.undo_step();
+                        state.make_step(t - state.t);
+                    }
+                    state.push_current();
+                    self.step_events.iter_mut().for_each(|event| event(&mut state));
+                    event(&mut state);
+                    state.make_zero_step();
+                }
+            });
+            //  let min_i = 0;
+            //  let min_t = f64::INFINITY;
+            //  for i in range 0..self.root_events.len() {
+            //      let t = self.root_events[i].locate(&state);
+            //      if t < min_t {
+            //          min_i = i;
+            //          min_t = t;
+            //      }
+            //  }
+            //  if min_i <= state.t {
+            //      state.undo_step();
+            //      state.make_step(min_t - state.t_prev);
+            //      state.push_current();
+            //      state.make_zero_step();
+            //      state.root_events[i].event(&mut state);
+            //
+            //  }
+
+            
+
             state.push_current();
             self.step_events.iter_mut().for_each(|event| event(&mut state));
             stepsize = stepsize.min(t_end - state.t);

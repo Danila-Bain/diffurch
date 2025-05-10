@@ -114,9 +114,24 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
         self.k = [[0.; N]; S];
     }
 
+    pub fn undo_step(&mut self) {
+        self.t = self.t_prev;
+        self.x = self.x_prev;
+    }
+
     pub fn eval_all(&self, t: f64) -> [f64; N] {
         if t <= self.t_init {
             self.x_init.eval(t)
+        } else if self.t_prev <= t && t <= self.t {
+            let x_prev = self.x_prev;
+            let k = self.k;
+            let t_prev = self.t_prev;
+            let t_next = self.t;
+            let t_step = t_next - t_prev;
+            let theta = (t - t_prev) / t_step;
+            return std::array::from_fn(|i| {
+                x_prev[i] + t_step * (0..S).fold(0., |acc, j| acc + self.rk.bi[j](theta) * k[j][i])
+            });
         } else {
             let i = self.t_seq.partition_point(|t_i| t_i < &t); // first i : t_seq[i] >= t
             if i == 0 {
@@ -147,6 +162,15 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
     pub fn eval(&self, t: f64, coordinate: usize) -> f64 {
         if t <= self.t_init {
             self.x_init.eval(t)[coordinate]
+        } else if self.t_prev <= t && t <= self.t {
+            let x_prev = self.x_prev[coordinate];
+            let k = self.k;
+            let t_prev = self.t_prev;
+            let t_next = self.t;
+            let t_step = t_next - t_prev;
+            let theta = (t - t_prev) / t_step;
+            return x_prev
+                + t_step * (0..S).fold(0., |acc, j| acc + self.rk.bi[j](theta) * k[j][coordinate]);
         } else {
             let i = self.t_seq.partition_point(|t_i| t_i < &t); // first i : t_seq[i] >= t
             if i == 0 {
@@ -175,6 +199,13 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
     pub fn eval_derivative(&self, t: f64, coordinate: usize) -> f64 {
         if t <= self.t_init {
             self.x_init.eval_d(t)[coordinate]
+        } else if self.t_prev <= t && t <= self.t {
+            let k = self.k;
+            let t_prev = self.t_prev;
+            let t_next = self.t;
+            let t_step = t_next - t_prev;
+            let theta = (t - t_prev) / t_step;
+            return (0..S).fold(0., |acc, j| acc + self.rk.bi[j].d(theta) * k[j][coordinate]);
         } else {
             let i = self.t_seq.partition_point(|t_i| t_i < &t); // first i : t_seq[i] >= t
             if i == 0 {
@@ -189,7 +220,6 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
                 );
             }
 
-            // let x_prev = &self.x_seq[i - 1][coordinate];
             let k = &self.k_seq[i - 1];
             let t_prev = self.t_seq[i - 1];
             let t_next = self.t_seq[i];
@@ -236,6 +266,17 @@ impl<'a, const N: usize, Ret> StateFn<'a, N, Ret> {
             StateFn::ODE(f) => f(state.eval_all(t)),
             StateFn::ODE2(f) => f(t, state.eval_all(t)),
             StateFn::DDE(f) => f(t, state.eval_all(t), state.coord_fns()),
+        }
+    }
+
+
+    pub fn eval_prev<'b, const S: usize>(&self, state: &'b State<'b, N, S>) -> Ret {
+        match self {
+            StateFn::Constant(f) => f(),
+            StateFn::Time(f) => f(state.t_prev),
+            StateFn::ODE(f) => f(state.x_prev),
+            StateFn::ODE2(f) => f(state.t_prev, state.x_prev),
+            StateFn::DDE(f) => f(state.t_prev, state.x_prev, state.coord_fns()),
         }
     }
 }

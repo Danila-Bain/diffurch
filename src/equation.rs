@@ -65,19 +65,7 @@ impl<'a, const N: usize> Equation<'a, N> {
             max_delay: f64::INFINITY,
         }
     }
-    //
-    //     pub fn dde<const N: usize, RHS, const S: usize, IF: Fn(f64) -> [f64; N]>(
-    //         rhs: RHS,
-    //     ) -> Equation<N, RHS, ()>
-    //     where
-    //         RHS: for<'a> Fn(f64, [f64; N], [CoordFn<'a, N, S, IF>; N]) -> [f64; N],
-    //     {
-    //         Equation::<N, RHS, ()> {
-    //             rhs,
-    //             events: (),
-    //             max_delay: f64::NAN,
-    //         }
-    //     }
+
     pub fn with_delay(self, value: f64) -> Self {
         Self {
             rhs: self.rhs,

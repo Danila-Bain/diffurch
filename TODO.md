@@ -1,13 +1,5 @@
 In each section, roughly in order of simplicity and necessity:
 
-# Questions
-
-[ ] (Yes) Should the State own RHS?
-    - for now RHS is only used by passing it to State, and will not be used anywhere else in the future, because user manages the sover inner workings by defining the events that act on a state
-    - for now, only one RHS is passed to State during integration, in the future one might want to switch the RHS from time to time to support discontinuous equations, but it makes more sense if we modify the RHS branch in the state itself
-    - can State use RHS outside of the make_step function? Where else the derivative of the solution might be usefull? It might or might not be cheaper for outputing the derivative of the solution, comparing to interpolants, but it also may be used to compute the derivative at points, where step is not finished, so answer is maybe.
-    - Overall, the answer is yes.
-
 # Equation types support
 
 [x] implement to_state_function for functions with signatures fn(f64) and fn()
@@ -20,12 +12,18 @@ In each section, roughly in order of simplicity and necessity:
 
 [x] add support for NDDEs
 
-[ ] add support for events that change state
+[x] add support for events that change state
 
-[ ] add support for detected events
+[!] add support for detected events
     [ ] interface like Solver::on(Detection, Event) for saving special values like zero crosses
     [ ] different detection methods: Sign and DerivativeSign (like in WM)
-    [ ] different location methods: StepBegin, StepEnd, Lerp, Brent, Bisection
+    [ ] on_root
+    [ ] on_above_root, on_below_root (naming should change)
+    [ ] on_period (trigger event periodically)
+
+[ ] delay propagated events
+
+[ ] different location methods: StepBegin, StepEnd, Lerp, Brent, Bisection
 
 [ ] delay propagated events
     [ ] treat initial discontinuities for DDEs and NDDEs
@@ -89,15 +87,6 @@ In each section, roughly in order of simplicity and necessity:
 [ ] try to pipe the solution into a real-time plotter
 
 
-# Detecting events
-
-Naming: `on_root(|t: f64, [x, dx]: [f64; 2]| x, Event::new(...)...)`
-
-[ ] on_root
-[ ] on_above_root, on_below_root (naming should change)
-[ ] on_period (trigger event periodically)
-
-[ ] delay propagated events
 
 # API convenience and macros
 
