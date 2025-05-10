@@ -128,6 +128,9 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
             let t_prev = self.t_prev;
             let t_next = self.t;
             let t_step = t_next - t_prev;
+            if t_step == 0. {
+                return x_prev;
+            }
             let theta = (t - t_prev) / t_step;
             return std::array::from_fn(|i| {
                 x_prev[i] + t_step * (0..S).fold(0., |acc, j| acc + self.rk.bi[j](theta) * k[j][i])
@@ -151,6 +154,9 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
             let t_prev = self.t_seq[i - 1];
             let t_next = self.t_seq[i];
             let t_step = t_next - t_prev;
+            if t_step == 0. {
+                return *x_prev;
+            }
             let theta = (t - t_prev) / t_step;
 
             return std::array::from_fn(|i| {
@@ -168,6 +174,9 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
             let t_prev = self.t_prev;
             let t_next = self.t;
             let t_step = t_next - t_prev;
+            if t_step == 0. {
+                return x_prev;
+            }
             let theta = (t - t_prev) / t_step;
             return x_prev
                 + t_step * (0..S).fold(0., |acc, j| acc + self.rk.bi[j](theta) * k[j][coordinate]);
@@ -190,6 +199,9 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
             let t_prev = self.t_seq[i - 1];
             let t_next = self.t_seq[i];
             let t_step = t_next - t_prev;
+            if t_step == 0. {
+                return *x_prev;
+            }
             let theta = (t - t_prev) / t_step;
             return x_prev
                 + t_step * (0..S).fold(0., |acc, j| acc + self.rk.bi[j](theta) * k[j][coordinate]);

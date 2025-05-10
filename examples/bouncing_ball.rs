@@ -1,27 +1,25 @@
-use diffurch::{Equation, Event, EventLocator, Solver, StateFn, rk};
+use diffurch::{Equation, Event, Loc, Solver, StateFn, rk};
 
 fn main() {
     let k = 0.90;
     let g = 9.8;
     let eq = Equation::ode(|[_x, dx]| [dx, -g]).with_delay(f64::INFINITY);
 
-    let ic = [20., 0.];
-    let range = 0. ..50.;
+    let ic = [1., 0.];
+    let range = 0. ..10.;
 
     let mut points = Vec::new();
 
     Solver::rk(&rk::RK98)
-        .stepsize(0.05)
+        .stepsize(0.01)
         .on_step(
             Event::ode2(|t, [x, _dx]| (t, x))
                 .to_vec(&mut points)
-                .to_std(),
+                .to_std()
+                // .subdivide(10)
         )
         .on_loc(
-            EventLocator {
-                detection: diffurch::Detection::SignNeg(StateFn::ode(|[x, _]| x)),
-                location: diffurch::LocationMethod::Bisection,
-            },
+            Loc::neg(StateFn::ode(|[x, _dx]| x)),
             Event::ode2_mut(|t, [x, dx]| {
                 *x = 0.;
                 *dx = k * dx.abs();
@@ -29,14 +27,6 @@ fn main() {
             })
             .to_std(),
         )
-        // .on_loc(
-        //     Loc::sign_neg(StateFn::ode(|[x, _]| x)).bisection(),
-        //     Event::new(StateFnMut::ode_mut(|t, [x, dx]| {
-        //         *x = 0.;
-        //         *dx = k*dx.abs();
-        //         *t
-        //     })).to_std(),
-        // )
         .run(eq, ic, range);
 
     //

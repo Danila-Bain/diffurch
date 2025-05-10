@@ -13,7 +13,7 @@ pub enum Detection<'a, const N: usize> {
     BoolToFalse(StateFn<'a, N, bool>),
 }
 
-pub enum LocationMethod {
+pub enum LocMethod {
     StepBegin,
     StepEnd,
     StepMiddle,
@@ -22,12 +22,62 @@ pub enum LocationMethod {
     Brent,
 }
 
-pub struct EventLocator<'a, const N: usize> {
+pub struct Loc<'a, const N: usize> {
     pub detection: Detection<'a, N>,
-    pub location: LocationMethod,
+    pub location: LocMethod,
 }
 
-impl<'a, const N: usize> EventLocator<'a, N> {
+
+impl<'a, const N: usize> Loc<'a, N> {
+    pub fn zero(f: StateFn<'a, N, f64>) -> Self {
+        Self {
+            detection: Detection::Sign(f),
+            location: LocMethod::Bisection,
+        }
+    }
+    pub fn to_pos(f: StateFn<'a, N, f64>) -> Self {
+        Self {
+            detection: Detection::SignToPos(f),
+            location: LocMethod::Bisection,
+        }
+    }
+    pub fn to_neg(f: StateFn<'a, N, f64>) -> Self {
+        Self {
+            detection: Detection::SignToNeg(f),
+            location: LocMethod::Bisection,
+        }
+    }
+    pub fn neg(f: StateFn<'a, N, f64>) -> Self {
+        Self {
+            detection: Detection::SignNeg(f),
+            location: LocMethod::Bisection,
+        }
+    }
+    pub fn pos(f: StateFn<'a, N, f64>) -> Self {
+        Self {
+            detection: Detection::SignPos(f),
+            location: LocMethod::Bisection,
+        }
+    }
+    pub fn flip(f: StateFn<'a, N, bool>) -> Self {
+        Self {
+            detection: Detection::Bool(f),
+            location: LocMethod::Bisection,
+        }
+    }
+    pub fn to_true(f: StateFn<'a, N, bool>) -> Self {
+        Self {
+            detection: Detection::BoolToTrue(f),
+            location: LocMethod::Bisection,
+        }
+    }
+    pub fn to_false(f: StateFn<'a, N, bool>) -> Self {
+        Self {
+            detection: Detection::BoolToFalse(f),
+            location: LocMethod::Bisection,
+        }
+    }
+
     pub fn detect<const S: usize>(&self, state: &'a State<'a, N, S>) -> bool {
         match &self.detection {
             Detection::Sign(f) => {
@@ -55,10 +105,10 @@ impl<'a, const N: usize> EventLocator<'a, N> {
 
     pub fn locate<const S: usize>(&self, state: &'a State<'a, N, S>) -> f64 {
         match self.location {
-            LocationMethod::StepBegin => state.t_prev,
-            LocationMethod::StepEnd => state.t,
-            LocationMethod::StepMiddle => 0.5 * (state.t_prev + state.t),
-            LocationMethod::Lerp => match &self.detection {
+            LocMethod::StepBegin => state.t_prev,
+            LocMethod::StepEnd => state.t,
+            LocMethod::StepMiddle => 0.5 * (state.t_prev + state.t),
+            LocMethod::Lerp => match &self.detection {
                 Detection::Bool(_) | Detection::BoolToTrue(_) | Detection::BoolToFalse(_) => {
                     0.5 * (state.t_prev + state.t)
                 }
@@ -77,7 +127,7 @@ impl<'a, const N: usize> EventLocator<'a, N> {
                     }
                 }
             },
-            LocationMethod::Bisection => match &self.detection {
+            LocMethod::Bisection => match &self.detection {
                 Detection::Bool(f) | Detection::BoolToTrue(f) | Detection::BoolToFalse(f) => {
                     let mut l = state.t_prev;
                     let mut r = state.t;
@@ -117,7 +167,7 @@ impl<'a, const N: usize> EventLocator<'a, N> {
                 }
             },
 
-            LocationMethod::Brent => todo!(),
+            LocMethod::Brent => todo!(),
         }
     }
 }

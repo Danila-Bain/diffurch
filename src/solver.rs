@@ -1,5 +1,5 @@
 use crate::Event;
-use crate::EventLocator;
+use crate::Loc;
 use crate::InitialCondition;
 use crate::State;
 use crate::equation::Equation;
@@ -12,7 +12,7 @@ pub struct Solver<'a, const N: usize, const S: usize> {
     step_events: Vec<Box<dyn 'a + for<'s> FnMut(&'s mut State<N, S>)>>,
     start_events: Vec<Box<dyn 'a + for<'s> FnMut(&'s mut State<N, S>)>>,
     stop_events: Vec<Box<dyn 'a + for<'s> FnMut(&'s mut State<N, S>)>>,
-    loc_events: Vec<(EventLocator<'a, N>, Box<dyn 'a + for<'s> FnMut(&'s mut State<N, S>)>)>,
+    loc_events: Vec<(Loc<'a, N>, Box<dyn 'a + for<'s> FnMut(&'s mut State<N, S>)>)>,
 
 }
 
@@ -84,7 +84,7 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
         self
     }
 
-    pub fn on_loc<Output: Copy + 'a>(mut self, event_locator: EventLocator<'a, N>, event: Event<'a, N, Output>) -> Self {
+    pub fn on_loc<Output: Copy + 'a>(mut self, event_locator: Loc<'a, N>, event: Event<'a, N, Output>) -> Self {
         self.loc_events.push((event_locator, Self::event_to_state_function(event)));
         self
     }
