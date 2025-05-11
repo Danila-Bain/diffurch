@@ -2,6 +2,21 @@
 name = "diffurch"
 version = "0.0.0"
 edition = "2024"
+authors = ["Danila Bain <danila.bain@yandex.com>"]
+license = "MIT OR Apache-2.0"
+
+description = "Numerical solver for ordinary and delay differential equations"
+repository = "https://github.com/Danila-Bain/diffurch"
+homepage = "https://github.com/Danila-Bain/diffurch"
+readme = "README.md"
+categories = ["mathematics", "science", "simulation"]
+keywords = [
+  "ODE",
+  "numerical",
+  "Runge-Kutta",
+  "event",
+  "dense",
+]
 
 [dev-dependencies]
 pgfplots = "0.5.1"
