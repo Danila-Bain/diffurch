@@ -55,7 +55,6 @@ impl<'a, const N: usize> Equation<'a, N> {
         }
     }
 
-
     pub fn dde<RHS>(rhs: RHS) -> Self
     where
         RHS: 'a + Fn(f64, [f64; N], [Box<dyn '_ + StateCoordFnTrait>; N]) -> [f64; N],
