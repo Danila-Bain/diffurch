@@ -25,6 +25,8 @@ In each section, roughly in order of simplicity and necessity:
 
 [ ] different location methods: StepBegin, StepEnd, Lerp, Brent, Bisection
 
+[ ] different events attached to one location. For example: stop integration after 1000th located event, which also mutates the state
+
 [ ] delay propagated events
     [ ] treat initial discontinuities for DDEs and NDDEs
 
