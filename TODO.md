@@ -37,16 +37,18 @@ In each section, roughly in order of simplicity and necessity:
 
 # Event Output
 
+[ ] add support for events, that haave access, to the data from the previous events. it's unclear yet should it be in event calback or a stream. Anyway get inspired by Iter::scan or fold or iter_map_windows.
+
 [x] add filtering of the events, which is a closure that returns bool
     [x] filter(...), like filter(|t| t >= 10.)
     [x] every(n: usize) (doesn't need arguments)
     [x] separated_by(delta: f64) (needs current time)
-    [x] once, first, times
-    [ ] .no_init() to exclude points at the initial points 
-    [ ] .which(|s| s.x > 0)
-    [ ] .except(|s| s.x > 0)
+    [x] once, times
+    [ ] skip
+    [ ] take
     [ ] .while(|s| s.x > 0)
     [ ] .until(|s| s.x > 0)
+    [ ] rename "every" -> "step_by" to make it simillar to iterators api?
 
 [x] make filtering be iterative, such that .every(2).every(2) is equivallent to every(4), make the order of their calls correct (it is reversed at the time)
 
