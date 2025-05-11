@@ -9,6 +9,7 @@ plotters = "^0.3.1"
 plotters-backend = "0.3.7"
 open = "5.3.2"
 ndarray = "0.16.1"
+serde_json = "1.0.140"
 
 [dependencies]
 num-traits = "0.2.19"

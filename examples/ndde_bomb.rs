@@ -12,19 +12,19 @@ fn solution(epsilon: f64, alpha: f64, beta: f64) {
         |t: f64| [alpha * (beta * t).sin()],
         |t: f64| [alpha * beta * (beta * t).cos()],
     );
-    let range = 0. ..10000.;
+    let range = 0. ..10.;
     //
     let mut t = Vec::new();
     let mut x = Vec::new();
     //
     Solver::rk(&rk::RK98)
-        .stepsize(0.05)
+        .stepsize(0.005)
         .on_step(Event::ode2(|t, [x]| (t, x)).to_std().separated_by(1.))
         .on_step(
             Event::ode2(|t, [x]| [t, x])
                 .to_vecs([&mut t, &mut x])
                 .subdivide(5)
-                .in_range((range.end - T)..range.end),
+                // .in_range((range.end - T)..range.end),
         )
         .run(equation, ic, range);
 
@@ -38,5 +38,5 @@ fn solution(epsilon: f64, alpha: f64, beta: f64) {
 }
 
 fn main() {
-    solution(0.02, 0.01, 4. * PI);
+    solution(1.4, 0.01, 2. * PI);
 }
