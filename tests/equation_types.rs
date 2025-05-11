@@ -94,9 +94,7 @@ fn ndde_sin() {
     let b = (k * tau).cos();
 
     let eq = Equation::dde(|t, [_], [x]| [a * x(t - tau) + b * x.d(t - tau)]);
-    let ic = move |t: f64| [(k * t).sin()];
-    let ic = (ic, move |t: f64| [k * (k * t).cos()]);
-
+    let ic = (|t: f64| [(k * t).sin()], |t: f64| [k * (k * t).cos()]);
     let sol = |t: f64| (k * t).sin();
 
     Solver::rk(&rk::RK98)
@@ -117,7 +115,7 @@ fn bouncing_ball() {
         t * (2. - t)
     };
 
-    let when_hit = Loc::to_neg(StateFn::ode(|[x,_]| x));
+    let when_hit = Loc::to_neg(StateFn::ode(|[x, _]| x));
     let bounce = Event::ode_mut(|[x, dx]| {
         *x = 0.;
         *dx = dx.abs();

@@ -1,4 +1,4 @@
-use diffurch::{Equation, Event, Solver, rk};
+use diffurch::*;
 
 fn main() {
     // let theta = 0.5f64;
@@ -9,8 +9,9 @@ fn main() {
     let b = 1. / (k * tau).cos();
 
     let equation = Equation::dde(|t, [x], [x_]| [a * x + b * x_.d(t - tau)]);
-    let ic = move |t: f64| [(k * t).sin()];
-    let ic = (ic, move |t: f64| [k * (k * t).cos()]);
+
+    let ic = (|t: f64| [(k * t).sin()], |t: f64| [k * (k * t).cos()]);
+    let sol = |t: f64| (k * t).sin();
     let range = 0. ..110.;
 
     let mut t = Vec::new();
@@ -23,16 +24,9 @@ fn main() {
                 .to_vecs([&mut t, &mut x])
                 .separated_by(0.05),
         )
-        .on_step(
-            Event::ode2({
-                let sol = ic.0.clone();
-                move |t, [x]| [t, x, x - sol(t)[0]]
-            })
-            .to_std(),
-        )
+        .on_step(Event::ode2(|t, [x]| [t, x, x - sol(t)]).to_std())
         .run(equation, ic, range);
 
-    println!("a={a}, b={b}");
 
     let mut plot = pgfplots::axis::plot::Plot2D::new();
     plot.coordinates = (0..t.len()).map(|i| (t[i], x[i]).into()).collect();
@@ -40,5 +34,4 @@ fn main() {
         .show_pdf(pgfplots::Engine::PdfLatex)
         .unwrap();
 
-    std::thread::sleep(std::time::Duration::from_secs(1))
 }

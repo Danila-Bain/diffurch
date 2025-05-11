@@ -16,21 +16,14 @@ fn main() {
         .on_step(
             Event::ode2(|t, [x, _dx]| (t, x))
                 .to_vec(&mut points)
-                .to_std()
-                // .separated_by(0.01)
-                // .subdivide(21)
+                .to_std(),
         )
         .on_step(
             Event::ode2(|t, [x, _dx]| (t, x))
                 .to_vec(&mut points_continuous)
-                // .to_std()
                 .separated_by(0.01)
-                .subdivide(21)
+                .subdivide(21),
         )
-        // .on_loc(
-        //     Loc::zero(StateFn::ode(|[_x, dx]| dx)),
-        //     Event::constant(|| {})
-        // )
         .on_loc(
             Loc::to_neg(StateFn::ode(|[x, _dx]| x)),
             Event::ode2_mut(|t, [x, dx]| {
@@ -42,19 +35,14 @@ fn main() {
         )
         .run(eq, ic, range);
 
-
     let mut axis = pgfplots::axis::Axis::new();
-
     for (color, coords) in [("red", points), ("blue", points_continuous)] {
         let mut plot = pgfplots::axis::plot::Plot2D::new();
         plot.coordinates = coords.into_iter().map(|p| p.into()).collect();
         plot.add_key(pgfplots::axis::plot::PlotKey::Custom(color.to_string()));
         axis.plots.push(plot);
     }
-
     pgfplots::Picture::from(axis)
         .show_pdf(pgfplots::Engine::PdfLatex)
         .unwrap();
-
-
 }
