@@ -179,16 +179,24 @@ impl<'a, const N: usize> Event<'a, N, [f64; N]> {
     }
 }
 
-impl<'a, const N: usize> Event<'a, N, [f64; N + 1]> {
+// // requires generic_const_exprs
+// // can cause ICE if user doesn't write #![feature(generic_const_exprs)]
+// impl<'a, const N: usize> Event<'a, N, [f64; N + 1]> {
+//     pub fn ode2_state() -> Self {
+//         Event::new(StateFnMut::ode2(|t: f64, x: [f64; N]| {
+//             let mut res = [0.; N + 1];
+//             res[0] = t;
+//             for i in 1..=N {
+//                 res[i] = x[i - 1];
+//             }
+//             res
+//         }))
+//     }
+// }
+
+impl<'a, const N: usize> Event<'a, N, (f64, [f64; N])> {
     pub fn ode2_state() -> Self {
-        Event::new(StateFnMut::ode2(|t, x| {
-            let mut res = [0.; N + 1];
-            res[0] = t;
-            for i in 1..=N {
-                res[i] = x[i - 1];
-            }
-            res
-        }))
+        Event::new(StateFnMut::ode2(|t, x| (t, x)))
     }
 }
 
