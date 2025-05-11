@@ -1,6 +1,6 @@
 use core::f64::consts::PI;
 
-use diffurch::{Equation, Event, Solver, rk, util::with_derivative::Differentiable};
+use diffurch::*;
 
 const A: f64 = -1.;
 const T: f64 = 1.;
@@ -12,13 +12,13 @@ fn solution(epsilon: f64, alpha: f64, beta: f64) {
         |t: f64| [alpha * (beta * t).sin()],
         |t: f64| [alpha * beta * (beta * t).cos()],
     );
-    let range = 0. ..10.;
+    let range = 0. ..30.;
     //
     let mut t = Vec::new();
     let mut x = Vec::new();
     //
     Solver::rk(&rk::RK98)
-        .stepsize(0.005)
+        .stepsize(0.05)
         .on_step(Event::ode2(|t, [x]| (t, x)).to_std().separated_by(1.))
         .on_step(
             Event::ode2(|t, [x]| [t, x])
@@ -38,5 +38,5 @@ fn solution(epsilon: f64, alpha: f64, beta: f64) {
 }
 
 fn main() {
-    solution(1.4, 0.01, 2. * PI);
+    solution(0.2, 0.01, 2. * PI);
 }
