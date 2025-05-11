@@ -51,17 +51,17 @@ fn main() {
     let mut p_g_100 = Vec::new();
     let event_g_100 = Event::ode2(f)
         .to_vec(&mut p_g_100)
-        .filter_by_ode(|[x]| x > 100.);
+        .filter_ode(|[x]| x > 100.);
 
     let mut p_g_100_last = (0., 0.);
     let event_g_100_last = Event::ode2(f)
         .to_var(&mut p_g_100_last)
-        .filter_by_ode(|[x]| x > 100.);
+        .filter_ode(|[x]| x > 100.);
 
     let mut p_g_100_first = (0., 0.);
     let event_g_100_first = Event::ode2(f)
         .to_var(&mut p_g_100_first)
-        .filter_by_ode(|[x]| x > 100.)
+        .filter_ode(|[x]| x > 100.)
         .once();
 
     let mut p_sub2 = Vec::new();

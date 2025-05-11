@@ -38,11 +38,15 @@ In each section, roughly in order of simplicity and necessity:
 # Event Output
 
 [x] add filtering of the events, which is a closure that returns bool
-    [x] filter_by(...), like filter_by(|t| t >= 10.)
+    [x] filter(...), like filter(|t| t >= 10.)
     [x] every(n: usize) (doesn't need arguments)
     [x] separated_by(delta: f64) (needs current time)
     [x] once, first, times
     [ ] .no_init() to exclude points at the initial points 
+    [ ] .which(|s| s.x > 0)
+    [ ] .except(|s| s.x > 0)
+    [ ] .while(|s| s.x > 0)
+    [ ] .until(|s| s.x > 0)
 
 [x] make filtering be iterative, such that .every(2).every(2) is equivallent to every(4), make the order of their calls correct (it is reversed at the time)
 
