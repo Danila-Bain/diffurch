@@ -16,8 +16,8 @@ pub struct Solver<'a, const N: usize, const S: usize> {
 
 }
 
-impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
-    pub fn new() -> Solver<'a, N, 26> {
+impl<'a, const N: usize> Solver<'a, N, 26> {
+    pub fn new() -> Self {
         Solver::<N, 26> {
             rk: &RK98,
             stepsize: 0.05,
@@ -27,7 +27,9 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
             loc_events: Vec::new(),
         }
     }
+}
 
+impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
     pub fn rk(rk: &'a RungeKuttaTable<'a, S>) -> Solver<'a, N, S> {
         Solver {
             rk,
