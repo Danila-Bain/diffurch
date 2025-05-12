@@ -1,14 +1,29 @@
+//! In this module, [RungeKuttaTable] struct and many known Runge-Kutta methods are defined.
+
 use crate::polynomial;
 
+/// Container for the Butcher's table and other relevant information about a Runge-Kutta method.
+///
+/// Generic parameter `S: usize` represents the number of stages of the method, and affects the
+/// sizes (hence data layout) of the coefficient tables.
 #[derive(Clone)]
 pub struct RungeKuttaTable<'a, const S: usize> {
+    /// Order of the method (to verify and to use in automatic step size control)
     pub order: usize,
+    /// Order of the embedded method provided by [RungeKuttaTable::b2], also used in automatic
+    /// step size control.
     pub order_embedded: usize,
+    /// Order of the dense output scheme
     pub order_interpolant: usize,
+    /// a-coefficients of the internal stages
     pub a: [&'a [f64]; S],
+    /// b-coefficients of the final stage
     pub b: [f64; S],
+    /// b-coefficients of the final stage of embedded method
     pub b2: [f64; S],
+    /// c-coefficients, which are sums of each row of a-coefficients
     pub c: [f64; S],
+    /// polynomials that are used in place of b-coefficients, for dense output (interpolation)
     pub bi: [crate::util::with_derivative::Differentiable<fn(f64) -> f64, fn(f64) -> f64>; S],
 }
 
