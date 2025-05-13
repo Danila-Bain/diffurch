@@ -1,3 +1,5 @@
+//! Defines [Solver].
+
 use crate::Event;
 use crate::InitialCondition;
 use crate::Loc;
@@ -5,17 +7,40 @@ use crate::State;
 use crate::equation::Equation;
 use crate::rk::{RK98, RungeKuttaTable};
 
+// Implements the integration of differential equation, containing the implementation specific (not
+// equation specific) data, including particular Runge-Kutta scheme, stepsize, and events.
 pub struct Solver<'a, const N: usize, const S: usize> {
+    /// Runge-Kutta scheme used during integration. See [crate::rk].
+    ///
+    /// Set in constructor [Solver::rk].
     rk: &'a RungeKuttaTable<'a, S>,
+    /// Stepsize used during integration. In the future may be replaced with more generic stepsize
+    /// controller.
+    ///
+    /// Set in setter [Solver::stepsize].
     stepsize: f64,
-    // step_events: Vec<StateFn<'a, N, ()>>,
+    /// Events, that trigger each completed (not rejected) step.
+    ///
+    /// See [Solver::on_step].
     step_events: Vec<Box<dyn 'a + for<'s> FnMut(&'s mut State<N, S>)>>,
+    /// Events, that trigger before the start of integration.
+    ///
+    /// See [Solver::on_start].
     start_events: Vec<Box<dyn 'a + for<'s> FnMut(&'s mut State<N, S>)>>,
+    /// Events, that trigger after the stop of integration.
+    ///
+    /// See [Solver::on_stop].
     stop_events: Vec<Box<dyn 'a + for<'s> FnMut(&'s mut State<N, S>)>>,
+    /// Events, which trigger on located event during integration, like when the solution crosses
+    /// some surface in phase space.
+    ///
+    /// See [Solver::on_stop].
     loc_events: Vec<(Loc<'a, N>, Box<dyn 'a + for<'s> FnMut(&'s mut State<N, S>)>)>,
 }
 
 impl<'a, const N: usize> Solver<'a, N, 26> {
+    /// Constructor which defaults Runge-Kutta scheme to [crate::rk::RK98],
+    /// and stepsize to 0.05.
     pub fn new() -> Self {
         Solver::<N, 26> {
             rk: &RK98,
@@ -30,7 +55,7 @@ impl<'a, const N: usize> Solver<'a, N, 26> {
 
 impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
     /// Constructor which sets Runge-Kutta table and defaults stepsize to 0.05. Returns self.
-    pub fn rk(rk: &'a RungeKuttaTable<'a, S>) -> Solver<'a, N, S> {
+    pub fn rk(rk: &'a RungeKuttaTable<'a, S>) -> Self {
         Solver {
             rk,
             stepsize: 0.05,
@@ -97,6 +122,11 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
         self
     }
 
+    /// Add event to a list of loc events.
+    /// Events in that list trigger when event is located on a step using [Loc]. If two or more
+    /// events are detected on a step, only the earliest one is triggered. In current
+    /// implementation, solver always steps on the located event. Which can be used to implement
+    /// numerical integration for discontinuous differential equations correctly.
     pub fn on_loc<Output: Copy + 'a>(
         mut self,
         event_locator: Loc<'a, N>,
