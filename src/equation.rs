@@ -9,18 +9,19 @@ use crate::{StateCoordFnTrait, StateFn};
 ///
 /// # Examples
 /// ```rust
+/// use diffurch::Equation;
 /// // right hand side (RHS) is a constant:
-/// let constant = Equation::constant(|| [1.]); 
+/// let constant = Equation::constant(|| [1.]);
 /// // RHS is a known time function:
-/// let time = Equation::time(|t| [t.sin(), t.cos()]) 
+/// let time = Equation::time(|t| [t.sin(), t.cos()]);
 /// // RHS of an autonomous ODE:
-/// let ode = Equation::ode(|[x, y]| [-y, x]) 
+/// let ode = Equation::ode(|[x, y]| [-y, x]);
 /// // RHS of a non-autonomous ODE:
-/// let ode2 = Equation::ode2(|t, [x, y]| [-y / t, x * t]) 
+/// let ode2 = Equation::ode2(|t, [x, y]| [-y / t, x * t]);
 /// // RHS of a delay differential equation:
-/// let dde = Equation::dde(|t, [x], [x_]| [4. * x * (1. - x_(t - 1.))]) 
+/// let dde = Equation::dde(|t, [x], [x_]| [4. * x * (1. - x_(t - 1.))]);
 /// // RHS of a neutral delay differential equation:
-/// let ndde = Equation::dde(|t, [x], [x_]| [4. * x * (1. - x_.d(t - 1.))]) 
+/// let ndde = Equation::dde(|t, [x], [x_]| [4. * x * (1. - x_.d(t - 1.))]);
 /// ```
 ///
 pub struct Equation<'a, const N: usize = 1> {
