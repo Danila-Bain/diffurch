@@ -4,7 +4,7 @@ use crate::Loc;
 use crate::State;
 use crate::equation::Equation;
 use crate::rk::{RK98, RungeKuttaTable};
-//
+
 pub struct Solver<'a, const N: usize, const S: usize> {
     rk: &'a RungeKuttaTable<'a, S>,
     stepsize: f64,
@@ -29,6 +29,7 @@ impl<'a, const N: usize> Solver<'a, N, 26> {
 }
 
 impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
+    /// Constructor which sets Runge-Kutta table and defaults stepsize to 0.05. Returns self.
     pub fn rk(rk: &'a RungeKuttaTable<'a, S>) -> Solver<'a, N, S> {
         Solver {
             rk,
@@ -40,6 +41,7 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
         }
     }
 
+    /// [Solver::stepsize] setter. Returns self.
     pub fn stepsize(self, stepsize: f64) -> Self {
         Self { stepsize, ..self }
     }
@@ -71,14 +73,25 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
         })
     }
 
+    /// Add event to a list of step events.
+    /// Events in that list trigger once before the first step, and then after each completed step.
+    /// The step may be not completed if it were rejected by a step size controller (currently
+    /// unimplemented), or located event (see [Solver::on_loc]).
+    ///
     pub fn on_step<Output: Copy + 'a>(mut self, event: Event<'a, N, Output>) -> Self {
         self.step_events.push(Self::event_to_state_function(event));
         self
     }
+
+    /// Add event to a list of start events.
+    /// Events in that list trigger before the start of integration
+    /// and before the first trigger of step events (see [Solver::on_step]).
     pub fn on_start<Output: Copy + 'a>(mut self, event: Event<'a, N, Output>) -> Self {
         self.start_events.push(Self::event_to_state_function(event));
         self
     }
+    /// Add event to a list of stop events.
+    /// Events in that list trigger after the last step in integration has been made.
     pub fn on_stop<Output: Copy + 'a>(mut self, event: Event<'a, N, Output>) -> Self {
         self.stop_events.push(Self::event_to_state_function(event));
         self
@@ -94,6 +107,7 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
         self
     }
 
+    /// Run solver.
     pub fn run(
         mut self,
         eq: Equation<'a, N>,
@@ -138,6 +152,23 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
                     state.make_zero_step();
                 }
             });
+
+            // let located_event = ...;
+            // if Some((event, t)) = located_event {
+            //
+            // if t > state.t_prev {
+            //     state.undo_step();
+            //     state.make_step(t - state.t);
+            // }
+            //
+            // state.push_current();
+            // self.step_events
+            //     .iter_mut()
+            //     .for_each(|event| event(&mut state));
+            // event(&mut state);
+            // state.make_zero_step();
+            // }
+
             //  let min_i = 0;
             //  let min_t = f64::INFINITY;
             //  for i in range 0..self.root_events.len() {

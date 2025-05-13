@@ -1,3 +1,5 @@
+//! Defines [Event]
+
 use crate::{StateCoordFnTrait, StateFnMut};
 
 /// Event type holds several handlers that determine *what* happens when the event happens. Event

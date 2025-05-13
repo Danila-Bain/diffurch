@@ -1,5 +1,4 @@
-//! This module defines the struct [Equation], which holds the right hand side of the equation.
-//!
+//! Defines [Equation], which holds the right hand side of the equation.
 
 use crate::{StateCoordFnTrait, StateFn};
 
