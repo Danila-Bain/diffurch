@@ -137,54 +137,30 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
         while state.t < t_end {
             state.make_step(stepsize);
 
-            self.loc_events.iter_mut().for_each(|(locator, event)| {
-                if let Some(t) = locator.locate(&state) {
-                    if t > state.t_prev {
-                        state.undo_step();
-                        state.make_step(t - state.t);
+            // handle earliest detected event, if any
+            if let Some((event, t)) = self
+                .loc_events
+                .iter_mut()
+                .filter_map(|(locator, event)| {
+                    if let Some(t) = locator.locate(&state) {
+                        Some((event, t))
+                    } else {
+                        None
                     }
-                    state.push_current();
-                    self.step_events
-                        .iter_mut()
-                        .for_each(|event| event(&mut state));
-                    event(&mut state);
-                    state.make_zero_step();
+                })
+                .min_by(|(_, t1), (_, t2)| t1.partial_cmp(t2).unwrap())
+            {
+                if t > state.t_prev {
+                    state.undo_step();
+                    state.make_step(t - state.t);
                 }
-            });
-
-            // let located_event = ...;
-            // if Some((event, t)) = located_event {
-            //
-            // if t > state.t_prev {
-            //     state.undo_step();
-            //     state.make_step(t - state.t);
-            // }
-            //
-            // state.push_current();
-            // self.step_events
-            //     .iter_mut()
-            //     .for_each(|event| event(&mut state));
-            // event(&mut state);
-            // state.make_zero_step();
-            // }
-
-            //  let min_i = 0;
-            //  let min_t = f64::INFINITY;
-            //  for i in range 0..self.root_events.len() {
-            //      let t = self.root_events[i].locate(&state);
-            //      if t < min_t {
-            //          min_i = i;
-            //          min_t = t;
-            //      }
-            //  }
-            //  if min_i <= state.t {
-            //      state.undo_step();
-            //      state.make_step(min_t - state.t_prev);
-            //      state.push_current();
-            //      state.make_zero_step();
-            //      state.root_events[i].event(&mut state);
-            //
-            //  }
+                state.push_current();
+                self.step_events
+                    .iter_mut()
+                    .for_each(|event| event(&mut state));
+                event(&mut state);
+                state.make_zero_step();
+            }
 
             state.push_current();
             self.step_events
