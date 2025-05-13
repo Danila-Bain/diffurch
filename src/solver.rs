@@ -138,8 +138,7 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
             state.make_step(stepsize);
 
             self.loc_events.iter_mut().for_each(|(locator, event)| {
-                if locator.detect(&state) {
-                    let t = locator.locate(&state);
+                if let Some(t) = locator.locate(&state) {
                     if t > state.t_prev {
                         state.undo_step();
                         state.make_step(t - state.t);

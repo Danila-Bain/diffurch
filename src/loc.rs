@@ -57,7 +57,6 @@ pub struct Loc<'a, const N: usize> {
     pub location: LocMethod,
 }
 
-
 impl<'a, const N: usize> Loc<'a, N> {
     /// Constructor for [Detection::Sign] variant. Defaults location to [LocMethod::Bisection].
     pub fn zero(f: StateFn<'a, N, f64>) -> Self {
@@ -144,72 +143,76 @@ impl<'a, const N: usize> Loc<'a, N> {
     }
 
     /// Implements location methods for all [LocMethod] variants, utilizing functions provided by
-    /// [Detection]. Returns the time at which event is approximated to be located. 
-    pub fn locate<const S: usize>(&self, state: &'a State<'a, N, S>) -> f64 {
-        match self.location {
-            LocMethod::StepBegin => state.t_prev,
-            LocMethod::StepEnd => state.t,
-            LocMethod::StepMiddle => 0.5 * (state.t_prev + state.t),
-            LocMethod::Lerp => match &self.detection {
-                Detection::Bool(_) | Detection::BoolToTrue(_) | Detection::BoolToFalse(_) => {
-                    0.5 * (state.t_prev + state.t)
-                }
-                Detection::Sign(f) | Detection::SignToPos(f) | Detection::SignToNeg(f) => {
-                    let curr = f.eval(state);
-                    let prev = f.eval_prev(state);
-                    (curr * state.t_prev - prev * state.t) / (curr - prev)
-                }
-                Detection::SignNeg(f) | Detection::SignPos(f) => {
-                    let curr = f.eval(state);
-                    let prev = f.eval_prev(state);
-                    if (prev > 0.) != (curr > 0.) {
-                        (curr * state.t_prev - prev * state.t) / (curr - prev)
-                    } else {
-                        state.t_prev
+    /// [Detection]. Returns the time at which event is approximated to be located.
+    pub fn locate<const S: usize>(&self, state: &'a State<'a, N, S>) -> Option<f64> {
+        if !self.detect(&state) {
+            return None;
+        } else {
+            match self.location {
+                LocMethod::StepBegin => Some(state.t_prev),
+                LocMethod::StepEnd => Some(state.t),
+                LocMethod::StepMiddle => Some(0.5 * (state.t_prev + state.t)),
+                LocMethod::Lerp => match &self.detection {
+                    Detection::Bool(_) | Detection::BoolToTrue(_) | Detection::BoolToFalse(_) => {
+                        Some(0.5 * (state.t_prev + state.t))
                     }
-                }
-            },
-            LocMethod::Bisection => match &self.detection {
-                Detection::Bool(f) | Detection::BoolToTrue(f) | Detection::BoolToFalse(f) => {
-                    let mut l = state.t_prev;
-                    let mut r = state.t;
-                    if f.eval_prev(state) {
-                        swap(&mut l, &mut r);
+                    Detection::Sign(f) | Detection::SignToPos(f) | Detection::SignToNeg(f) => {
+                        let curr = f.eval(state);
+                        let prev = f.eval_prev(state);
+                        Some((curr * state.t_prev - prev * state.t) / (curr - prev))
                     }
-
-                    for _ in 0..f64::MANTISSA_DIGITS {
-                        let m = 0.5 * (l + r);
-                        match f.eval_at(state, m) {
-                            false => l = m,
-                            true => r = m,
+                    Detection::SignNeg(f) | Detection::SignPos(f) => {
+                        let curr = f.eval(state);
+                        let prev = f.eval_prev(state);
+                        if (prev > 0.) != (curr > 0.) {
+                            Some((curr * state.t_prev - prev * state.t) / (curr - prev))
+                        } else {
+                            Some(state.t_prev)
                         }
                     }
-                    return f64::max(l, r);
-                }
-
-                Detection::Sign(f)
-                | Detection::SignToPos(f)
-                | Detection::SignToNeg(f)
-                | Detection::SignPos(f)
-                | Detection::SignNeg(f) => {
-                    let mut l = state.t_prev;
-                    let mut r = state.t;
-                    if f.eval(state) < 0. {
-                        swap(&mut l, &mut r);
-                    }
-
-                    for _ in 0..f64::MANTISSA_DIGITS {
-                        let m = 0.5 * (l + r);
-                        match f.eval_at(state, m) < 0. {
-                            true => l = m,
-                            false => r = m,
+                },
+                LocMethod::Bisection => match &self.detection {
+                    Detection::Bool(f) | Detection::BoolToTrue(f) | Detection::BoolToFalse(f) => {
+                        let mut l = state.t_prev;
+                        let mut r = state.t;
+                        if f.eval_prev(state) {
+                            swap(&mut l, &mut r);
                         }
-                    }
-                    return f64::max(l, r);
-                }
-            },
 
-            LocMethod::Brent => todo!(),
+                        for _ in 0..f64::MANTISSA_DIGITS {
+                            let m = 0.5 * (l + r);
+                            match f.eval_at(state, m) {
+                                false => l = m,
+                                true => r = m,
+                            }
+                        }
+                        Some(f64::max(l, r))
+                    }
+
+                    Detection::Sign(f)
+                    | Detection::SignToPos(f)
+                    | Detection::SignToNeg(f)
+                    | Detection::SignPos(f)
+                    | Detection::SignNeg(f) => {
+                        let mut l = state.t_prev;
+                        let mut r = state.t;
+                        if f.eval(state) < 0. {
+                            swap(&mut l, &mut r);
+                        }
+
+                        for _ in 0..f64::MANTISSA_DIGITS {
+                            let m = 0.5 * (l + r);
+                            match f.eval_at(state, m) < 0. {
+                                true => l = m,
+                                false => r = m,
+                            }
+                        }
+                        Some(f64::max(l, r))
+                    }
+                },
+
+                LocMethod::Brent => todo!(),
+            }
         }
     }
 }
