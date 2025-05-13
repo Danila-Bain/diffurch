@@ -1,19 +1,40 @@
+//! Defines [State], the core object which is acted upon during integration.
+
 use crate::{Equation, InitialCondition, rk::RungeKuttaTable};
 
 use std::collections::VecDeque;
 
+/// [State] is an object that is primarily used internally.
 pub struct State<'a, const N: usize, const S: usize> {
-    pub t: f64,
-    pub t_init: f64,
-    pub t_prev: f64,
-    pub t_span: f64,
-    pub t_seq: VecDeque<f64>,
+    /// time of the state at the current step
+    pub(crate) t: f64,
+    /// time of the state at the previous step
+    pub(crate) t_prev: f64,
+    /// initial time of the state
+    t_init: f64,
+    /// length of past history stored in state,
+    /// 
+    /// It must be >= than largest delay encountered in delay differential equation.
+    ///
+    /// It may be 0., may be f64::INFINITE.
+    ///
+    /// For negative values, solver will panic.
+    pub(crate) t_span: f64,
+    /// time instances of past steps
+    ///
+    /// The past values that are no longer needed are pop'ed during computation according to [State::t_span].
+    t_seq: VecDeque<f64>,
 
-    pub x: [f64; N],
-    pub x_init: InitialCondition<'a, N>,
-    pub x_prev: [f64; N],
-    pub x_err: [f64; N],
-    pub x_seq: VecDeque<[f64; N]>,
+    /// position of the state at the current step
+    pub(crate) x: [f64; N],
+    /// position of the state at the previous step
+    pub(crate) x_prev: [f64; N],
+    /// initial condition used to initialize or evaluate the state at times before [State::t_init].
+    x_init: InitialCondition<'a, N>,
+    /// state values of past steps
+    ///
+    /// The past values that are no longer needed are pop'ed during computation according to [State::t_span].
+    x_seq: VecDeque<[f64; N]>,
 
     k: [[f64; N]; S],
     k_seq: VecDeque<[[f64; N]; S]>,
@@ -61,7 +82,6 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
             x_init,
             x,
             x_prev: x.clone(),
-            x_err: [0.; N],
             x_seq: VecDeque::from([x.clone()]),
 
             k: [[0.; N]; S],
