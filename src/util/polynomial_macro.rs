@@ -1,5 +1,21 @@
 // The main macro which creates an anonymous function that computes the polynomial.
 
+/// Produce a fn(f64) -> f64 closure that represents a polynomial function with given coefficients.
+///
+/// # Examples:
+/// ```rust 
+/// use diffurch::polynomial_closure;
+///
+/// let p0 = polynomial_closure![1., 0., -1./2., 0., 1./24.];
+/// let p1 = |t: f64| 1. - t*t/2. + t.powi(4)/24.;
+/// let p2 = |t: f64| 1. + t * (t * ( - 1./2. + t * (t * (1./24.))));
+///
+/// for i in 0..10 {
+///     let t = i as f64;
+///     assert!((p0(t) - p1(t)).abs() < 1e-13); // not exact due to rounding errors
+///     assert_eq!(p0(t), p2(t));
+/// }
+/// ```
 #[macro_export]
 macro_rules! polynomial_closure {
     () => {
@@ -13,6 +29,8 @@ macro_rules! polynomial_closure {
     };
 }
 
+/// Same as [crate::polynomial_closure], but produces a closure, that corresponds to differentiated
+/// polynomial function.
 #[macro_export]
 macro_rules! polynomial_derivative_closure {
     () => {
@@ -31,6 +49,30 @@ macro_rules! polynomial_derivative_closure {
     };
 }
 
+/// Produces [crate::util::with_derivative::Differentiable] that holds a polynomial, produced by
+/// [crate::polynomial_closure] and its derivative closure, produced by
+/// [crate::polynomial_derivative_closure].
+///
+/// # Example
+/// ```rust
+/// use diffurch::polynomial;
+///
+/// let p0 = polynomial![1., 0., -1./2., 0., 1./24.];
+/// let p1 = |t: f64| 1. - t*t/2. + t.powi(4)/24.;
+/// let p2 = |t: f64| 1. + t * (t * ( - 1./2. + t * (t * (1./24.))));
+///
+/// let d1 = |t: f64| -t + t.powi(3)/6.;
+/// let d2 = |t: f64| t * (-1. + t*t*(1./6.));
+///
+/// for i in 0..10 {
+///     let t = i as f64;
+///     assert!((p0(t) - p1(t)).abs() < 1e-13); // not exact due to rounding errors
+///     assert_eq!(p0(t), p2(t));
+///
+///     assert!((p0.d(t) - d1(t)).abs() < 1e-13); // not exact due to rounding errors
+///     assert_eq!(p0.d(t), d2(t));
+/// }
+/// ```
 #[macro_export]
 macro_rules! polynomial {
     ($($coef:expr),*) => {
