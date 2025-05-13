@@ -23,7 +23,14 @@ In each section, roughly in order of simplicity and necessity:
 
 [ ] delay propagated events
 
-[ ] different location methods: StepBegin, StepEnd, Lerp, Brent, Bisection
+[ ] different location methods: 
+    [x] StepBegin, 
+    [x] StepEnd, 
+    [x] Lerp, 
+    [ ] Brent, 
+    [x] Bisection
+
+[ ] filtering for event location
 
 [ ] different events attached to one location. For example: stop integration after 1000th located event, which also mutates the state
 
@@ -38,6 +45,8 @@ In each section, roughly in order of simplicity and necessity:
 
 
 # Event Output
+
+[ ] add empty event like Event::none()
 
 [ ] add support for events, that haave access, to the data from the previous events. it's unclear yet should it be in event calback or a stream. Anyway get inspired by Iter::scan or fold or iter_map_windows.
 
