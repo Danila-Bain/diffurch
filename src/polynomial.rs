@@ -33,16 +33,6 @@ where
     }
 }
 
-pub trait WithDerivative<DF>
-where
-    Self: Sized,
-{
-    fn with_derivative(self, derivative: DF) -> Differentiable<Self, DF> {
-        Differentiable(self, derivative)
-    }
-}
-
-impl<Ret, F: Fn(f64) -> Ret, DF: Fn(f64) -> Ret> WithDerivative<DF> for F {}
 
 /// Produce a fn(f64) -> f64 closure that represents a polynomial function with given coefficients.
 ///
