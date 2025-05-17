@@ -13,7 +13,7 @@ pub struct State<'a, const N: usize, const S: usize> {
     /// initial time of the state
     t_init: f64,
     /// length of past history stored in state,
-    /// 
+    ///
     /// It must be >= than largest delay encountered in delay differential equation.
     ///
     /// It may be 0., may be f64::INFINITE.

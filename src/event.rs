@@ -2,6 +2,39 @@
 
 use crate::{StateCoordFnTrait, StateFnMut};
 
+#[macro_export]
+macro_rules! event {
+    (|| $expr:expr) => {
+        $crate::Event::constant(|| $expr)
+    };
+    (|$t:ident| $expr:expr) => {
+        $crate::Event::time(|$t| $expr)
+    };
+    (|[$($x:ident),+]| $expr:expr) => {
+        $crate::Event::ode(|[$($x),+]| $expr)
+    };
+    (|$t:ident, [$($x:ident),+]| $expr:expr) => {
+        $crate::Event::ode2(|$t, [$($x),+]| $expr)
+    };
+    (|$t:ident, [$($x:ident),+], [$($x_:ident),+]| $expr:expr) => {
+        $crate::Event::dde(|$t, [$($x),+], [$($x_),+]| $expr)
+    };
+}
+
+
+#[macro_export]
+macro_rules! event_mut {
+    (|$t:ident| $expr:expr) => {
+        $crate::Event::time_mut(|$t| $expr)
+    };
+    (|[$($x:ident),+]| $expr:expr) => {
+        $crate::Event::ode_mut(|[$($x),+]| $expr)
+    };
+    (|$t:ident, [$($x:ident),+]| $expr:expr) => {
+        $crate::Event::ode2_mut(|$t, [$($x),+]| $expr)
+    };
+}
+
 /// Event type holds several handlers that determine *what* happens when the event happens. Event
 /// struct does not specify under what conditions event is triggered, the "when" part is determined
 /// in [crate::solver::Solver] struct.
