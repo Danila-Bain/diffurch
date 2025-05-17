@@ -13,19 +13,19 @@ where
 
     /// push a new [StateFn::Constant], constructed from a given closure
     fn filter_constant(self, f: impl 'a + FnMut() -> bool) -> Self {
-        self.filter(StateFn::Constant(Box::new(f)))
+        self.filter(StateFn::constant(f))
     }
     /// push a new [StateFn::Time], constructed from a given closure
     fn filter_time(self, f: impl 'a + FnMut(f64) -> bool) -> Self {
-        self.filter(StateFn::Time(Box::new(f)))
+        self.filter(StateFn::time(f))
     }
     /// push a new [StateFn::ODE], constructed from a given closure
     fn filter_ode(self, f: impl 'a + FnMut([f64; N]) -> bool) -> Self {
-        self.filter(StateFn::ODE(Box::new(f)))
+        self.filter(StateFn::ode(f))
     }
     /// push a new [StateFn::ODE2], constructed from a given closure
     fn filter_ode2(self, f: impl 'a + FnMut(f64, [f64; N]) -> bool) -> Self {
-        self.filter(StateFn::ODE2(Box::new(f)))
+        self.filter(StateFn::ode2(f))
     }
 
     fn every(self, n: usize) -> Self {
