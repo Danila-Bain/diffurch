@@ -24,7 +24,7 @@ pub struct RungeKuttaTable<'a, const S: usize> {
     /// c-coefficients, which are sums of each row of a-coefficients
     pub c: [f64; S],
     /// polynomials that are used in place of b-coefficients, for dense output (interpolation)
-    pub bi: [crate::util::with_derivative::Differentiable<fn(f64) -> f64, fn(f64) -> f64>; S],
+    pub bi: [crate::polynomial::Differentiable<fn(f64) -> f64, fn(f64) -> f64>; S],
 }
 
 /// Euler method (<https://en.wikipedia.org/wiki/Euler_method>), with linear interpolation
