@@ -1,3 +1,7 @@
+//! Defines [crate::polynomial!] macro and [crate::polynomial::Differentiable] conatiner for pairs
+//! of closures.
+
+/// Tuple struct to hold a one-variable function and its derivative.
 #[derive(Clone)]
 pub struct Differentiable<F, DF>(pub F, pub DF);
 
@@ -23,6 +27,7 @@ impl<F, DF, Ret> Differentiable<F, DF>
 where
     DF: Fn<(f64,), Output = Ret>,
 {
+    /// Evaluate derivative
     pub fn d(&self, t: f64) -> Ret {
         (self.1)(t)
     }
@@ -42,7 +47,7 @@ impl<Ret, F: Fn(f64) -> Ret, DF: Fn(f64) -> Ret> WithDerivative<DF> for F {}
 /// Produce a fn(f64) -> f64 closure that represents a polynomial function with given coefficients.
 ///
 /// # Examples:
-/// ```rust 
+/// ```rust
 /// use diffurch::polynomial_closure;
 ///
 /// let p0 = polynomial_closure![1., 0., -1./2., 0., 1./24.];
@@ -112,9 +117,26 @@ macro_rules! polynomial_derivative_closure {
 ///     assert_eq!(p0.d(t), d2(t));
 /// }
 /// ```
+///
+/// # Example
+/// ```rust
+/// let geometric_series = diffurch::polynomial![
+///     1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+///     1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+///     1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+///     1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
+/// ];
+///
+/// // check for some numbers that do not run into rounding errors for some reason
+/// for t in [1./2., 1./4., 1./5., 1./6. as f64] {
+///     assert_eq!(geometric_series(t), 1. / (1. - t));
+///     assert_eq!(geometric_series.d(t), (1. / (1. - t)).powi(2));
+/// }
+/// ```
+///
 #[macro_export]
 macro_rules! polynomial {
-    ($($coef:expr),*) => {
+    ($($coef:expr),* $(,)?) => {
         $crate::polynomial::Differentiable(
             $crate::polynomial_closure![$($coef),*],
             $crate::polynomial_derivative_closure![$($coef),*]
@@ -129,6 +151,14 @@ macro_rules! polynomial {
 #[cfg(test)]
 mod tests {
     // use super::*;
+    #[test]
+    fn empty_polynomial() {
+        let p = polynomial![];
+        assert_eq!(p(0.), 0.);
+        assert_eq!(p(1.), 0.);
+        assert_eq!(p.d(0.), 0.);
+        assert_eq!(p.d(1.), 0.);
+    }
 
     #[test]
     fn constant_polynomail_evauation() {
@@ -167,6 +197,7 @@ mod tests {
         assert_eq!(geometric_series(1. / 5.), 1. / (1. - 1. / 5.));
         assert_eq!(geometric_series(1. / 6.), 1. / (1. - 1. / 6.));
     }
+
 
     #[test]
     fn constant_polynomail_derivative() {
