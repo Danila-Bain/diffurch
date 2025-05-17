@@ -26,7 +26,7 @@ fn main() {
                 .separated_by(0.01)
                 .subdivide(21),
         )
-        .on_loc(Loc::zero(StateFn::ode(|[_x, dx]| dx)), event!(|| {}))
+        .on_loc(Loc::zero(StateFn::ode(|[_x, dx]| dx)), event!())
         .on_loc(
             Loc::zero(StateFn::ode(|[x, _dx]| x)),
             event_mut!(|t, [_x, dx]| {

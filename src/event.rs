@@ -4,6 +4,9 @@ use crate::{StateCoordFnTrait, StateFnMut};
 
 #[macro_export]
 macro_rules! event {
+    () => {
+        $crate::Event::constant(|| {})
+    };
     (|| $expr:expr) => {
         $crate::Event::constant(|| $expr)
     };
