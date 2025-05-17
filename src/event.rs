@@ -71,39 +71,49 @@ impl<'a, const N: usize, Output> Event<'a, N, Output> {
         }
     }
 
-    /// Constructor using [MutStateFn::constant]
+    /// Constructor that initializes [Event::callback] using [MutStateFn::constant].
     pub fn constant(callback: impl 'a + FnMut() -> Output) -> Self {
         Event::new(MutStateFn::constant(callback))
     }
+    /// Constructor that initializes [Event::callback] using [MutStateFn::time].
     pub fn time(callback: impl 'a + FnMut(f64) -> Output) -> Self {
         Event::new(MutStateFn::time(callback))
     }
+    /// Constructor that initializes [Event::callback] using [MutStateFn::time_mut].
     pub fn time_mut(callback: impl 'a + FnMut(&mut f64) -> Output) -> Self {
         Event::new(MutStateFn::time_mut(callback))
     }
+    /// Constructor that initializes [Event::callback] using [MutStateFn::ode].
     pub fn ode(callback: impl 'a + FnMut([f64; N]) -> Output) -> Self {
         Event::new(MutStateFn::ode(callback))
     }
+    /// Constructor that initializes [Event::callback] using [MutStateFn::ode_mut].
     pub fn ode_mut(callback: impl 'a + FnMut(&mut [f64; N]) -> Output) -> Self {
         Event::new(MutStateFn::ode_mut(callback))
     }
+    /// Constructor that initializes [Event::callback] using [MutStateFn::ode2].
     pub fn ode2(callback: impl 'a + FnMut(f64, [f64; N]) -> Output) -> Self {
         Event::new(MutStateFn::ode2(callback))
     }
+    /// Constructor that initializes [Event::callback] using [MutStateFn::ode2_mut].
     pub fn ode2_mut(callback: impl 'a + FnMut(&mut f64, &mut [f64; N]) -> Output) -> Self {
         Event::new(MutStateFn::ode2_mut(callback))
     }
+    /// Constructor that initializes [Event::callback] using [MutStateFn::dde].
     pub fn dde(
         callback: impl 'a + FnMut(f64, [f64; N], [Box<dyn '_ + StateCoordFnTrait>; N]) -> Output,
     ) -> Self {
         Event::new(MutStateFn::dde(callback))
     }
 
+    /// Push a new function to [Event::stream].
     pub fn to(mut self, s: impl 'a + FnMut(Output)) -> Self {
         self.stream.push(Box::new(s));
         self
     }
 
+    /// Push a new function to [Event::stream], that prints the output of [Event::callback] to the
+    /// standard output using `println!`.
     pub fn to_std(self) -> Self
     where
         Output: std::fmt::Debug,
@@ -111,6 +121,10 @@ impl<'a, const N: usize, Output> Event<'a, N, Output> {
         self.to(|value: Output| println!("{value:?}"))
     }
 
+    /// Push a new function to [Event::stream], that opens file with a given filename and writes 
+    /// the output of [Event::callback] in that file. 
+    ///
+    /// Panics, if file opening or writing fails.
     pub fn to_file(self, filename: &str) -> Self
     where
         Output: std::fmt::Debug,
@@ -120,24 +134,34 @@ impl<'a, const N: usize, Output> Event<'a, N, Output> {
         self.to(move |value: Output| writeln!(&mut file, "{:?}", value).unwrap())
     }
 
+
+    /// Push a new function to [Event::stream], that pushes the output of [Event::callback] to the
+    /// provided vector.
     pub fn to_vec(self, vec: &'a mut Vec<Output>) -> Self {
         self.to(|value: Output| vec.push(value))
     }
 
-    /// The function that writes its argument to provided mutable variable is appended to `stream`
-    /// field. The modified event is returned.
+    /// Push a new function to [Event::stream], that writes the output of [Event::callback] to the
+    /// provided variable.
     pub fn to_var(self, value: &'a mut Output) -> Self {
         self.to(|v: Output| *value = v)
     }
 
+    /// Push a new function to [Event::stream], that updates the range such that it represents the
+    /// minimal closed interval that contains all the values outputed from [Event::callback] so
+    /// far. 
+    ///
+    /// The range is initialized to `(+oo .. -oo)`.
     pub fn to_float_range(self, range: &'a mut std::ops::Range<Output>) -> Self
     where
         Output: num_traits::Float,
     {
-        *range = Output::max_value()..Output::min_value();
+        *range = Output::infinity()..Output::neg_infinity();
         self.to(|v: Output| *range = range.start.min(v)..range.end.max(v))
     }
 
+    /// Set [Event::subdivision] field to `Some(n)`, that tells the solver, that event needs to be
+    /// triggered `n` times on the current step.
     pub fn subdivide(mut self, n: usize) -> Self {
         self.subdivision = Some(n);
         self
@@ -152,6 +176,9 @@ impl<'a, const N: usize, Output: 'a> crate::Filter<'a, N> for Event<'a, N, Outpu
 }
 
 impl<'a, const N: usize> Event<'a, N, [f64; N]> {
+    /// Creates an event, the callback of which returns the coordinate vector of the state.
+    ///
+    /// A short-hand for `Event::new(MutStateFn::ode(|x| x))`.
     pub fn ode_state() -> Self {
         Event::new(MutStateFn::ode(|x| x))
     }
@@ -173,12 +200,18 @@ impl<'a, const N: usize> Event<'a, N, [f64; N]> {
 // }
 
 impl<'a, const N: usize> Event<'a, N, (f64, [f64; N])> {
+    /// Creates an event, the callback of which returns the time and coordinate vector of the state.
+    ///
+    /// A short-hand for `Event::new(MutStateFn::ode2(|t, x| (t, x)))`.
     pub fn ode2_state() -> Self {
         Event::new(MutStateFn::ode2(|t, x| (t, x)))
     }
 }
 
 impl<'a, const N: usize> Event<'a, N, ()> {
+    /// Creates an event, that sets the time of the state to `f64::INFINITY`, effectively stopping the integration.
+    ///
+    /// A short-hand for `Event::time_mut(|t| *t = f64::INFINITY))`.
     pub fn stop_integration() -> Self {
         Event::time_mut(|t| {
             *t = f64::INFINITY;
@@ -187,6 +220,7 @@ impl<'a, const N: usize> Event<'a, N, ()> {
 }
 
 impl<'a, const N: usize, Item, const M: usize> Event<'a, N, [Item; M]> {
+    /// Like [Event::to_file] but only works with arrays, and prints array as a comma-separated values.
     pub fn to_csv(self, filename: &str) -> Self
     where
         Item: std::fmt::Display,
@@ -197,9 +231,10 @@ impl<'a, const N: usize, Item, const M: usize> Event<'a, N, [Item; M]> {
             for val in values {
                 write!(&mut file, "{},", val).unwrap();
             }
-            writeln!(&mut file, "").unwrap();
+            write!(&mut file, "\n").unwrap();
         })
     }
+    /// Like [Event::to_file] but only works with arrays, and prints array values separated by a separator, and adds the header line if it is provided.
     pub fn to_table(self, filename: &str, separator: &'a str, header: Option<&str>) -> Self
     where
         Item: std::fmt::Display,
@@ -218,6 +253,8 @@ impl<'a, const N: usize, Item, const M: usize> Event<'a, N, [Item; M]> {
         })
     }
 
+    /// Like [Event::to_vec], but pushes the values of [Event::callback] output in individual
+    /// vectors.
     pub fn to_vecs(self, vecs: [&'a mut Vec<Item>; M]) -> Self
     where
         Item: Copy,
@@ -229,6 +266,7 @@ impl<'a, const N: usize, Item, const M: usize> Event<'a, N, [Item; M]> {
         })
     }
 
+    /// Like [Event::to_float_range], but updates several individual ranges.
     pub fn to_float_ranges(self, mut ranges: [&'a mut std::ops::Range<Item>; M]) -> Self
     where
         Item: num_traits::Float,
