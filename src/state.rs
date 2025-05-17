@@ -1,9 +1,5 @@
 //! Defines [State], the core object which is acted upon during integration.
 
-use crate::{Equation, InitialCondition, rk::RungeKuttaTable};
-
-use std::collections::VecDeque;
-
 /// [State] is an object that is primarily used internally.
 pub struct State<'a, const N: usize, const S: usize> {
     /// time of the state at the current step
@@ -23,23 +19,23 @@ pub struct State<'a, const N: usize, const S: usize> {
     /// time instances of past steps
     ///
     /// The past values that are no longer needed are pop'ed during computation according to [State::t_span].
-    t_seq: VecDeque<f64>,
+    t_seq: std::collections::VecDeque<f64>,
 
     /// position of the state at the current step
     pub(crate) x: [f64; N],
     /// position of the state at the previous step
     pub(crate) x_prev: [f64; N],
     /// initial condition used to initialize or evaluate the state at times before [State::t_init].
-    x_init: InitialCondition<'a, N>,
+    x_init: crate::InitialCondition<'a, N>,
     /// state values of past steps
     ///
     /// The past values that are no longer needed are pop'ed during computation according to [State::t_span].
-    x_seq: VecDeque<[f64; N]>,
+    x_seq: std::collections::VecDeque<[f64; N]>,
 
     k: [[f64; N]; S],
-    k_seq: VecDeque<[[f64; N]; S]>,
+    k_seq: std::collections::VecDeque<[[f64; N]; S]>,
 
-    rk: &'a RungeKuttaTable<'a, S>,
+    rk: &'a crate::rk::RungeKuttaTable<'a, S>,
 }
 
 // pub trait StateTrait<const N: usize> {
@@ -60,15 +56,14 @@ pub struct State<'a, const N: usize, const S: usize> {
 impl<'a, const N: usize, const S: usize> State<'a, N, S> {
     pub fn new(
         t_init: f64,
-        x_init: InitialCondition<'a, N>,
+        x_init: crate::InitialCondition<'a, N>,
         t_span: f64,
-        rk: &'a RungeKuttaTable<'a, S>,
+        rk: &'a crate::rk::RungeKuttaTable<'a, S>,
     ) -> Self {
         let x = match &x_init {
-            &InitialCondition::Point(value) => value,
-            InitialCondition::Function(f) | InitialCondition::FunctionWithDerivative(f, _) => {
-                f(t_init)
-            }
+            &crate::InitialCondition::Point(value) => value,
+            crate::InitialCondition::Function(f)
+            | crate::InitialCondition::FunctionWithDerivative(f, _) => f(t_init),
         };
 
         Self {
@@ -76,15 +71,15 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
             t: t_init,
             t_prev: t_init,
             t_span,
-            t_seq: VecDeque::from([t_init]),
+            t_seq: std::collections::VecDeque::from([t_init]),
 
             x_init,
             x,
             x_prev: x.clone(),
-            x_seq: VecDeque::from([x.clone()]),
+            x_seq: std::collections::VecDeque::from([x.clone()]),
 
             k: [[0.; N]; S],
-            k_seq: VecDeque::new(),
+            k_seq: std::collections::VecDeque::new(),
 
             rk,
         }
