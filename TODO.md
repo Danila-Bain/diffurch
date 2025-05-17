@@ -112,7 +112,7 @@ In each section, roughly in order of simplicity and necessity:
 [ ] filter trait: 
     [ ] ref mut getter for filter vector (not default)
     [ ] filter vector short-circuting callback (default)
-    [ ] make all existing filter-related methods on Event be a part of filter trait
+    [x] make all existing filter-related methods on Event be a part of filter trait
     [ ] impl filter trait for Event and Loc
 
 # API convenience and macros

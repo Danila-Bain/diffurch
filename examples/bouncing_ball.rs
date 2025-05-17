@@ -1,4 +1,4 @@
-use diffurch::{Loc, Solver, StateFn, equation, event, event_mut, rk};
+use diffurch::{equation, event, event_mut, rk, Filter, Loc, Solver, StateFn};
 
 fn main() {
     let k = 0.90;

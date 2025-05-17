@@ -1,6 +1,6 @@
 use std::cell::Cell;
 
-use diffurch::{Loc, Solver, StateFn, equation, event, event_mut, rk};
+use diffurch::{Loc, Solver, StateFn, Filter, equation, event, event_mut, rk};
 
 fn main() {
     let k = 0.9;
