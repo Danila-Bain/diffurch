@@ -1,41 +1,6 @@
 //! Defines [Event]
 
-use crate::{StateFn, MutStateFn, StateCoordFnTrait};
-
-#[macro_export]
-macro_rules! event {
-    () => {
-        $crate::Event::constant(|| {})
-    };
-    (|| $expr:expr) => {
-        $crate::Event::constant(|| $expr)
-    };
-    (|$t:ident| $expr:expr) => {
-        $crate::Event::time(|$t| $expr)
-    };
-    (|[$($x:ident),+]| $expr:expr) => {
-        $crate::Event::ode(|[$($x),+]| $expr)
-    };
-    (|$t:ident, [$($x:ident),+]| $expr:expr) => {
-        $crate::Event::ode2(|$t, [$($x),+]| $expr)
-    };
-    (|$t:ident, [$($x:ident),+], [$($x_:ident),+]| $expr:expr) => {
-        $crate::Event::dde(|$t, [$($x),+], [$($x_),+]| $expr)
-    };
-}
-
-#[macro_export]
-macro_rules! event_mut {
-    (|$t:ident| $expr:expr) => {
-        $crate::Event::time_mut(|$t| $expr)
-    };
-    (|[$($x:ident),+]| $expr:expr) => {
-        $crate::Event::ode_mut(|[$($x),+]| $expr)
-    };
-    (|$t:ident, [$($x:ident),+]| $expr:expr) => {
-        $crate::Event::ode2_mut(|$t, [$($x),+]| $expr)
-    };
-}
+use crate::{MutStateFn, StateCoordFnTrait, StateFn};
 
 /// Event type holds several handlers that determine *what* happens when the event happens. Event
 /// struct does not specify under what conditions event is triggered, the "when" part is determined
@@ -59,7 +24,6 @@ pub struct Event<'a, const N: usize = 0, Output = ()> {
 }
 
 impl<'a, const N: usize, Output> Event<'a, N, Output> {
-
     /// Constructor that initializes [Event::callback] from [MutStateFn], and the rest by
     /// Default::default().
     pub fn new(callback: MutStateFn<'a, N, Output>) -> Self {
@@ -121,8 +85,8 @@ impl<'a, const N: usize, Output> Event<'a, N, Output> {
         self.to(|value: Output| println!("{value:?}"))
     }
 
-    /// Push a new function to [Event::stream], that opens file with a given filename and writes 
-    /// the output of [Event::callback] in that file. 
+    /// Push a new function to [Event::stream], that opens file with a given filename and writes
+    /// the output of [Event::callback] in that file.
     ///
     /// Panics, if file opening or writing fails.
     pub fn to_file(self, filename: &str) -> Self
@@ -133,7 +97,6 @@ impl<'a, const N: usize, Output> Event<'a, N, Output> {
         let mut file = std::fs::File::create_buffered(filename).unwrap();
         self.to(move |value: Output| writeln!(&mut file, "{:?}", value).unwrap())
     }
-
 
     /// Push a new function to [Event::stream], that pushes the output of [Event::callback] to the
     /// provided vector.
@@ -149,7 +112,7 @@ impl<'a, const N: usize, Output> Event<'a, N, Output> {
 
     /// Push a new function to [Event::stream], that updates the range such that it represents the
     /// minimal closed interval that contains all the values outputed from [Event::callback] so
-    /// far. 
+    /// far.
     ///
     /// The range is initialized to `(+oo .. -oo)`.
     pub fn to_float_range(self, range: &'a mut std::ops::Range<Output>) -> Self
@@ -280,4 +243,73 @@ impl<'a, const N: usize, Item, const M: usize> Event<'a, N, [Item; M]> {
             }
         })
     }
+}
+
+/// Creates a [crate::Event] from a closure.
+///
+/// `event!` allows `Event` to be defined with closures of different calling signatures,
+/// being a replacement of some constructors of [crate::Event]:
+///
+/// ```rust
+/// use diffurch::event;
+///
+/// // use in solver for generic parameters inference
+/// let solver = diffurch::Solver::new()
+///     .on_step(event!(|| 1.)) // equivalent to .on_step(Event::constant(...))
+///     .on_step(event!(|t| t + t.cos())) // equivalent to .on_step(Event::time(...))
+///     .on_step(event!(|[x, y]| [x, y, x+y])) // equivalent to .on_step(Event::ode(...))
+///     .on_step(event!(|t, [x, y]| [t, x, y])) // equivalent to .on_step(Event::ode2(...))
+///     .on_step(event!(|t, [x, y], [x_, y_]| [t, x, x_(t - 1.)])) // equivalent to .on_step(Event::dde(...))
+///     .on_step(event!(|t, [x, y], [x_, y_]| [t, x, x_(t - 1.), x_.d(t - 1.)])); // equivalent to .on_step(Event::dde(...))
+/// ```
+/// 
+/// For state mutating events, use [event_mut!].
+#[macro_export]
+macro_rules! event {
+    () => {
+        $crate::Event::constant(|| {})
+    };
+    (|| $expr:expr) => {
+        $crate::Event::constant(|| $expr)
+    };
+    (|$t:ident| $expr:expr) => {
+        $crate::Event::time(|$t| $expr)
+    };
+    (|[$($x:ident),+]| $expr:expr) => {
+        $crate::Event::ode(|[$($x),+]| $expr)
+    };
+    (|$t:ident, [$($x:ident),+]| $expr:expr) => {
+        $crate::Event::ode2(|$t, [$($x),+]| $expr)
+    };
+    (|$t:ident, [$($x:ident),+], [$($x_:ident),+]| $expr:expr) => {
+        $crate::Event::dde(|$t, [$($x),+], [$($x_),+]| $expr)
+    };
+}
+
+/// State-mutating counter-part of [event!].
+///
+/// `event_mut!` allows `Event` to be defined with closures of different calling signatures,
+/// being a replacement of some constructors of [crate::Event]:
+///
+/// ```rust
+/// use diffurch::event_mut;
+///
+/// // use in solver for generic parameters inference
+/// let solver = diffurch::Solver::new()
+///     .on_step(event_mut!(|t| *t = f64::INFINITY))
+///     .on_step(event_mut!(|[x, y]| {*x = -*x; [*x, *y, *x + *y]}))
+///     .on_step(event_mut!(|t, [x, y]| {*x = -*y; *t = f64::INFINITY;}));
+/// ```
+///
+#[macro_export]
+macro_rules! event_mut {
+    (|$t:ident| $expr:expr) => {
+        $crate::Event::time_mut(|$t| $expr)
+    };
+    (|[$($x:ident),+]| $expr:expr) => {
+        $crate::Event::ode_mut(|[$($x),+]| $expr)
+    };
+    (|$t:ident, [$($x:ident),+]| $expr:expr) => {
+        $crate::Event::ode2_mut(|$t, [$($x),+]| $expr)
+    };
 }
