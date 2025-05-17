@@ -1,6 +1,6 @@
 //! Defines [Event]
 
-use crate::{MutStateFn, StateCoordFnTrait};
+use crate::{StateFn, MutStateFn, StateCoordFnTrait};
 
 #[macro_export]
 macro_rules! event {
@@ -50,7 +50,7 @@ pub struct Event<'a, const N: usize = 0, Output = ()> {
     /// more sparse output (such that there are not too many output points), or limit outputing
     /// values to a certain range, etc. It is a function, that is invoked on a state and returns
     /// bool.
-    pub filter: Vec<MutStateFn<'a, N, bool>>,
+    pub filter: Vec<StateFn<'a, N, bool>>,
     /// When it has unit type it does nothing, when it has type `usize`, it produces dense output:
     /// the event's "filter->stream->callback" sequence is triggered not on the current state, but
     /// on `subdivision` number of points of the current step in the state, making use of dense
@@ -141,7 +141,7 @@ impl<'a, const N: usize, Output> Event<'a, N, Output> {
 }
 
 impl<'a, const N: usize, Output: 'a> crate::Filter<'a, N> for Event<'a, N, Output> {
-    fn filter(mut self, f: MutStateFn<'a, N, bool>) -> Self {
+    fn filter(mut self, f: StateFn<'a, N, bool>) -> Self {
         self.filter.push(f);
         self
     }

@@ -56,12 +56,12 @@ pub struct Loc<'a, const N: usize> {
     /// location part of the event
     pub location: LocMethod,
     /// Functions, that filter detection, they are called if [Loc::detection] returns true, and
-    /// if any one function in [Loc::filter] is false, the event is considered undetected. 
-    pub filter: Vec<crate::MutStateFn<'a, N, bool>>,
+    /// if any one function in [Loc::filter] is false, the event is considered undetected.
+    pub filter: Vec<crate::StateFn<'a, N, bool>>,
 }
 
 impl<'a, const N: usize> crate::Filter<'a, N> for Loc<'a, N> {
-    fn filter(mut self, f: crate::MutStateFn<'a, N, bool>) -> Self {
+    fn filter(mut self, f: crate::StateFn<'a, N, bool>) -> Self {
         self.filter.push(f);
         self
     }
@@ -163,8 +163,7 @@ impl<'a, const N: usize> Loc<'a, N> {
     /// Implements location methods for all [LocMethod] variants, utilizing functions provided by
     /// [Detection]. Returns the time at which event is approximated to be located.
     pub fn locate<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Option<f64> {
-        // if !self.detect(&state) || !self.filter.iter_mut().all(|f| f.eval(state)) {
-        if !self.detect(&state) {
+        if !self.detect(state) || !self.filter.iter_mut().all(|f| f.eval(state)) {
             return None;
         } else {
             match self.location {
