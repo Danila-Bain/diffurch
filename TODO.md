@@ -20,6 +20,7 @@ In each section, roughly in order of simplicity and necessity:
     [ ] on_root
     [ ] on_above_root, on_below_root (naming should change)
     [ ] on_period (trigger event periodically)
+    [ ] add discontinuity location events for Equation
 
 [ ] delay propagated events
 

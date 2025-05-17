@@ -294,15 +294,25 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
     }
 }
 
+/// Enum that hold closures of different signatures, and manages how they are evaluated at the
+/// state.
 pub enum StateFn<'a, const N: usize, Ret> {
+    /// Function, that do not depend on the state
     Constant(Box<dyn 'a + FnMut() -> Ret>),
+    /// Function, that only depends on the time of the state
     Time(Box<dyn 'a + FnMut(f64) -> Ret>),
+    /// Function, that depends on the coordinates of the state
     ODE(Box<dyn 'a + FnMut([f64; N]) -> Ret>),
+    /// Function, that depends on the time and the coordinates of the state
     ODE2(Box<dyn 'a + FnMut(f64, [f64; N]) -> Ret>),
+    /// Function, that depends on the past of the state. 
+    ///
+    /// The third argument in the function is vector of [StateCoordFn]s, provided by [State::coord_fns].
     DDE(Box<dyn 'a + FnMut(f64, [f64; N], [Box<dyn '_ + StateCoordFnTrait>; N]) -> Ret>),
 }
 
 impl<'a, const N: usize, Ret> StateFn<'a, N, Ret> {
+    /// Evaluate the function at the current state.
     pub fn eval<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret {
         match self {
             StateFn::Constant(f) => f(),
@@ -313,6 +323,7 @@ impl<'a, const N: usize, Ret> StateFn<'a, N, Ret> {
         }
     }
 
+    /// Evaluate the function at the state at the time `t` by means of [State::eval_all]
     pub fn eval_at<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>, t: f64) -> Ret {
         match self {
             StateFn::Constant(f) => f(),
@@ -323,6 +334,7 @@ impl<'a, const N: usize, Ret> StateFn<'a, N, Ret> {
         }
     }
 
+    /// Evaluate the function at the previous step of the state.
     pub fn eval_prev<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret {
         match self {
             StateFn::Constant(f) => f(),
@@ -333,18 +345,33 @@ impl<'a, const N: usize, Ret> StateFn<'a, N, Ret> {
         }
     }
 
+    /// Constructor for [StateFn::Constant] variant.
+    ///
+    /// Shorthand for `StateFn::Constant(Box::new(f))`
     pub fn constant(f: impl 'a + FnMut() -> Ret) -> Self {
         StateFn::Constant(Box::new(f))
     }
+    /// Constructor for [StateFn::Time] variant.
+    ///
+    /// Shorthand for `StateFn::Time(Box::new(f))`
     pub fn time(f: impl 'a + FnMut(f64) -> Ret) -> Self {
         StateFn::Time(Box::new(f))
     }
+    /// Constructor for [StateFn::ODE] variant.
+    ///
+    /// Shorthand for `StateFn::ODE(Box::new(f))`
     pub fn ode(f: impl 'a + FnMut([f64; N]) -> Ret) -> Self {
         StateFn::ODE(Box::new(f))
     }
+    /// Constructor for [StateFn::ODE2] variant.
+    ///
+    /// Shorthand for `StateFn::ODE2(Box::new(f))`
     pub fn ode2(f: impl 'a + FnMut(f64, [f64; N]) -> Ret) -> Self {
         StateFn::ODE2(Box::new(f))
     }
+    /// Constructor for [StateFn::DDE] variant.
+    ///
+    /// Shorthand for `StateFn::DDE(Box::new(f))`
     pub fn dde(
         f: impl 'a + FnMut(f64, [f64; N], [Box<dyn '_ + StateCoordFnTrait>; N]) -> Ret,
     ) -> Self {
@@ -352,19 +379,33 @@ impl<'a, const N: usize, Ret> StateFn<'a, N, Ret> {
     }
 }
 
+/// Same as [StateFn], but can mutate the state. 
+///
+/// It has the variants present in [StateFn], but introduces additional variants, which can mutate
+/// the state. The implementation of the methods, comparing to [StateFn], accepts a mutable reference
+/// to [State] instead of an immutable reference.
 pub enum MutStateFn<'a, const N: usize, Ret> {
+    /// Same as [StateFn::Constant]
     Constant(Box<dyn 'a + FnMut() -> Ret>),
+    /// Same as [StateFn::Time]
     Time(Box<dyn 'a + FnMut(f64) -> Ret>),
+    /// Same as [StateFn::Time], but accepts a mutable reference to the state time.
     TimeMut(Box<dyn 'a + FnMut(&mut f64) -> Ret>),
+    /// Same as [StateFn::ODE]
     ODE(Box<dyn 'a + FnMut([f64; N]) -> Ret>),
+    /// Same as [StateFn::Time], but accepts a mutable reference to the state coordinate vector.
     ODEMut(Box<dyn 'a + FnMut(&mut [f64; N]) -> Ret>),
+    /// Same as [StateFn::ODE2]
     ODE2(Box<dyn 'a + FnMut(f64, [f64; N]) -> Ret>),
+    /// Same as [StateFn::Time], but accepts a mutable references to the state time and coordinate vector.
     ODE2Mut(Box<dyn 'a + FnMut(&mut f64, &mut [f64; N]) -> Ret>),
+    /// Same as [StateFn::DDE]
     DDE(Box<dyn 'a + FnMut(f64, [f64; N], [Box<dyn '_ + StateCoordFnTrait>; N]) -> Ret>),
     // DDEMut(Box<dyn 'a + Fn(&mut f64, &mut [f64; N], [Box<dyn '_ + StateCoordFnTrait>; N]) -> Ret>),
 }
 
 impl<'a, const N: usize, Ret> MutStateFn<'a, N, Ret> {
+    /// Call the function at the current state.
     pub fn eval<'b, const S: usize>(&mut self, state: &'b mut State<N, S>) -> Ret {
         match self {
             MutStateFn::Constant(f) => f(),
@@ -379,6 +420,15 @@ impl<'a, const N: usize, Ret> MutStateFn<'a, N, Ret> {
         }
     }
 
+    /// Evaluate the function at the state at the time `t` by means of [State::eval_all]. 
+    ///
+    /// Note that in this case, state cannot be mutated (hence the immutability of the reference), 
+    /// because computed interpolated values are temporary. In other words, you can't change the
+    /// past.
+    ///
+    /// Also, in the future, ways to alter the past might be added, but they probably will be
+    /// limited to linear mappings on the values in [State::k_seq], used for renormalization of the
+    /// linear equations, which is necessary for computation of the Lyapunov exponents.
     pub fn eval_at<'b, const S: usize>(&mut self, state: &'b State<N, S>, mut t: f64) -> Ret {
         match self {
             MutStateFn::Constant(f) => f(),
@@ -396,27 +446,51 @@ impl<'a, const N: usize, Ret> MutStateFn<'a, N, Ret> {
         }
     }
 
+    /// Constructor for [MutStateFn::Constant] variant.
+    ///
+    /// Shorthand for `MutStateFn::Constant(Box::new(f))`
     pub fn constant(f: impl 'a + FnMut() -> Ret) -> Self {
         MutStateFn::Constant(Box::new(f))
     }
+    /// Constructor for [MutStateFn::Time] variant.
+    ///
+    /// Shorthand for `MutStateFn::Time(Box::new(f))`
     pub fn time(f: impl 'a + FnMut(f64) -> Ret) -> Self {
         MutStateFn::Time(Box::new(f))
     }
+    /// Constructor for [MutStateFn::TimeMut] variant.
+    ///
+    /// Shorthand for `MutStateFn::TimeMut(Box::new(f))`
     pub fn time_mut(f: impl 'a + FnMut(&mut f64) -> Ret) -> Self {
         MutStateFn::TimeMut(Box::new(f))
     }
+    /// Constructor for [MutStateFn::ODE] variant.
+    ///
+    /// Shorthand for `MutStateFn::ODE(Box::new(f))`
     pub fn ode(f: impl 'a + FnMut([f64; N]) -> Ret) -> Self {
         MutStateFn::ODE(Box::new(f))
     }
+    /// Constructor for [MutStateFn::ODEMut] variant.
+    ///
+    /// Shorthand for `MutStateFn::ODEMut(Box::new(f))`
     pub fn ode_mut(f: impl 'a + FnMut(&mut [f64; N]) -> Ret) -> Self {
         MutStateFn::ODEMut(Box::new(f))
     }
+    /// Constructor for [MutStateFn::ODE2] variant.
+    ///
+    /// Shorthand for `MutStateFn::ODE2(Box::new(f))`
     pub fn ode2(f: impl 'a + FnMut(f64, [f64; N]) -> Ret) -> Self {
         MutStateFn::ODE2(Box::new(f))
     }
+    /// Constructor for [MutStateFn::ODE2Mut] variant.
+    ///
+    /// Shorthand for `MutStateFn::ODE2Mut(Box::new(f))`
     pub fn ode2_mut(f: impl 'a + FnMut(&mut f64, &mut [f64; N]) -> Ret) -> Self {
         MutStateFn::ODE2Mut(Box::new(f))
     }
+    /// Constructor for [MutStateFn::DDE] variant.
+    ///
+    /// Shorthand for `MutStateFn::DDE(Box::new(f))`
     pub fn dde(
         f: impl 'a + FnMut(f64, [f64; N], [Box<dyn '_ + StateCoordFnTrait>; N]) -> Ret,
     ) -> Self {
@@ -435,6 +509,7 @@ pub struct StateCoordFn<'a, const N: usize, const S: usize> {
     pub coord: usize,
 }
 
+/// Trait to erase generic parameter S from StateCoordFn
 pub trait StateCoordFnTrait: Fn() -> f64 + Fn(f64) -> f64 {
     /// evaluate the derivative
     fn d(&self, t: f64) -> f64;

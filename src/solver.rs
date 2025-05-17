@@ -7,8 +7,8 @@ use crate::State;
 use crate::equation::Equation;
 use crate::rk::{RK98, RungeKuttaTable};
 
-// Implements the integration of differential equation, containing the implementation specific (not
-// equation specific) data, including particular Runge-Kutta scheme, stepsize, and events.
+/// Implements the integration of differential equation, containing the implementation specific (not
+/// equation specific) data, including particular Runge-Kutta scheme, stepsize, and events.
 pub struct Solver<'a, const N: usize, const S: usize> {
     /// Runge-Kutta scheme used during integration. See [crate::rk].
     ///
