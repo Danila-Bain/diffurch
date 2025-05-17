@@ -5,7 +5,7 @@ use diffurch::*;
 
 fn main() {
     let k = 0.5;
-    let eq = Equation::ode(|[x, dx]| [dx, -k * k * x]);
+    let eq = equation!(|[x, dx]| [dx, -k * k * x]);
     let ic = |t: f64| [(t * k).sin(), k * (t * k).cos()];
     let sol = |t: f64| (t * k).sin();
     let range = 0. ..50.;

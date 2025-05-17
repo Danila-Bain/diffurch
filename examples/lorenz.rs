@@ -1,10 +1,11 @@
-fn main(){
+fn main() {
     // system parameters
     let sigma = 10.;
     let rho = 28.;
     let beta = 8. / 3.;
 
-    let eq = diffurch::Equation::ode(|[x, y, z]| [sigma * (y - x), x * (rho - z) - y, x * y - beta * z]);
+    let eq =
+        diffurch::equation!(|[x, y, z]| [sigma * (y - x), x * (rho - z) - y, x * y - beta * z]);
     let ic = [1., 2., 20.];
     let interval = 0. ..50.;
 
@@ -29,5 +30,7 @@ fn main(){
     plot.coordinates = x.into_iter().zip(z.into_iter()).map(|p| p.into()).collect();
     plot.add_key(pgfplots::axis::plot::PlotKey::Custom("smooth".to_string()));
     axis.plots.push(plot);
-    pgfplots::Picture::from(axis).show_pdf(pgfplots::Engine::PdfLatex).unwrap();
+    pgfplots::Picture::from(axis)
+        .show_pdf(pgfplots::Engine::PdfLatex)
+        .unwrap();
 }

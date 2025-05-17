@@ -48,6 +48,25 @@ pub struct Equation<'a, const N: usize = 1> {
     pub max_delay: f64,
 }
 
+#[macro_export]
+macro_rules! equation {
+    (|| $expr:expr) => {
+        $crate::Equation::constant(|| $expr)
+    };
+    (|$t:ident| $expr:expr) => {
+        $crate::Equation::time(|$t| $expr)
+    };
+    (|[$($x:ident),+]| $expr:expr) => {
+        $crate::Equation::ode(|[$($x),+]| $expr)
+    };
+    (|$t:ident, [$($x:ident),+]| $expr:expr) => {
+        $crate::Equation::ode2(|$t, [$($x),+]| $expr)
+    };
+    (|$t:ident, [$($x:ident),+], [$($x_:ident),+]| $expr:expr) => {
+        $crate::Equation::dde(|$t, [$($x),+], [$($x_),+]| $expr)
+    };
+}
+
 impl<'a, const N: usize> Equation<'a, N> {
 
     /// Constructor that accepts [StateFn] and sets [Equation::max_delay] to `f64::NAN`.

@@ -1,11 +1,11 @@
 use std::cell::Cell;
 
-use diffurch::{Equation, Event, Loc, Solver, StateFn, rk};
+use diffurch::{Loc, Solver, StateFn, equation, event, event_mut, rk};
 
 fn main() {
     let k = 0.9;
     let g = Cell::new(9.8);
-    let eq = Equation::ode(|[_x, dx]| [dx, -g.get()]).with_delay(f64::INFINITY);
+    let eq = equation!(|[_x, dx]| [dx, -g.get()]).with_delay(f64::INFINITY);
 
     let ic = [1., -0.01];
     let range = 0. ..8.58;
@@ -16,25 +16,20 @@ fn main() {
     Solver::rk(&rk::RK98)
         .stepsize(0.5)
         .on_step(
-            Event::ode2(|t, [x, _dx]| (t, x))
-                .to_vec(&mut points)
-                .to_std(), // .separated_by(0.01)
-                           // .subdivide(21)
+            event!(|t, [x, _dx]| (t, x)).to_vec(&mut points).to_std(), // .separated_by(0.01)
+                                                                       // .subdivide(21)
         )
         .on_step(
-            Event::ode2(|t, [x, _dx]| (t, x))
+            event!(|t, [x, _dx]| (t, x))
                 .to_vec(&mut points_continuous)
                 // .to_std()
                 .separated_by(0.01)
                 .subdivide(21),
         )
-        .on_loc(
-            Loc::zero(StateFn::ode(|[_x, dx]| dx)),
-            Event::constant(|| {}),
-        )
+        .on_loc(Loc::zero(StateFn::ode(|[_x, dx]| dx)), event!(|| {}))
         .on_loc(
             Loc::zero(StateFn::ode(|[x, _dx]| x)),
-            Event::ode2_mut(|t, [_x, dx]| {
+            event_mut!(|t, [_x, dx]| {
                 *dx *= k;
                 g.set(g.get() * -1.);
                 *t

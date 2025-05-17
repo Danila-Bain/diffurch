@@ -8,7 +8,7 @@ fn main() {
     let a = -k * (k * tau).tan();
     let b = 1. / (k * tau).cos();
 
-    let equation = Equation::dde(|t, [x], [x_]| [a * x + b * x_.d(t - tau)]);
+    let equation = equation!(|t, [x], [x_]| [a * x + b * x_.d(t - tau)]);
 
     let ic = (|t: f64| [(k * t).sin()], |t: f64| [k * (k * t).cos()]);
     let sol = |t: f64| (k * t).sin();
@@ -27,11 +27,9 @@ fn main() {
         .on_step(event!(|t, [x]| [t, x, x - sol(t)]).to_std())
         .run(equation, ic, range);
 
-
     let mut plot = pgfplots::axis::plot::Plot2D::new();
     plot.coordinates = (0..t.len()).map(|i| (t[i], x[i]).into()).collect();
     pgfplots::Picture::from(plot)
         .show_pdf(pgfplots::Engine::PdfLatex)
         .unwrap();
-
 }

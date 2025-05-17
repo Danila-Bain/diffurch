@@ -7,7 +7,7 @@ const T: f64 = 1.;
 
 fn solution(epsilon: f64, alpha: f64, beta: f64) {
     let equation =
-        Equation::dde(|t, [x], [x_]| [-x + (1. + epsilon) * x_.d(t - T) + A * x_.d(t - T).powi(3)]);
+        equation!(|t, [x], [x_]| [-x + (1. + epsilon) * x_.d(t - T) + A * x_.d(t - T).powi(3)]);
     let ic = (
         |t: f64| [alpha * (beta * t).sin()],
         |t: f64| [alpha * beta * (beta * t).cos()],
