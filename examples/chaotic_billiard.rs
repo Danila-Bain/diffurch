@@ -20,7 +20,7 @@ fn main() {
             Loc::to_pos(StateFn::ode(|[x, y, _dx, _dy]| {
                 x.powi(2) + y.powi(2) - y.powi(3)/3. - 1. // zero set is the boundary
             })),
-            Event::ode2_mut(|t, [x, y, dx, dy]| {
+            event_mut!(|t, [x, y, dx, dy]| {
                 // gradient of the boundary function
                 let x_normal = 2. * *x; 
                 let y_normal = 2. * *y - y.powi(2);

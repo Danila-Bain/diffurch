@@ -17,14 +17,13 @@ fn solution(epsilon: f64, alpha: f64, beta: f64) {
     let mut t = Vec::new();
     let mut x = Vec::new();
     //
-    Solver::rk(&rk::RK98)
+    Solver::new()
         .stepsize(0.05)
-        .on_step(Event::ode2(|t, [x]| (t, x)).to_std().separated_by(1.))
+        .on_step(event!(|t, [x]| (t, x)).to_std().separated_by(1.))
         .on_step(
-            Event::ode2(|t, [x]| [t, x])
+            event!(|t, [x]| [t, x])
                 .to_vecs([&mut t, &mut x])
-                .subdivide(5)
-                // .in_range((range.end - T)..range.end),
+                .subdivide(5), // .in_range((range.end - T)..range.end),
         )
         .run(equation, ic, range);
 

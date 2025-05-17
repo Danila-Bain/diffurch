@@ -20,11 +20,11 @@ fn main() {
     Solver::rk(&rk::RK98)
         .stepsize(0.1)
         .on_step(
-            Event::ode2(|t, [x]| [t, x])
+            event!(|t, [x]| [t, x])
                 .to_vecs([&mut t, &mut x])
                 .separated_by(0.05),
         )
-        .on_step(Event::ode2(|t, [x]| [t, x, x - sol(t)]).to_std())
+        .on_step(event!(|t, [x]| [t, x, x - sol(t)]).to_std())
         .run(equation, ic, range);
 
 

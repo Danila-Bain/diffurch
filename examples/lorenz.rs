@@ -16,7 +16,7 @@ fn main(){
 
     diffurch::Solver::new()
         .on_step(
-            diffurch::Event::ode2(|t, [x, y, z]| [t, x, y, z])
+            diffurch::event!(|t, [x, y, z]| [t, x, y, z])
                 .subdivide(4) // save 4 points per step for smoother plot
                 .to_vecs([&mut t, &mut x, &mut y, &mut z]) // save values to individual `Vec<f64>`s
                 .to_std(), // additionally output to console

@@ -14,8 +14,12 @@ fn main() {
 
     Solver::rk(&rk::RK98)
         .stepsize(1.)
-        .on_step(Event::ode2(|t, [x, _dx]| (t, x)).subdivide(10).to_vec(&mut points))
-        .on_step(Event::ode2(|t, [x, dx]| (t, x, dx, (x - sol(t)).abs())).to_std())
+        .on_step(
+            event!(|t, [x, _dx]| (t, x))
+                .subdivide(10)
+                .to_vec(&mut points),
+        )
+        .on_step(event!(|t, [x, dx]| (t, x, dx, (x - sol(t)).abs())).to_std())
         .run(eq, ic, range);
 
     let mut plot = pgfplots::axis::plot::Plot2D::new();
