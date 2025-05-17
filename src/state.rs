@@ -9,11 +9,11 @@
 /// For functions on [State], see [StateFn] and [MutStateFn]
 pub struct State<'a, const N: usize, const S: usize> {
     /// time of the state at the current step
-    pub(crate) t: f64,
+    pub t: f64,
     /// time of the state at the previous step
-    pub(crate) t_prev: f64,
+    pub t_prev: f64,
     /// initial time of the state
-    t_init: f64,
+    pub t_init: f64,
     /// length of past history stored in state,
     ///
     /// It must be >= than largest delay encountered in delay differential equation.
@@ -21,27 +21,31 @@ pub struct State<'a, const N: usize, const S: usize> {
     /// It may be 0., may be f64::INFINITE.
     ///
     /// For negative values, solver will panic.
-    pub(crate) t_span: f64,
+    pub t_span: f64,
     /// time instances of past steps
     ///
     /// The past values that are no longer needed are pop'ed during computation according to [State::t_span].
-    t_seq: std::collections::VecDeque<f64>,
+    pub t_seq: std::collections::VecDeque<f64>,
 
     /// position of the state at the current step
-    pub(crate) x: [f64; N],
+    pub x: [f64; N],
     /// position of the state at the previous step
-    pub(crate) x_prev: [f64; N],
+    pub x_prev: [f64; N],
     /// initial condition used to initialize or evaluate the state at times before [State::t_init].
-    x_init: crate::InitialCondition<'a, N>,
+    pub x_init: crate::InitialCondition<'a, N>,
     /// state values of past steps
     ///
     /// The past values that are no longer needed are pop'ed during computation according to [State::t_span].
-    x_seq: std::collections::VecDeque<[f64; N]>,
+    pub x_seq: std::collections::VecDeque<[f64; N]>,
 
-    k: [[f64; N]; S],
-    k_seq: std::collections::VecDeque<[[f64; N]; S]>,
+    /// The Runge-Kutta method stages computed for the last step
+    pub k: [[f64; N]; S],
+    /// The past Runge-Kutta stages used for evaluation of the state at the past times between the
+    /// nodal points.
+    pub k_seq: std::collections::VecDeque<[[f64; N]; S]>,
 
-    rk: &'a crate::rk::RungeKuttaTable<'a, S>,
+    /// Used Runge-Kutta scheme
+    pub rk: &'a crate::rk::RungeKuttaTable<'a, S>,
 }
 
 impl<'a, const N: usize, const S: usize> State<'a, N, S> {
