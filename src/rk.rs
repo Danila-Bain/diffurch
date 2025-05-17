@@ -291,6 +291,13 @@ pub static DP544: RungeKuttaTable<7> = RungeKuttaTable {
     ],
 };
 
+/// Runge-Kutta Tsitouras-Papakostas 6(4)
+///
+/// SIAM J. Sci. Comput., 20 (1999)  2067-2088
+///
+/// Coefficients: http://users.uoa.gr/~tsitourasc/rktp64.m
+///
+/// More from the author: http://users.uoa.gr/~tsitourasc/publications.html
 pub static RKTP64: RungeKuttaTable<7> = RungeKuttaTable {
     order: 6,
     order_embedded: 4,
@@ -403,6 +410,13 @@ pub static RKTP64: RungeKuttaTable<7> = RungeKuttaTable {
     ],
 };
 
+/// High order interpolant scheme by Charalampos Tsitouras
+///
+/// See the paper: https://www.researchgate.net/publication/220393895_Runge-Kutta_interpolants_for_high_precision_computations
+///
+/// Mathematica file with coefficients: http://users.uoa.gr/~tsitourasc/NumericalAlgorithms.txt
+///
+/// More from the author: http://users.uoa.gr/~tsitourasc/publications.html
 pub static RK98: RungeKuttaTable<26> = RungeKuttaTable {
     order: 9,
     order_embedded: 8,
