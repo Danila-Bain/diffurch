@@ -8,20 +8,33 @@ use crate::{StateCoordFnTrait, StateFn};
 /// representations of the equation, with the types of arguments deduced.
 ///
 /// # Examples
+///
+/// Constructing equations from closures with different signatures:
 /// ```rust
 /// use diffurch::Equation;
 /// // right hand side (RHS) is a constant:
-/// let constant = Equation::constant(|| [1.]);
-/// // RHS is a known time function:
-/// let time = Equation::time(|t| [t.sin(), t.cos()]);
-/// // RHS of an autonomous ODE:
-/// let ode = Equation::ode(|[x, y]| [-y, x]);
+/// let constant = Equation::constant(|| [1.]); // x'(t) = 1
+/// // RHS is a known time function, independent of coordinates:
+/// let time = Equation::time(|t| [t.sin(), t.cos()]); // x'(t) = sin(t), y'(t) = cos(t) 
+/// // RHS of an autonomous ordinary differential equation (ODE):
+/// let ode = Equation::ode(|[x, y]| [-y, x]); // x'(t) = -y(t), y'(t) = x(t)
 /// // RHS of a non-autonomous ODE:
-/// let ode2 = Equation::ode2(|t, [x, y]| [-y / t, x * t]);
-/// // RHS of a delay differential equation:
-/// let dde = Equation::dde(|t, [x], [x_]| [4. * x * (1. - x_(t - 1.))]);
-/// // RHS of a neutral delay differential equation:
-/// let ndde = Equation::dde(|t, [x], [x_]| [4. * x * (1. - x_.d(t - 1.))]);
+/// let ode2 = Equation::ode2(|t, [x, y]| [-y / t, x * t]); // x'(t) 
+/// // RHS of a delay differential equation (DDE):
+/// let dde = Equation::dde(|t, [x], [x_]| [4. * x * (1. - x_(t - 1.))]); // x'(t) = 4 x(t) (1 - x(t-1))
+/// // RHS of a neutral delay differential equation (NDDE):
+/// let ndde = Equation::dde(|t, [x], [x_]| [4. * x * (1. - x_.d(t - 1.))]); // x'(t) = 4 x(t) (1 - x'(t-1))
+/// ```
+///
+/// Equivalent code using [crate::equation!] macro:
+/// ```rust
+/// use diffurch::equation;
+/// let constant = equation!(|| [1.]);
+/// let time = equation!(|t| [t.sin(), t.cos()]);
+/// let ode = equation!(|[x, y]| [-y, x]);
+/// let ode2 = equation!(|t, [x, y]| [-y / t, x * t]);
+/// let dde = equation!(|t, [x], [x_]| [4. * x * (1. - x_(t - 1.))]);
+/// let ndde = equation!(|t, [x], [x_]| [4. * x * (1. - x_.d(t - 1.))]);
 /// ```
 ///
 pub struct Equation<'a, const N: usize = 1> {
@@ -48,6 +61,19 @@ pub struct Equation<'a, const N: usize = 1> {
     pub max_delay: f64,
 }
 
+/// Creates a [crate::Equation] from a closure.
+///
+/// `equation!` allows `Equation` to be defined with closures of different calling signatures,
+/// being like an overloading version of constructors of [crate::Equation]:
+/// ```rust
+/// use diffurch::equation;
+/// let constant = equation!(|| [1.]);
+/// let time = equation!(|t| [t.sin(), t.cos()]);
+/// let ode = equation!(|[x, y]| [-y, x]);
+/// let ode2 = equation!(|t, [x, y]| [-y / t, x * t]);
+/// let dde = equation!(|t, [x], [x_]| [4. * x * (1. - x_(t - 1.))]);
+/// let ndde = equation!(|t, [x], [x_]| [4. * x * (1. - x_.d(t - 1.))]);
+/// ```
 #[macro_export]
 macro_rules! equation {
     (|| $expr:expr) => {
