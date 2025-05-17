@@ -1,6 +1,12 @@
 //! Defines [State], the core object which is acted upon during integration.
 
-/// [State] is an object that is primarily used internally.
+/// [State] is an object that represents the state of the equation during solving.
+///
+/// [crate::Equation], [crate::Event], [crate::Loc] are all defined in terms of functions on the
+/// state instead of functions on time and coordinates to include functions to work with delay
+/// differential equations without overcomplicating api for ordinary differential equations.
+///
+/// For functions on [State], see [StateFn] and [MutStateFn]
 pub struct State<'a, const N: usize, const S: usize> {
     /// time of the state at the current step
     pub(crate) t: f64,
@@ -38,22 +44,8 @@ pub struct State<'a, const N: usize, const S: usize> {
     rk: &'a crate::rk::RungeKuttaTable<'a, S>,
 }
 
-// pub trait StateTrait<const N: usize> {
-//     fn x(&self) -> [f64; N];
-//     fn t(&self) -> f64;
-// }
-
-// impl<const N: usize, const S:usize> StateTrait<N> for State<N,S> {
-//     fn x(&self) -> [f64; N] {
-//         self.x
-//     }
-//
-//     fn t(&self) -> f64 {
-//         self.t
-//     }
-// }
-
 impl<'a, const N: usize, const S: usize> State<'a, N, S> {
+    /// State constructor used in [crate::Solver]
     pub fn new(
         t_init: f64,
         x_init: crate::InitialCondition<'a, N>,
@@ -85,6 +77,8 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
         }
     }
 
+    /// Push current values [State::t], [State::x], [State::k] to history, and pop old history
+    /// (older than `self.t_prev - self.t_span - (self.t - self.t_prev)`).
     pub fn push_current(&mut self) {
         self.t_seq.push_back(self.t);
         self.x_seq.push_back(self.x);
@@ -102,6 +96,7 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
         }
     }
 
+    /// Advance the state by `t_step`, using right-hand-side `rhs` of the equation.
     pub fn make_step(&mut self, rhs: &mut StateFn<'a, N, [f64; N]>, t_step: f64) {
         self.t_prev = self.t;
         self.x_prev = self.x;
@@ -122,17 +117,32 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
         self.t = self.t_prev + t_step;
     }
 
+    /// Advance the state by a zero step, not modifying current time or coordinates.
+    ///
+    /// This method is used when the state is modified externally by events, to record adjacent
+    /// pre- and post-change states with respect to event.
     pub fn make_zero_step(&mut self) {
         self.t_prev = self.t;
         self.x_prev = self.x;
         self.k = [[0.; N]; S];
     }
 
+    /// Undo the previous step by setting current values to the previous.
+    ///
+    /// Used to reject last step due to stepsize controller or located step.
+    ///
+    /// Using this method twice is the same as using it once, because it just resets current time
+    /// and coordinates to the previous, without setting previous values to pre-previous values.
     pub fn undo_step(&mut self) {
         self.t = self.t_prev;
         self.x = self.x_prev;
     }
 
+    /// Evaluate coordinate vector of the state at the time `t` using interpolant provided by
+    /// [crate::rk::RungeKuttaTable::bi]. For `t < self.t_init`, the field [State::x_init] is used.
+    ///
+    /// Since the past history may be cleared according to the [State::t_span], this function may
+    /// panic, if the evaluation of deleted section of history is attempted.
     pub fn eval_all(&self, t: f64) -> [f64; N] {
         if t <= self.t_init {
             self.x_init.eval(t)
@@ -179,6 +189,11 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
         }
     }
 
+    /// Evaluate one coordinate of a coordinate vector of the state at the time `t` using interpolant provided by
+    /// [crate::rk::RungeKuttaTable::bi]. For `t < self.t_init`, the field [State::x_init] is used.
+    ///
+    /// Since the past history may be cleared according to the [State::t_span], this function may
+    /// panic, if the evaluation of deleted section of history is attempted.
     pub fn eval(&self, t: f64, coordinate: usize) -> f64 {
         if t <= self.t_init {
             self.x_init.eval(t)[coordinate]
@@ -222,6 +237,17 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
         }
     }
 
+    /// Evaluate the derivative of one coordinate of a coordinate vector of the state at the time `t` using interpolant provided by
+    /// [crate::rk::RungeKuttaTable::bi]. For `t < self.t_init`, the field [State::x_init] is used.
+    ///
+    /// Since the past history may be cleared according to the [State::t_span], this function may
+    /// panic, if the evaluation of deleted section of history is attempted.
+    ///
+    /// Also, calling [State::x_init] may panic, because [crate::InitialCondition::eval_d] panics
+    /// for [crate::InitialCondition::Function] variant, so you need to use
+    /// [crate::InitialCondition::Point] or [crate::InitialCondition::FunctionWithDerivative]
+    /// variants instead, which are convertable from [f64; N] or tuple of two closures
+    /// respectively (see [crate::InitialCondition::into]).
     pub fn eval_derivative(&self, t: f64, coordinate: usize) -> f64 {
         if t <= self.t_init {
             self.x_init.eval_d(t)[coordinate]
@@ -255,6 +281,8 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
         }
     }
 
+    /// Get a vector of [StateCoordFn]s for evaluation of [StateFn::DDE] and [MutStateFn::DDE]
+    /// variants. 
     pub fn coord_fns(&'a self) -> [Box<dyn 'a + StateCoordFnTrait>; N] {
         std::array::from_fn(|i| {
             let coord_fn: Box<dyn 'a + StateCoordFnTrait> = Box::new(StateCoordFn::<'a, N, S> {
@@ -396,12 +424,19 @@ impl<'a, const N: usize, Ret> MutStateFn<'a, N, Ret> {
     }
 }
 
+/// Struct that holds a reference to the state, and the coordinate index.
+///
+/// It implements Fn() -> f64 and Fn(f64) -> f64 traits, as evaluation of current and past state
+/// respectively. 
 pub struct StateCoordFn<'a, const N: usize, const S: usize> {
+    /// Reference to the state
     pub state: &'a State<'a, N, S>,
+    /// Coordinate index
     pub coord: usize,
 }
 
 pub trait StateCoordFnTrait: Fn() -> f64 + Fn(f64) -> f64 {
+    /// evaluate the derivative
     fn d(&self, t: f64) -> f64;
 }
 
