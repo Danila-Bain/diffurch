@@ -1,22 +1,22 @@
-use crate::StateFnMut;
+use crate::MutStateFn;
 
 pub trait Filter<'a, const N: usize>
 where
     Self: Sized + 'a,
 {
-    fn filter(self, f: StateFnMut<'a, N, bool>) -> Self;
+    fn filter(self, f: MutStateFn<'a, N, bool>) -> Self;
 
     fn filter_constant(self, f: impl 'a + FnMut() -> bool) -> Self {
-        self.filter(StateFnMut::Constant(Box::new(f)))
+        self.filter(MutStateFn::Constant(Box::new(f)))
     }
     fn filter_time(self, f: impl 'a + FnMut(f64) -> bool) -> Self {
-        self.filter(StateFnMut::Time(Box::new(f)))
+        self.filter(MutStateFn::Time(Box::new(f)))
     }
     fn filter_ode(self, f: impl 'a + FnMut([f64; N]) -> bool) -> Self {
-        self.filter(StateFnMut::ODE(Box::new(f)))
+        self.filter(MutStateFn::ODE(Box::new(f)))
     }
     fn filter_ode2(self, f: impl 'a + FnMut(f64, [f64; N]) -> bool) -> Self {
-        self.filter(StateFnMut::ODE2(Box::new(f)))
+        self.filter(MutStateFn::ODE2(Box::new(f)))
     }
 
     fn every(self, n: usize) -> Self {

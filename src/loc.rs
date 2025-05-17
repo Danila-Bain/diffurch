@@ -57,11 +57,11 @@ pub struct Loc<'a, const N: usize> {
     pub location: LocMethod,
     /// Functions, that filter detection, they are called if [Loc::detection] returns true, and
     /// if any one function in [Loc::filter] is false, the event is considered undetected. 
-    pub filter: Vec<crate::StateFnMut<'a, N, bool>>,
+    pub filter: Vec<crate::MutStateFn<'a, N, bool>>,
 }
 
 impl<'a, const N: usize> crate::Filter<'a, N> for Loc<'a, N> {
-    fn filter(mut self, f: crate::StateFnMut<'a, N, bool>) -> Self {
+    fn filter(mut self, f: crate::MutStateFn<'a, N, bool>) -> Self {
         self.filter.push(f);
         self
     }
@@ -135,8 +135,8 @@ impl<'a, const N: usize> Loc<'a, N> {
 
     /// Implements detection for all [Detection] variants. Returns `true` if the event is
     /// detected between the last and current step of state.
-    pub fn detect<const S: usize>(&self, state: &'a State<'a, N, S>) -> bool {
-        match &self.detection {
+    pub fn detect<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> bool {
+        match &mut self.detection {
             Detection::Sign(f) => {
                 let curr = f.eval(state);
                 let prev = f.eval_prev(state);
@@ -162,7 +162,7 @@ impl<'a, const N: usize> Loc<'a, N> {
 
     /// Implements location methods for all [LocMethod] variants, utilizing functions provided by
     /// [Detection]. Returns the time at which event is approximated to be located.
-    pub fn locate<'b, const S: usize>(&mut self, state: &'b State<'a, N, S>) -> Option<f64> {
+    pub fn locate<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Option<f64> {
         // if !self.detect(&state) || !self.filter.iter_mut().all(|f| f.eval(state)) {
         if !self.detect(&state) {
             return None;
@@ -171,7 +171,7 @@ impl<'a, const N: usize> Loc<'a, N> {
                 LocMethod::StepBegin => Some(state.t_prev),
                 LocMethod::StepEnd => Some(state.t),
                 LocMethod::StepMiddle => Some(0.5 * (state.t_prev + state.t)),
-                LocMethod::Lerp => match &self.detection {
+                LocMethod::Lerp => match &mut self.detection {
                     Detection::Bool(_) | Detection::BoolToTrue(_) | Detection::BoolToFalse(_) => {
                         Some(0.5 * (state.t_prev + state.t))
                     }
@@ -190,7 +190,7 @@ impl<'a, const N: usize> Loc<'a, N> {
                         }
                     }
                 },
-                LocMethod::Bisection => match &self.detection {
+                LocMethod::Bisection => match &mut self.detection {
                     Detection::Bool(f) | Detection::BoolToTrue(f) | Detection::BoolToFalse(f) => {
                         let mut l = state.t_prev;
                         let mut r = state.t;

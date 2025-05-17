@@ -1,6 +1,6 @@
 //! Defines [Event]
 
-use crate::{StateCoordFnTrait, StateFnMut};
+use crate::{MutStateFn, StateCoordFnTrait};
 
 #[macro_export]
 macro_rules! event {
@@ -24,7 +24,6 @@ macro_rules! event {
     };
 }
 
-
 #[macro_export]
 macro_rules! event_mut {
     (|$t:ident| $expr:expr) => {
@@ -43,7 +42,7 @@ macro_rules! event_mut {
 /// in [crate::solver::Solver] struct.
 pub struct Event<'a, const N: usize = 0, Output = ()> {
     /// Function, which is called on a state. Its output is then fed to `stream`.
-    pub callback: StateFnMut<'a, N, Output>,
+    pub callback: MutStateFn<'a, N, Output>,
     /// Function (or rather a collection of functions), which handles the output destination and
     /// formatting provided by `callback`. It takes a single argument: the return type of `callback`.
     pub stream: Vec<Box<dyn 'a + FnMut(Output)>>,
@@ -51,7 +50,7 @@ pub struct Event<'a, const N: usize = 0, Output = ()> {
     /// more sparse output (such that there are not too many output points), or limit outputing
     /// values to a certain range, etc. It is a function, that is invoked on a state and returns
     /// bool.
-    pub filter: Vec<StateFnMut<'a, N, bool>>,
+    pub filter: Vec<MutStateFn<'a, N, bool>>,
     /// When it has unit type it does nothing, when it has type `usize`, it produces dense output:
     /// the event's "filter->stream->callback" sequence is triggered not on the current state, but
     /// on `subdivision` number of points of the current step in the state, making use of dense
@@ -60,7 +59,7 @@ pub struct Event<'a, const N: usize = 0, Output = ()> {
 }
 
 impl<'a, const N: usize, Output> Event<'a, N, Output> {
-    pub fn new(callback: StateFnMut<'a, N, Output>) -> Self {
+    pub fn new(callback: MutStateFn<'a, N, Output>) -> Self {
         Event {
             callback,
             stream: Vec::new(),
@@ -70,30 +69,30 @@ impl<'a, const N: usize, Output> Event<'a, N, Output> {
     }
 
     pub fn constant(callback: impl 'a + FnMut() -> Output) -> Self {
-        Event::new(StateFnMut::constant(callback))
+        Event::new(MutStateFn::constant(callback))
     }
     pub fn time(callback: impl 'a + FnMut(f64) -> Output) -> Self {
-        Event::new(StateFnMut::time(callback))
+        Event::new(MutStateFn::time(callback))
     }
     pub fn time_mut(callback: impl 'a + FnMut(&mut f64) -> Output) -> Self {
-        Event::new(StateFnMut::time_mut(callback))
+        Event::new(MutStateFn::time_mut(callback))
     }
     pub fn ode(callback: impl 'a + FnMut([f64; N]) -> Output) -> Self {
-        Event::new(StateFnMut::ode(callback))
+        Event::new(MutStateFn::ode(callback))
     }
     pub fn ode_mut(callback: impl 'a + FnMut(&mut [f64; N]) -> Output) -> Self {
-        Event::new(StateFnMut::ode_mut(callback))
+        Event::new(MutStateFn::ode_mut(callback))
     }
     pub fn ode2(callback: impl 'a + FnMut(f64, [f64; N]) -> Output) -> Self {
-        Event::new(StateFnMut::ode2(callback))
+        Event::new(MutStateFn::ode2(callback))
     }
     pub fn ode2_mut(callback: impl 'a + FnMut(&mut f64, &mut [f64; N]) -> Output) -> Self {
-        Event::new(StateFnMut::ode2_mut(callback))
+        Event::new(MutStateFn::ode2_mut(callback))
     }
     pub fn dde(
         callback: impl 'a + FnMut(f64, [f64; N], [Box<dyn '_ + StateCoordFnTrait>; N]) -> Output,
     ) -> Self {
-        Event::new(StateFnMut::dde(callback))
+        Event::new(MutStateFn::dde(callback))
     }
 
     pub fn to(mut self, s: impl 'a + FnMut(Output)) -> Self {
@@ -142,18 +141,15 @@ impl<'a, const N: usize, Output> Event<'a, N, Output> {
 }
 
 impl<'a, const N: usize, Output: 'a> crate::Filter<'a, N> for Event<'a, N, Output> {
-    fn filter(mut self, f: StateFnMut<'a, N, bool>) -> Self {
+    fn filter(mut self, f: MutStateFn<'a, N, bool>) -> Self {
         self.filter.push(f);
         self
     }
-    // fn filter(&'a mut self) -> &'a mut Vec<StateFnMut<'a, N, bool>> {
-    //     &mut self.filter
-    // }
 }
 
 impl<'a, const N: usize> Event<'a, N, [f64; N]> {
     pub fn ode_state() -> Self {
-        Event::new(StateFnMut::ode(|x| x))
+        Event::new(MutStateFn::ode(|x| x))
     }
 }
 
@@ -174,7 +170,7 @@ impl<'a, const N: usize> Event<'a, N, [f64; N]> {
 
 impl<'a, const N: usize> Event<'a, N, (f64, [f64; N])> {
     pub fn ode2_state() -> Self {
-        Event::new(StateFnMut::ode2(|t, x| (t, x)))
+        Event::new(MutStateFn::ode2(|t, x| (t, x)))
     }
 }
 

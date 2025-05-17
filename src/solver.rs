@@ -154,7 +154,8 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
             Included(&value) | Excluded(&value) => value,
         };
 
-        let mut state = State::new(t_init, ic.into(), eq, &self.rk);
+        let mut rhs = eq.rhs;
+        let mut state = State::new(t_init, ic.into(), eq.max_delay, &self.rk);
         let mut stepsize = self.stepsize;
 
         self.start_events
@@ -165,7 +166,7 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
             .for_each(|event| event(&mut state));
 
         while state.t < t_end {
-            state.make_step(stepsize);
+            state.make_step(&mut rhs, stepsize);
 
             // handle earliest detected event, if any
             if let Some((event, t)) = self
@@ -182,7 +183,7 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
             {
                 if t > state.t_prev {
                     state.undo_step();
-                    state.make_step(t - state.t);
+                    state.make_step(&mut rhs, t - state.t);
                 }
                 state.push_current();
                 self.step_events
