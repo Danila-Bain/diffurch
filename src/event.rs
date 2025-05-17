@@ -59,15 +59,19 @@ pub struct Event<'a, const N: usize = 0, Output = ()> {
 }
 
 impl<'a, const N: usize, Output> Event<'a, N, Output> {
+
+    /// Constructor that initializes [Event::callback] from [MutStateFn], and the rest by
+    /// Default::default().
     pub fn new(callback: MutStateFn<'a, N, Output>) -> Self {
         Event {
             callback,
-            stream: Vec::new(),
-            filter: Vec::new(),
-            subdivision: None,
+            stream: Default::default(),
+            filter: Default::default(),
+            subdivision: Default::default(),
         }
     }
 
+    /// Constructor using [MutStateFn::constant]
     pub fn constant(callback: impl 'a + FnMut() -> Output) -> Self {
         Event::new(MutStateFn::constant(callback))
     }
