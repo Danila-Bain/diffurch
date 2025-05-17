@@ -37,6 +37,16 @@ where
         })
     }
 
+    fn every_offset(self, n: usize, offset: usize) -> Self {
+        let offset = offset % n;
+        let mut counter = n - 1 - offset;
+        self.filter_constant(move || {
+            counter += 1;
+            counter -= n * (counter >= n) as usize;
+            return counter == 0;
+        })
+    }
+
     fn separated_by(self, delta: f64) -> Self {
         let mut last_trigger = f64::NEG_INFINITY;
         self.filter_time(move |t| {
