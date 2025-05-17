@@ -81,6 +81,10 @@ In each section, roughly in order of simplicity and necessity:
 
 [ ] return the whole state
 
+[ ] combine events with std::ops::Add? like Event::... + Event::stop_integration()
+
+[ ] definition for StateFnMut::DDEMut
+
 # Differentiation
 
 [x] support extending closures with the method like .with_derivative(||...), which produces and object that implements Fn to call the inital closure, and a method .d to invoke a derivative
@@ -103,7 +107,13 @@ In each section, roughly in order of simplicity and necessity:
 
 [ ] try to pipe the solution into a real-time plotter
 
+# Generalize filtering
 
+[ ] filter trait: 
+    [ ] ref mut getter for filter vector (not default)
+    [ ] filter vector short-circuting callback (default)
+    [ ] make all existing filter-related methods on Event be a part of filter trait
+    [ ] impl filter trait for Event and Loc
 
 # API convenience and macros
 
@@ -111,7 +121,7 @@ In each section, roughly in order of simplicity and necessity:
 
 [ ] Figure out closure type inference to use one `new` in place of `ode`, `ode2`, `dde`, `ndde`.
 
-[ ] equation! macro, which also saves the string representation of the equation
+[ ] equation! macro, which also saves the string representation of the equation together with its parameters
 
 [x] allow .times(1..) for excluding the first step
 
