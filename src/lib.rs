@@ -15,6 +15,7 @@ pub mod solver;
 pub mod state;
 pub mod filter;
 pub mod polynomial;
+pub mod symbol;
 
 pub use equation::*;
 pub use event::*;
@@ -23,3 +24,4 @@ pub use loc::*;
 pub use solver::*;
 pub use state::*;
 pub use filter::*;
+pub use symbol::*;
