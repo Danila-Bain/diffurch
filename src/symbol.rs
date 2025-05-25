@@ -98,10 +98,10 @@ where
     eager! { trait_funcs1!(funcs1!()) }
 }
 
-pub struct Constant(f64);
-impl StateSymbol for Constant {
+// pub struct Constant(f64);
+impl StateSymbol for f64 {
     fn eval<'a, const N: usize, const S: usize>(&self, _state: &State<'a, N, S>) -> f64 {
-        self.0
+        *self
     }
 
     fn eval_at<'a, const N: usize, const S: usize>(
@@ -109,15 +109,15 @@ impl StateSymbol for Constant {
         _state: &State<'a, N, S>,
         _t: f64,
     ) -> f64 {
-        self.0
+        *self
     }
 
     fn eval_prev<'a, const N: usize, const S: usize>(&self, _state: &State<'a, N, S>) -> f64 {
-        self.0
+        *self
     }
 
     fn dt(self) -> impl StateSymbol {
-        Constant(0.)
+       0. 
     }
 }
 
@@ -134,7 +134,7 @@ impl StateSymbol for Time {
     }
 
     fn dt(self) -> impl StateSymbol {
-        Constant(1.)
+        1.
     }
 }
 
@@ -173,7 +173,7 @@ impl StateSymbol for CoordDerivative {
 
     fn dt(self) -> impl StateSymbol {
         todo!();
-        Constant(0.)
+        0.
     }
 
 }
@@ -227,7 +227,7 @@ assert_eq!(z." $func "().eval(&state), (4f64)." $func "());
 
             fn dt(self) -> impl StateSymbol {
                 // $derivative(self.0) * self.0.dt()
-                Constant(0.)
+                0.
             }
         }
     }})*};
