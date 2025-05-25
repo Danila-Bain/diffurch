@@ -4,7 +4,8 @@
 #![feature(type_alias_impl_trait)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(file_buffered)]
-#![warn(missing_docs)]
+// #![warn(missing_docs)]
+#![recursion_limit = "1024"]
 
 pub mod equation;
 pub mod event;

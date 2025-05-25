@@ -22,6 +22,8 @@ keywords = [
 pgfplots = "0.5.1"
 
 [dependencies]
+eager = "0.1.0"
 num-traits = "0.2.19"
+paste = "1.0.15"
 
 
