@@ -63,8 +63,8 @@ macro_rules! trait_funcs1 {
         $(
             eager2::lazy!{
                 paste::paste!{
-                    fn $func (self) -> [<SF $func>]<Self> {
-                        [<SF $func>](self)
+                    fn $func (self) -> [<$func:camel>]<Self> {
+                        [<$func:camel>](self)
                     }
                 }
             })*
@@ -179,7 +179,6 @@ impl StateSymbol for CoordDerivative {
 }
 
 
-
 #[eager_macro]
 macro_rules! impl_funcs1 {
     ($(($func:ident, $derivative:expr)),* $(,)?) => { $( eager2::lazy!{ paste::paste!{
@@ -205,8 +204,8 @@ assert_eq!(y." $func "().eval(&state), (3f64)." $func "());
 assert_eq!(z." $func "().eval(&state), (4f64)." $func "());
 ```
 "]
-        pub struct [<SF $func>]<Arg>(Arg);
-        impl<Arg: StateSymbol> StateSymbol for [<SF $func>]<Arg> {
+        pub struct [<$func:camel>]<Arg>(Arg);
+        impl<Arg: StateSymbol> StateSymbol for [<$func:camel>]<Arg> {
             fn eval<'a, const N: usize, const S: usize>(&self, state: &State<'a, N, S>) -> f64 {
                 self.0.eval(state).$func()
             }

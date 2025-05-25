@@ -24,7 +24,6 @@ textplots = "0.8.7"
 rgb = "0.8.50"
 
 [dependencies]
-eager = "0.1.0"
 eager2 = "1.0.1"
 num-traits = "0.2.19"
 paste = "1.0.15"
