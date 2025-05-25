@@ -18,6 +18,73 @@
 use crate::State;
 use eager2::{eager, eager_macro, unstringify};
 
+#[eager_macro]
+macro_rules! funcs1 {
+    () => {
+        // (recip, |t| -t.powi(2).recip()),
+        //
+        // (acos, |t| -(1. - t.powi(2)).sqrt().recip()),
+        // (asin, |t| (1. - t.powi(2)).sqrt().recip()),
+        // (acosh, |t| (t.powi(2) - 1.).sqrt().recip()),
+        // (asinh, |t| (t.powi(2) + 1.).sqrt().recip()),
+        // (atan, |t| (1. + t.powi(2)).recip()),
+        // (atanh, |t| (1. - t.powi(2)).recip()),
+
+        (cos, |t| -t.sin()),
+        (sin, |t| t.cos()),
+        // (cosh, |t| t.sinh()),
+        // (sinh, |t| t.cosh()),
+        // (tan, |t| t.cos().powi(2).recip()),
+        // (tanh, |t| t.cosh().powi(2).recip()),
+
+        // (exp, |t| t.exp()),
+        // (exp2, |t| t.exp2() * f64::ln(2.)),
+        // (exp_m1, |t| t.exp()),
+        // (ln, |t| t.recip()),
+        // (ln_1p, |t| (1.+t).recip()),
+        // (ln2, |t| (t * f64::ln(2.)).recip()),
+        // (ln10, |t| (t * f64::ln(10.)).recip()),
+        //
+        // (erf, |t| (-t.powi(2)).exp() * (2. / f64::const::PI.sqrt())),
+        // (erfc, |t| -(-t.powi(2)).exp() * (2. / f64::const::PI.sqrt())),
+        //
+        // (sqrt, |t| (2. * t.sqrt()).recip()),
+        // (cbrt, |t| (3. * t.cbrt().powi(2)).recip()),
+        //
+        // (to_radians, |_| f64::const::PI/180.),
+        // (to_degrees, |_| 180./f64::const::PI),
+    };
+}
+
+#[eager_macro]
+macro_rules! trait_funcs1 {
+    ($(($func:ident, $derivative:expr)),* $(,)?) => {
+            // $( impl_func1!($func, unstringify!(concat!("SF", stringify!($func)))))*
+        $(
+            eager2::lazy!{
+                paste::paste!{
+                    fn $func (self) -> [<SF $func>]<Self> {
+                        [<SF $func>](self)
+                    }
+                }
+            })*
+    };
+}
+
+/// # Example
+/// ```rust
+/// use diffurch::*;
+///
+/// let state = State::new(1., [2., 3., 4.], f64::NAN, &rk::EULER);
+///
+/// let t = Time;
+/// let [x, y, z] = coords();
+///
+/// assert_eq!(t.eval(&state), 1.);
+/// assert_eq!(x.eval(&state), 2.);
+/// assert_eq!(y.eval(&state), 3.);
+/// assert_eq!(z.eval(&state), 4.);
+/// ```
 pub trait StateSymbol
 where
     Self: Sized,
@@ -27,6 +94,8 @@ where
     fn eval_prev<'a, const N: usize, const S: usize>(&self, state: &State<'a, N, S>) -> f64;
 
     fn dt(self) -> impl StateSymbol;
+
+    eager! { trait_funcs1!(funcs1!()) }
 }
 
 pub struct Constant(f64);
@@ -86,6 +155,10 @@ impl StateSymbol for Coord {
     }
 }
 
+pub fn coords<const N: usize>() -> [Coord; N] {
+    std::array::from_fn(|i| Coord(i))
+}
+
 pub struct CoordDerivative(usize);
 impl StateSymbol for CoordDerivative {
     fn eval<'a, const N: usize, const S: usize>(&self, state: &State<'a, N, S>) -> f64 {
@@ -102,34 +175,38 @@ impl StateSymbol for CoordDerivative {
         todo!();
         Constant(0.)
     }
+
 }
 
-pub struct Sin<Arg>(Arg);
-impl<Arg: StateSymbol> StateSymbol for Sin<Arg> {
-    fn eval<'a, const N: usize, const S: usize>(&self, state: &State<'a, N, S>) -> f64 {
-        self.0.eval(state).sin()
-    }
-
-    fn eval_at<'a, const N: usize, const S: usize>(&self, state: &State<'a, N, S>, t: f64) -> f64 {
-        self.0.eval_at(state, t).sin()
-    }
-
-    fn eval_prev<'a, const N: usize, const S: usize>(&self, state: &State<'a, N, S>) -> f64 {
-        self.0.eval_prev(state).sin()
-    }
-
-    fn dt(self) -> impl StateSymbol {
-        todo!();
-        Constant(0.)
-    }
-}
 
 
 #[eager_macro]
-macro_rules! impl_func1 {
-    ($func:ident, $struct:ident) => {
-        pub struct $struct<Arg>(Arg);
-        impl<Arg: StateSymbol> StateSymbol for $struct<Arg> {
+macro_rules! impl_funcs1 {
+    ($(($func:ident, $derivative:expr)),* $(,)?) => { $( eager2::lazy!{ paste::paste!{
+        #[doc = "Class implementing symbol function `" $func "` applied to `Arg`"]
+        ///
+        #[doc = "
+# Example
+```rust
+use diffurch::*;
+
+let state = State::new(1., [2., 3., 4.], f64::NAN, &rk::EULER);
+
+let t = Time;
+let [x, y, z] = coords();
+
+assert_eq!(t.eval(&state), 1.);
+assert_eq!(x.eval(&state), 2.);
+assert_eq!(y.eval(&state), 3.);
+assert_eq!(z.eval(&state), 4.);
+assert_eq!(t." $func "().eval(&state), (1f64)." $func "());
+assert_eq!(x." $func "().eval(&state), (2f64)." $func "());
+assert_eq!(y." $func "().eval(&state), (3f64)." $func "());
+assert_eq!(z." $func "().eval(&state), (4f64)." $func "());
+```
+"]
+        pub struct [<SF $func>]<Arg>(Arg);
+        impl<Arg: StateSymbol> StateSymbol for [<SF $func>]<Arg> {
             fn eval<'a, const N: usize, const S: usize>(&self, state: &State<'a, N, S>) -> f64 {
                 self.0.eval(state).$func()
             }
@@ -154,53 +231,9 @@ macro_rules! impl_func1 {
                 Constant(0.)
             }
         }
-    };
+    }})*};
 }
 
-#[eager_macro]
-macro_rules! impl_funcs1 {
-    ($(($func:ident, $derivative:expr)),* $(,)?) => {
-            $( impl_func1!($func, unstringify!(concat!("SF", stringify!($func)))))*
-    };
-}
-
-#[eager_macro]
-macro_rules! funcs1 {
-    () => {
-        // (recip, |t| -t.powi(2).recip()),
-        //
-        // (acos, |t| -(1. - t.powi(2)).sqrt().recip()),
-        // (asin, |t| (1. - t.powi(2)).sqrt().recip()),
-        // (acosh, |t| (t.powi(2) - 1.).sqrt().recip()),
-        // (asinh, |t| (t.powi(2) + 1.).sqrt().recip()),
-        // (atan, |t| (1. + t.powi(2)).recip()),
-        // (atanh, |t| (1. - t.powi(2)).recip()),
-
-        (cos, |t| -t.sin()),
-        (sin, |t| t.cos()),
-        // (cosh, |t| t.sinh()),
-        // (sinh, |t| t.cosh()),
-        // (tan, |t| t.cos().powi(2).recip()),
-        // (tanh, |t| t.cosh().powi(2).recip()),
-
-        // (exp, |t| t.exp()),
-        // (exp2, |t| t.exp2() * f64::ln(2.)),
-        // (exp_m1, |t| t.exp()),
-        // (ln, |t| t.recip()),
-        // (ln_1p, |t| (1.+t).recip()),
-        // (ln2, |t| (t * f64::ln(2.)).recip()),
-        // (ln10, |t| (t * f64::ln(10.)).recip()),
-        //
-        // (erf, |t| (-t.powi(2)).exp() * (2. / f64::const::PI.sqrt())),
-        // (erfc, |t| -(-t.powi(2)).exp() * (2. / f64::const::PI.sqrt())),
-        //
-        // (sqrt, |t| (2. * t.sqrt()).recip()),
-        // (cbrt, |t| (3. * t.cbrt().powi(2)).recip()),
-        //
-        // (to_radians, |_| f64::const::PI/180.),
-        // (to_degrees, |_| 180./f64::const::PI),
-    };
-}
 
 // AAA!((cosh, |t| t.sinh()), (sinh, |t| t.cosh()));
 
