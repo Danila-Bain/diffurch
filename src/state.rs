@@ -52,10 +52,11 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
     /// State constructor used in [crate::Solver]
     pub fn new(
         t_init: f64,
-        x_init: crate::InitialCondition<'a, N>,
+        x_init: impl Into<crate::InitialCondition<'a, N>>,
         t_span: f64,
         rk: &'a crate::rk::RungeKuttaTable<'a, S>,
     ) -> Self {
+        let x_init : crate::InitialCondition<'_, N> = x_init.into();
         let x = match &x_init {
             &crate::InitialCondition::Point(value) => value,
             crate::InitialCondition::Function(f)
