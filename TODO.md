@@ -39,6 +39,9 @@ In each section, roughly in order of simplicity and necessity:
     [ ] .to_file_format("filename", Format::CSV)
     [ ] .to_std_format(Format::Plain)
 
+[ ] to_return in the form of a vector of some struct, containing state and event descriptor
+[ ] to_return_dyn in the form of a vector of some EventOutput dyn objects
+
 [ ] output the whole state as an interpolation function
 [ ] to_return(): probably more advanced generic are needed than rust currently has
 [ ] real-time plotting for interactive researching
