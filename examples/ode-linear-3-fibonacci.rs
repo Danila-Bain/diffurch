@@ -1,5 +1,3 @@
-use std::f64::consts::PI;
-
 use diffurch::*;
 
 // Solving linear 3-dimensional system, which produces consecutive
@@ -27,7 +25,7 @@ fn main() {
     Solver::new()
         .stepsize(1. / 256.) // avoid rounding errors in time step by choosing exactly
                              // representible number
-        .on_step(event!(|t, [x, y, z]| println!("f_{t:0.0} = {x:0.0}")).separated_by(0.9999))
+        .on_step(event!(|t, [x, _y, _z]| println!("f_{t:0.0} = {x:0.0}")).separated_by(0.9999))
         .run(eq, ic, 0. ..50.);
 }
 
