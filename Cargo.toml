@@ -20,6 +20,8 @@ keywords = [
 
 [dev-dependencies]
 pgfplots = "0.5.1"
+textplots = "0.8.7"
+rgb = "0.8.50"
 
 [dependencies]
 num-traits = "0.2.19"

@@ -1,31 +1,30 @@
 use diffurch::*;
 
 fn main() {
-    // let theta = 0.5f64;
-    let k: f64 = 1.;
-    let tau: f64 = 0.5;
+    let k = 1f64;
+    let tau = 1f64;
 
-    let a = -k * (k * tau).tan();
-    let b = 1. / (k * tau).cos();
+    let a = k / (k * tau).tan();
+    let b = -k / (k * tau).sin();
 
-    let equation = equation!(|t, [x], [x_]| [a * x + b * x_.d(t - tau)]);
-
-    let ic = (|t: f64| [(k * t).sin()], |t: f64| [k * (k * t).cos()]);
+    let eq = equation!(|t, [x], [x_]| [a * x + b * x_(t - tau)]);
+    let ic = |t: f64| [(k * t).sin()];
     let sol = |t: f64| (k * t).sin();
-    let range = 0. ..110.;
+    let range = 0. ..10.;
 
-    let mut t = Vec::new();
-    let mut x = Vec::new();
+    let mut t = vec![];
+    let mut x = vec![];
 
     Solver::rk(&rk::RK98)
-        .stepsize(0.1)
+        .stepsize(0.33)
         .on_step(
             event!(|t, [x]| [t, x])
                 .to_vecs([&mut t, &mut x])
-                .separated_by(0.05),
+                .subdivide(5),
         )
+        .on_step(Event::ode2_state().to_std())
         .on_step(event!(|t, [x]| [t, x, x - sol(t)]).to_std())
-        .run(equation, ic, range);
+        .run(eq, ic, range);
 
     let mut plot = pgfplots::axis::plot::Plot2D::new();
     plot.coordinates = (0..t.len()).map(|i| (t[i], x[i]).into()).collect();
