@@ -192,14 +192,10 @@ where
     Self: Sized,
     Self: Copy,
     Self: std::ops::Neg,
-    Self: std::ops::Add<f64, Output=Add<Self, Constant>>,
-    Self: std::ops::Sub<f64, Output=Sub<Self, Constant>>,
-    Self: std::ops::Mul<f64, Output=Mul<Self, Constant>>,
-    Self: std::ops::Div<f64, Output=Div<Self, Constant>>,
-    // f64: std::ops::Add<Self, Output=Add<Constant, Self>>,
-    // f64: std::ops::Sub<Self, Output=Sub<Constant, Self>>,
-    // f64: std::ops::Mul<Self, Output=Mul<Constant, Self>>,
-    // f64: std::ops::Div<Self, Output=Div<Constant, Self>>,
+    Self: std::ops::Add<f64, Output = Add<Self, Constant>>,
+    Self: std::ops::Sub<f64, Output = Sub<Self, Constant>>,
+    Self: std::ops::Mul<f64, Output = Mul<Self, Constant>>,
+    Self: std::ops::Div<f64, Output = Div<Self, Constant>>,
 {
     fn eval<'a, const N: usize, const S: usize>(&self, state: &State<'a, N, S>) -> f64;
     fn eval_at<'a, const N: usize, const S: usize>(&self, state: &State<'a, N, S>, t: f64) -> f64;
@@ -222,12 +218,12 @@ pub trait IntoSymbol {
     fn into_symbol(self) -> impl Symbol;
 }
 impl<S: Symbol> IntoSymbol for S {
-    fn into_symbol(self) -> impl Symbol{
+    fn into_symbol(self) -> impl Symbol {
         self
     }
 }
 impl IntoSymbol for f64 {
-    fn into_symbol(self) -> impl Symbol{
+    fn into_symbol(self) -> impl Symbol {
         Constant(self)
     }
 }
@@ -334,7 +330,8 @@ impl Symbol for CoordDerivative {
     }
 
     fn dt(self) -> impl Symbol {
-        todo!();
+        unimplemented!("differentiating CoordDerivative is not implemented");
+        #[allow(unreachable_code)]
         Constant(0.)
     }
 }
@@ -464,9 +461,7 @@ impl<Arg: Symbol> Symbol for Powi<Arg> {
     }
 
     fn dt(self) -> impl Symbol {
-        todo!();
-        // self.1 as f64 * Powi(self.0, self.1 - 1) * self.0.dt()
-        Constant(0.)
+        self.1 as f64 * Powi(self.0, self.1 - 1) * self.0.dt()
     }
 }
 impl_ops!(Powi, Arg);
