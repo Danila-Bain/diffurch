@@ -136,6 +136,15 @@ fn bench_single_closure(b: &mut Bencher) {
     })
 }
 #[bench]
+fn bench_single_ref_dyn_closure(b: &mut Bencher) {
+    let f = closure_1();
+    let f : &dyn Fn(f64) -> f64 = &f;
+    b.iter(|| {
+        let t = test::black_box(0.);
+        f(t)
+    })
+}
+#[bench]
 fn bench_single_boxed_closure(b: &mut Bencher) {
     let f: Box<dyn Fn(f64) -> f64> = Box::new(closure_1());
     b.iter(|| {
