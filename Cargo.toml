@@ -24,6 +24,7 @@ textplots = "0.8.7"
 rgb = "0.8.50"
 
 [dependencies]
+hlist2 = "0.0.15"
 num-traits = "0.2.19"
 
 

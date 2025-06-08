@@ -51,6 +51,7 @@ dependencies = [
 name = "diffurch"
 version = "0.0.1"
 dependencies = [
+ "hlist2",
  "num-traits",
  "pgfplots",
  "rgb",
@@ -111,6 +112,12 @@ dependencies = [
  "r-efi",
  "wasi 0.14.2+wasi-0.2.4",
 ]
+
+[[package]]
+name = "hlist2"
+version = "0.0.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7eb54f4bac1a3a7b45a3dcd8b60d78a2d0c06857695fb8a47b913e50f52c3ad"
 
 [[package]]
 name = "lazy_static"

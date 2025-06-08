@@ -1,0 +1,44 @@
+Equation:
+    rhs: Fn(State) -> [f64; N]
+
+Event:
+    callback: Fn(State) -> Output
+    stream: Vec<Fn(Output)>
+    filter: Vec<Fn(State) -> bool>
+
+IC:
+    [f64; N] 
+    or
+    Fn(f64) -> [f64; N]
+    or
+    (Fn(f64) -> [f64; N], Fn(f64) -> [f64; N])
+
+Loc:
+    Detection:
+        Fn(State) -> f64 (+ differentiable in time)
+        Fn(State) -> bool
+
+Solver:
+    events: Vec<Fn(State)>
+    loc_events: Vec<(Loc, Fn(State))>
+
+
+
+Tasks:
+  Traits
+    Differentiable
+      .eval(arg)
+      [i].eval(arg)
+      Into<Differentiable> for
+        Fn(f64) -> [f64; N]
+        [f64; N]
+     
+    StateFnMut<Output>, methods are generic over State
+      .eval
+      .eval_at
+      .eval_prev
+
+  Static collections of trait objects:
+    .push
+    .pop
+    call a method for each
