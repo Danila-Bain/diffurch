@@ -112,7 +112,7 @@ use diffurch::*;
 let state = State::new(", stringify!($t), ", [", stringify!($x), ", ", stringify!($y), ", ", stringify!($z), "], f64::NAN, &rk::EULER);
 
 let t = Time;
-let [x, y, z] = coords();
+let [x, y, z] = Coord::vec();
 
 assert_eq!(t.eval(&state), state.t);
 assert_eq!(x.eval(&state), state.x[0]);
@@ -179,7 +179,7 @@ assert_eq!(t.", stringify!($func), "().dt().eval(&state), derivative(state.t));
 /// let state = State::new(1., [2., 3., 4.], f64::NAN, &rk::EULER);
 ///
 /// let t = Time;
-/// let [x, y, z] = coords();
+/// let [x, y, z] = Coord::vec();
 ///
 /// assert_eq!(t.eval(&state), 1.);
 /// assert_eq!(x.eval(&state), 2.);
@@ -312,8 +312,10 @@ impl Symbol for Coord {
 }
 impl_ops!(Coord);
 
-pub fn coords<const N: usize>() -> [Coord; N] {
-    std::array::from_fn(|i| Coord(i))
+impl Coord {
+    pub fn vec<const N: usize>() -> [Coord; N] {
+        std::array::from_fn(|i| Coord(i))
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
