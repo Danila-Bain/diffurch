@@ -1,41 +1,48 @@
 //! Defines [Solver].
 
-use crate::Event;
-use crate::InitialCondition;
-use crate::Loc;
-use crate::State;
-use crate::equation::Equation;
 use crate::rk::{RK98, RungeKuttaTable};
+use crate::*;
+
+use hlist2::ops::Append;
+use hlist2::*;
 
 /// Implements the integration of differential equation, containing the implementation specific (not
 /// equation specific) data, including particular Runge-Kutta scheme, stepsize, and events.
-pub struct Solver<'a, const N: usize, const S: usize> {
+pub struct Solver<
+    'a,
+    const N: usize,
+    const S: usize,
+    EventsOnStep: HList = Nil,
+    EventsOnStart: HList = Nil,
+    EventsOnStop: HList = Nil,
+    EventsOnLoc: HList = Nil,
+> {
     /// Runge-Kutta scheme used during integration. See [crate::rk].
     ///
     /// Set in constructor [Solver::rk].
-    rk: &'a RungeKuttaTable<'a, S>,
+    pub rk: &'a RungeKuttaTable<'a, S>,
     /// Stepsize used during integration. In the future may be replaced with more generic stepsize
     /// controller.
     ///
     /// Set in setter [Solver::stepsize].
-    stepsize: f64,
+    pub stepsize: f64,
     /// Events, that trigger each completed (not rejected) step.
     ///
     /// See [Solver::on_step].
-    step_events: Vec<Box<dyn 'a + for<'s> FnMut(&'s mut State<N, S>)>>,
+    pub step_events: EventsOnStep,
     /// Events, that trigger before the start of integration.
     ///
     /// See [Solver::on_start].
-    start_events: Vec<Box<dyn 'a + for<'s> FnMut(&'s mut State<N, S>)>>,
+    pub start_events: EventsOnStart,
     /// Events, that trigger after the stop of integration.
     ///
     /// See [Solver::on_stop].
-    stop_events: Vec<Box<dyn 'a + for<'s> FnMut(&'s mut State<N, S>)>>,
+    pub stop_events: EventsOnStop,
     /// Events, which trigger on located event during integration, like when the solution crosses
     /// some surface in phase space.
     ///
     /// See [Solver::on_stop].
-    loc_events: Vec<(Loc<'a, N>, Box<dyn 'a + for<'s> FnMut(&'s mut State<N, S>)>)>,
+    pub loc_events: EventsOnLoc,
 }
 
 impl<'a, const N: usize> Solver<'a, N, 26> {
@@ -45,24 +52,47 @@ impl<'a, const N: usize> Solver<'a, N, 26> {
         Solver::<N, 26> {
             rk: &RK98,
             stepsize: 0.05,
-            step_events: Vec::new(),
-            start_events: Vec::new(),
-            stop_events: Vec::new(),
-            loc_events: Vec::new(),
+            step_events: Nil,
+            start_events: Nil,
+            stop_events: Nil,
+            loc_events: Nil,
         }
     }
 }
 
-impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
+impl<
+    'a,
+    const N: usize,
+    const S: usize,
+    EventsOnStep: HList,
+    EventsOnStart: HList,
+    EventsOnStop: HList,
+    EventsOnLoc: HList,
+> Solver<'a, N, S, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>
+{
     /// Constructor which sets Runge-Kutta table and defaults stepsize to 0.05. Returns self.
-    pub fn rk(rk: &'a RungeKuttaTable<'a, S>) -> Self {
+    pub fn with_rk(rk: &'a RungeKuttaTable<'a, S>) -> Solver<'a, N, S> {
         Solver {
             rk,
             stepsize: 0.05,
-            step_events: Vec::new(),
-            start_events: Vec::new(),
-            stop_events: Vec::new(),
-            loc_events: Vec::new(),
+            step_events: Nil,
+            start_events: Nil,
+            stop_events: Nil,
+            loc_events: Nil,
+        }
+    }
+
+    pub fn rk<const S_: usize>(
+        self,
+        rk: &'a RungeKuttaTable<'a, S_>,
+    ) -> Solver<'a, N, S_, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc> {
+        Solver {
+            rk,
+            stepsize: 0.05,
+            step_events: self.step_events,
+            start_events: self.start_events,
+            stop_events: self.stop_events,
+            loc_events: self.loc_events,
         }
     }
 
@@ -71,79 +101,143 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
         Self { stepsize, ..self }
     }
 
-    fn event_to_state_function<'c, Output: 'c + Copy>(
-        mut event: Event<'c, N, Output>,
-    ) -> Box<dyn 'c + for<'b> FnMut(&'b mut State<N, S>)> {
-        Box::new(move |state: &mut State<N, S>| {
-            let Event {
-                ref mut callback,
-                ref mut stream,
-                ref mut filter,
-                subdivision,
-            } = event;
-
-            if let Some(n) = subdivision {
-                for i in 1..n {
-                    let t = state.t_prev + (state.t - state.t_prev) * (i as f64) / (n as f64);
-                    if filter.iter_mut().all(|f| f.eval_at(state, t)) {
-                        let output = callback.eval_at(state, t);
-                        stream.iter_mut().for_each(|stream| stream(output));
-                    }
-                }
-            }
-            if filter.iter_mut().all(|f| f.eval(state)) {
-                let output = callback.eval(state);
-                stream.iter_mut().for_each(|stream| stream(output));
-            }
-        })
-    }
-
     /// Add event to a list of step events.
     /// Events in that list trigger once before the first step, and then after each completed step.
     /// The step may be not completed if it were rejected by a step size controller (currently
     /// unimplemented), or located event (see [Solver::on_loc]).
     ///
-    pub fn on_step<Output: Copy + 'a>(mut self, event: Event<'a, N, Output>) -> Self {
-        self.step_events.push(Self::event_to_state_function(event));
-        self
+    pub fn on_step<E: IntoEventFunction<N>>(
+        self,
+        event: E,
+    ) -> Solver<
+        'a,
+        N,
+        S,
+        <EventsOnStep as Append>::Output<E::Output<S>>,
+        EventsOnStart,
+        EventsOnStop,
+        EventsOnLoc,
+    >
+    where
+        EventsOnStep: Append,
+    {
+        let Solver {
+            rk,
+            stepsize,
+            step_events,
+            start_events,
+            stop_events,
+            loc_events,
+        } = self;
+
+        Solver {
+            rk,
+            stepsize,
+            step_events: step_events.append(event.into_event_function()),
+            start_events,
+            stop_events,
+            loc_events,
+        }
     }
 
     /// Add event to a list of start events.
     /// Events in that list trigger before the start of integration
     /// and before the first trigger of step events (see [Solver::on_step]).
-    pub fn on_start<Output: Copy + 'a>(mut self, event: Event<'a, N, Output>) -> Self {
-        self.start_events.push(Self::event_to_state_function(event));
-        self
+    pub fn on_start<E: IntoEventFunction<N>>(
+        self,
+        event: E,
+    ) -> Solver<
+        'a,
+        N,
+        S,
+        EventsOnStep,
+        <EventsOnStart as Append>::Output<E::Output<S>>,
+        EventsOnStop,
+        EventsOnLoc,
+    >
+    where
+        EventsOnStart: Append,
+    {
+        let Solver {
+            rk,
+            stepsize,
+            step_events,
+            start_events,
+            stop_events,
+            loc_events,
+        } = self;
+
+        Solver {
+            rk,
+            stepsize,
+            step_events,
+            start_events: start_events.append(event.into_event_function()),
+            stop_events,
+            loc_events,
+        }
     }
     /// Add event to a list of stop events.
     /// Events in that list trigger after the last step in integration has been made.
-    pub fn on_stop<Output: Copy + 'a>(mut self, event: Event<'a, N, Output>) -> Self {
-        self.stop_events.push(Self::event_to_state_function(event));
-        self
+    pub fn on_stop<E: IntoEventFunction<N>>(
+        self,
+        event: E,
+    ) -> Solver<
+        'a,
+        N,
+        S,
+        EventsOnStep,
+        EventsOnStart,
+        <EventsOnStop as Append>::Output<E::Output<S>>,
+        EventsOnLoc,
+    >
+    where
+        EventsOnStop: Append,
+    {
+        let Solver {
+            rk,
+            stepsize,
+            step_events,
+            start_events,
+            stop_events,
+            loc_events,
+        } = self;
+
+        Solver {
+            rk,
+            stepsize,
+            step_events,
+            start_events,
+            stop_events: stop_events.append(event.into_event_function()),
+            loc_events,
+        }
     }
 
-    /// Add event to a list of loc events.
-    /// Events in that list trigger when event is located on a step using [Loc]. If two or more
-    /// events are detected on a step, only the earliest one is triggered. In current
-    /// implementation, solver always steps on the located event. Which can be used to implement
-    /// numerical integration for discontinuous differential equations correctly.
-    pub fn on_loc<Output: Copy + 'a>(
-        mut self,
-        event_locator: Loc<'a, N>,
-        event: Event<'a, N, Output>,
-    ) -> Self {
-        self.loc_events
-            .push((event_locator, Self::event_to_state_function(event)));
-        self
-    }
+    // /// Add event to a list of loc events.
+    // /// Events in that list trigger when event is located on a step using [Loc]. If two or more
+    // /// events are detected on a step, only the earliest one is triggered. In current
+    // /// implementation, solver always steps on the located event. Which can be used to implement
+    // /// numerical integration for discontinuous differential equations correctly.
+    // pub fn on_loc<Output: Copy + 'a>(
+    //     mut self,
+    //     event_locator: Loc<'a, N>,
+    //     event: Event<'a, N, Output>,
+    // ) -> Self {
+    //     self.loc_events
+    //         .push((event_locator, Self::event_to_state_function(event)));
+    //     self
+    // }
 
     /// Run solver.
-    pub fn run(
+    pub fn run<RHS: StateFnMut<N, [f64; N]>>(
         mut self,
-        eq: Equation<'a, N>,
+        eq: Equation<N, RHS>,
         ic: impl Into<InitialCondition<'a, N>>,
         interval: impl std::ops::RangeBounds<f64>,
-    ) {
+    ) where
+        EventsOnStep: for <'s> FnMutHList<(&'s mut State<'a, N, S>,)>,
+        EventsOnStart: for <'s> FnMutHList<(&'s mut State<'a, N, S>,)>,
+        EventsOnStop: for <'s> FnMutHList<(&'s mut State<'a, N, S>,)>,
+    {
         use std::ops::Bound::*;
         let t_init = match interval.start_bound() {
             Unbounded => 0.,
@@ -157,51 +251,53 @@ impl<'a, const N: usize, const S: usize> Solver<'a, N, S> {
         let mut rhs = eq.rhs;
         let mut state = State::new(t_init, ic.into(), eq.max_delay, &self.rk);
         let mut stepsize = self.stepsize;
+        
+        self.start_events.call_mut((&mut state,));
+        self.step_events.call_mut((&mut state,));
 
-        self.start_events
-            .iter_mut()
-            .for_each(|event| event(&mut state));
-        self.step_events
-            .iter_mut()
-            .for_each(|event| event(&mut state));
+            // .iter_mut()
+            // .for_each(|event| event(&mut state));
+            // .iter_mut()
+            // .for_each(|event| event(&mut state));
 
         while state.t < t_end {
             state.make_step(&mut rhs, stepsize);
 
-            // handle earliest detected event, if any
-            if let Some((event, t)) = self
-                .loc_events
-                .iter_mut()
-                .filter_map(|(locator, event)| {
-                    if let Some(t) = locator.locate(&state) {
-                        Some((event, t))
-                    } else {
-                        None
-                    }
-                })
-                .min_by(|(_, t1), (_, t2)| t1.partial_cmp(t2).unwrap())
-            {
-                if t > state.t_prev {
-                    state.undo_step();
-                    state.make_step(&mut rhs, t - state.t);
-                }
-                state.push_current();
-                self.step_events
-                    .iter_mut()
-                    .for_each(|event| event(&mut state));
-                event(&mut state);
-                state.make_zero_step();
-            }
+            // // handle earliest detected event, if any
+            // if let Some((event, t)) = self
+            //     .loc_events
+            //     .iter_mut()
+            //     .filter_map(|(locator, event)| {
+            //         if let Some(t) = locator.locate(&state) {
+            //             Some((event, t))
+            //         } else {
+            //             None
+            //         }
+            //     })
+            //     .min_by(|(_, t1), (_, t2)| t1.partial_cmp(t2).unwrap())
+            // {
+            //     if t > state.t_prev {
+            //         state.undo_step();
+            //         state.make_step(&mut rhs, t - state.t);
+            //     }
+            //     state.push_current();
+            //     self.step_events
+            //         .iter_mut()
+            //         .for_each(|event| event(&mut state));
+            //     event(&mut state);
+            //     state.make_zero_step();
+            // }
 
             state.push_current();
-            self.step_events
-                .iter_mut()
-                .for_each(|event| event(&mut state));
+            self.step_events.call_mut((&mut state,));
+                // .iter_mut()
+                // .for_each(|event| event(&mut state));
             stepsize = stepsize.min(t_end - state.t);
         }
 
-        self.stop_events
-            .iter_mut()
-            .for_each(|event| event(&mut state));
+        self.stop_events.call_mut((&mut state,));
+        // self.stop_events
+        //     .iter_mut()
+        //     .for_each(|event| event(&mut state));
     }
 }

@@ -42,3 +42,30 @@ Tasks:
     .push
     .pop
     call a method for each
+
+
+
+
+
+
+Distinction between MutState and State events
+State events:
+  subdivision can be applied
+  does not modify integration steps
+
+MutState:
+  subdivision cannot be applied
+  adds additional step (before/after)
+
+It makes sense to conditionally call an event from other event:
+
+.on_step(event!(... request_event("stop_integration")))
+.on_request(Event::stop_integration())
+
+.on_step(event!(|t| (t > 0).then(|| stop_integration.set(true))))
+.on_step(Event::stop_itegration().filter(|| stop_integration.get()))
+
+
+
+
+

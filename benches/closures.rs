@@ -341,7 +341,7 @@ fn bench_collection_small_hlist_of_closures_map(b: &mut Bencher) {
     b.iter(|| {
         let t = test::black_box(0.);
         hl.map(Mapper(MyMapFn(t)))
-    })
+    });
 }
 
 #[bench]
