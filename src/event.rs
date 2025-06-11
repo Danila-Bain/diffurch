@@ -8,7 +8,7 @@ use hlist2::{HList, Nil, hlist, ops::Append};
 /// in [crate::solver::Solver] struct.
 pub struct Event<
     const N: usize,
-    Callback: MutStateFnMut<N, Output>,
+    Callback = (), //: MutStateFnMut<N, Output>,
     Output = (),
     Stream: HList = Nil,
     Filter: HList = Nil,
@@ -31,13 +31,8 @@ pub struct Event<
     output_marker: std::marker::PhantomData<fn(Output)>,
 }
 
-impl<const N: usize, Callback: MutStateFnMut<N, Output>, Output> Event<N, Callback, Output>
-where
-    Self: Sized,
-{
-    /// Constructor that initializes [Event::callback] from [MutStateFn], and the rest by
-    /// Default::default().
-    pub fn new(callback: Callback) -> Self {
+impl<const N: usize> Event<N> {
+    pub fn new<F: MutStateFnMut<N, Output>, Output>(callback: F) -> Event<N, F, Output> {
         Event {
             callback,
             stream: Nil,
@@ -48,52 +43,66 @@ where
     }
 
     /// Constructor that initializes [Event::callback] using [MutStateFn::constant].
-    pub fn constant<F: FnMut() -> Output>(
+    pub fn constant<F: FnMut() -> Output, Output>(
         callback: F,
     ) -> Event<N, ConstantStateFnMut<F, Output>, Output> {
         Event::new(ConstantStateFnMut(callback))
     }
     /// Constructor that initializes [Event::callback] using [MutStateFn::time].
-    pub fn time<F: FnMut(f64) -> Output>(
+    pub fn time<F: FnMut(f64) -> Output, Output>(
         callback: F,
     ) -> Event<N, TimeStateFnMut<F, Output>, Output> {
         Event::new(TimeStateFnMut(callback))
     }
     /// Constructor that initializes [Event::callback] using [MutStateFn::time_mut].
-    pub fn time_mut<F: FnMut(&mut f64) -> Output>(
+    pub fn time_mut<F: FnMut(&mut f64) -> Output, Output>(
         callback: F,
     ) -> Event<N, TimeMutStateFnMut<F, Output>, Output> {
         Event::new(TimeMutStateFnMut(callback))
     }
     /// Constructor that initializes [Event::callback] using [MutStateFn::ode].
-    pub fn ode<F: FnMut([f64; N]) -> Output>(
+    pub fn ode<F: FnMut([f64; N]) -> Output, Output>(
         callback: F,
     ) -> Event<N, ODEStateFnMut<N, F, Output>, Output> {
         Event::new(ODEStateFnMut(callback))
     }
     /// Constructor that initializes [Event::callback] using [MutStateFn::ode_mut].
-    pub fn ode_mut<F: FnMut(&mut [f64; N]) -> Output>(
+    pub fn ode_mut<F: FnMut(&mut [f64; N]) -> Output, Output>(
         callback: F,
     ) -> Event<N, ODEMutStateFnMut<N, F, Output>, Output> {
         Event::new(ODEMutStateFnMut(callback))
     }
     /// Constructor that initializes [Event::callback] using [MutStateFn::ode2].
-    pub fn ode2<F: FnMut(f64, [f64; N]) -> Output>(
+    pub fn ode2<F: FnMut(f64, [f64; N]) -> Output, Output>(
         callback: F,
     ) -> Event<N, ODE2StateFnMut<N, F, Output>, Output> {
         Event::new(ODE2StateFnMut(callback))
     }
     // /// Constructor that initializes [Event::callback] using [MutStateFn::ode2_mut].
-    pub fn ode2_mut<F: FnMut(&mut f64, &mut [f64; N]) -> Output>(
+    pub fn ode2_mut<F: FnMut(&mut f64, &mut [f64; N]) -> Output, Output>(
         callback: F,
     ) -> Event<N, ODE2MutStateFnMut<N, F, Output>, Output> {
         Event::new(ODE2MutStateFnMut(callback))
     }
     // /// Constructor that initializes [Event::callback] using [MutStateFn::dde].
-    pub fn dde<F: for<'a> FnMut(f64, [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]) -> Output>(
+    pub fn dde<
+        F: for<'a> FnMut(f64, [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]) -> Output,
+        Output,
+    >(
         callback: F,
     ) -> Event<N, DDEStateFnMut<N, F, Output>, Output> {
         Event::new(DDEStateFnMut(callback))
+    }
+
+    /// Creates an event, that sets the time of the state to `f64::INFINITY`, effectively stopping the integration.
+    ///
+    /// A short-hand for `Event::time_mut(|t| *t = f64::INFINITY))`.
+    pub fn stop_integration() -> Event<N, impl MutStateFnMut<N, f64>, f64> {
+        Event::time_mut(|t: &mut f64| -> f64 {
+            let tt = *t;
+            *t = f64::INFINITY;
+            tt
+        })
     }
 }
 
@@ -226,95 +235,87 @@ impl<const N: usize, Callback: MutStateFnMut<N, Output>, Output, Stream: HList, 
     }
 }
 
-//
-// // // requires generic_const_exprs
-// // // can cause ICE if user doesn't write #![feature(generic_const_exprs)] in their crate
-// // impl<'a, const N: usize> Event<'a, N, [f64; N + 1]> {
-// //     pub fn ode2_state() -> Self {
-// //         Event::new(StateFnMut::ode2(|t: f64, x: [f64; N]| {
-// //             let mut res = [0.; N + 1];
-// //             res[0] = t;
-// //             for i in 1..=N {
-// //                 res[i] = x[i - 1];
-// //             }
-// //             res
-// //         }))
-// //     }
-// // }
-//
-// impl<const N: usize> Event<N, ()> {
-//     /// Creates an event, that sets the time of the state to `f64::INFINITY`, effectively stopping the integration.
-//     ///
-//     /// A short-hand for `Event::time_mut(|t| *t = f64::INFINITY))`.
-//     pub fn stop_integration() -> Self {
-//         Event::time_mut(|t| {
-//             *t = f64::INFINITY;
-//         })
-//     }
-// }
-//
-// impl<const N: usize, Item, const M: usize> Event<N, [Item; M]> {
-//     /// Like [Event::to_file] but only works with arrays, and prints array as a comma-separated values.
-//     pub fn to_csv(self, filename: &str) -> Self
-//     where
-//         Item: std::fmt::Display,
-//     {
-//         use std::io::Write;
-//         let mut file = std::fs::File::create_buffered(filename).unwrap();
-//         self.to(move |values: [Item; M]| {
-//             for val in values {
-//                 write!(&mut file, "{},", val).unwrap();
-//             }
-//             write!(&mut file, "\n").unwrap();
-//         })
-//     }
-//     /// Like [Event::to_file] but only works with arrays, and prints array values separated by a separator, and adds the header line if it is provided.
-//     pub fn to_table(self, filename: &str, separator: &str, header: Option<&str>) -> Self
-//     where
-//         Item: std::fmt::Display,
-//     {
-//         use std::io::Write;
-//         let mut file = std::fs::File::create_buffered(filename).unwrap();
-//
-//         if let Some(header) = header {
-//             writeln!(&mut file, "{header}").unwrap();
-//         }
-//         self.to(move |values: [Item; M]| {
-//             for val in values {
-//                 write!(&mut file, "{}{separator}", val).unwrap();
-//             }
-//             writeln!(&mut file, "").unwrap();
-//         })
-//     }
-//
-//     /// Like [Event::to_vec], but pushes the values of [Event::callback] output in individual
-//     /// vectors.
-//     pub fn to_vecs(self, vecs: [&mut Vec<Item>; M]) -> Self
-//     where
-//         Item: Copy,
-//     {
-//         self.to(move |value: [Item; M]| {
-//             for i in 0..M {
-//                 vecs[i].push(value[i]);
-//             }
-//         })
-//     }
-//
-//     /// Like [Event::to_float_range], but updates several individual ranges.
-//     pub fn to_float_ranges(self, mut ranges: [&mut std::ops::Range<Item>; M]) -> Self
-//     where
-//         Item: num_traits::Float,
-//     {
-//         for range in ranges.iter_mut() {
-//             **range = Item::max_value()..Item::min_value();
-//         }
-//         self.to(move |values: [Item; M]| {
-//             for (range, v) in ranges.iter_mut().zip(values.iter()) {
-//                 **range = range.start.min(*v)..range.end.max(*v)
-//             }
-//         })
-//     }
-// }
+impl<
+    const N: usize,
+    const M: usize,
+    Callback: MutStateFnMut<N, [Item; M]>,
+    Item,
+    Stream: HList + Append,
+    Filter: HList,
+> Event<N, Callback, [Item; M], Stream, Filter>
+{
+    /// Like [Event::to_file] but only works with arrays, and prints array as a comma-separated values.
+    pub fn to_csv(self, filename: &str) -> Event<N, Callback, [Item; M], impl HList, Filter>
+    where
+        Item: std::fmt::Display,
+    {
+        use std::io::Write;
+        let mut file = std::fs::File::create_buffered(filename).unwrap();
+        self.to(move |values: [Item; M]| {
+            for val in values {
+                write!(&mut file, "{},", val).unwrap();
+            }
+            write!(&mut file, "\n").unwrap();
+        })
+    }
+    /// Like [Event::to_file] but only works with arrays, and prints array values separated by a separator, and adds the header line if it is provided.
+    pub fn to_table(
+        self,
+        filename: &str,
+        separator: &str,
+        header: Option<&str>,
+    ) -> Event<N, Callback, [Item; M], impl HList, Filter>
+    where
+        Item: std::fmt::Display,
+    {
+        use std::io::Write;
+        let mut file = std::fs::File::create_buffered(filename).unwrap();
+
+        if let Some(header) = header {
+            writeln!(&mut file, "{header}").unwrap();
+        }
+        self.to(move |values: [Item; M]| {
+            for val in values {
+                write!(&mut file, "{}{separator}", val).unwrap();
+            }
+            writeln!(&mut file, "").unwrap();
+        })
+    }
+
+    /// Like [Event::to_vec], but pushes the values of [Event::callback] output in individual
+    /// vectors.
+    pub fn to_vecs(
+        self,
+        vecs: [&mut Vec<Item>; M],
+    ) -> Event<N, Callback, [Item; M], impl HList, Filter>
+    where
+        Item: Copy,
+    {
+        self.to(move |value: [Item; M]| {
+            for i in 0..M {
+                vecs[i].push(value[i]);
+            }
+        })
+    }
+
+    /// Like [Event::to_float_range], but updates several individual ranges.
+    pub fn to_float_ranges(
+        self,
+        mut ranges: [&mut std::ops::Range<Item>; M],
+    ) -> Event<N, Callback, [Item; M], impl HList, Filter>
+    where
+        Item: num_traits::Float,
+    {
+        for range in ranges.iter_mut() {
+            **range = Item::max_value()..Item::min_value();
+        }
+        self.to(move |values: [Item; M]| {
+            for (range, v) in ranges.iter_mut().zip(values.iter()) {
+                **range = range.start.min(*v)..range.end.max(*v)
+            }
+        })
+    }
+}
 //
 // /// Creates a [crate::Event] from a closure.
 // ///

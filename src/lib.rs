@@ -9,7 +9,7 @@
 pub mod equation;
 pub mod event;
 pub mod initial_condition;
-// pub mod loc;
+pub mod loc;
 pub mod rk;
 // pub mod solver;
 pub mod state;
@@ -19,7 +19,7 @@ pub mod polynomial;
 pub use equation::*;
 pub use event::*;
 pub use initial_condition::*;
-// pub use loc::*;
+pub use loc::*;
 // pub use solver::*;
 pub use state::*;
 pub use filter::*;
