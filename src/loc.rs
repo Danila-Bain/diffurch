@@ -1,4 +1,4 @@
-//! Defines [Loc] struct, which is an event locator
+//! D1efines [Loc] struct, which is an event locator
 
 use std::mem::swap;
 
@@ -27,14 +27,10 @@ macro_rules! impl_deref {
 }
 
 pub trait Detect<const N: usize> {
-    fn detect<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> bool
-    where
-        [(); S * (S - 1) / 2]:;
+    fn detect(&mut self, state: &impl IsState<N>) -> bool;
 }
 pub trait Locate<const N: usize> {
-    fn locate<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Option<f64>
-    where
-        [(); S * (S - 1) / 2]:;
+    fn locate(&mut self, state: &impl IsState<N>) -> Option<f64>;
 }
 
 pub mod detection {
@@ -42,10 +38,7 @@ pub mod detection {
 
     pub struct Sign<const N: usize, F: StateFnMut<N, f64>>(pub F);
     impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for Sign<N, F> {
-        fn detect<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> bool
-        where
-            [(); S * (S - 1) / 2]:,
-        {
+        fn detect(&mut self, state: &impl IsState<N>) -> bool {
             let curr = self.0.eval(state);
             let prev = self.0.eval_prev(state);
             curr > 0. && prev <= 0. || curr < 0. && prev >= 0.
@@ -55,10 +48,7 @@ pub mod detection {
 
     pub struct Pos<const N: usize, F: StateFnMut<N, f64>>(pub F);
     impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for Pos<N, F> {
-        fn detect<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> bool
-        where
-            [(); S * (S - 1) / 2]:,
-        {
+        fn detect(&mut self, state: &impl IsState<N>) -> bool {
             let curr = self.0.eval(state);
             let prev = self.0.eval_prev(state);
             curr > 0. && prev <= 0.
@@ -68,10 +58,7 @@ pub mod detection {
 
     pub struct Neg<const N: usize, F: StateFnMut<N, f64>>(pub F);
     impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for Neg<N, F> {
-        fn detect<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> bool
-        where
-            [(); S * (S - 1) / 2]:,
-        {
+        fn detect(&mut self, state: &impl IsState<N>) -> bool {
             let curr = self.0.eval(state);
             let prev = self.0.eval_prev(state);
             curr < 0. && prev >= 0.
@@ -81,10 +68,7 @@ pub mod detection {
 
     pub struct WhilePos<const N: usize, F: StateFnMut<N, f64>>(pub F);
     impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for WhilePos<N, F> {
-        fn detect<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> bool
-        where
-            [(); S * (S - 1) / 2]:,
-        {
+        fn detect(&mut self, state: &impl IsState<N>) -> bool {
             self.0.eval(state) >= 0.
         }
     }
@@ -92,10 +76,7 @@ pub mod detection {
 
     pub struct WhileNeg<const N: usize, F: StateFnMut<N, f64>>(pub F);
     impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for WhileNeg<N, F> {
-        fn detect<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> bool
-        where
-            [(); S * (S - 1) / 2]:,
-        {
+        fn detect(&mut self, state: &impl IsState<N>) -> bool {
             self.0.eval(state) <= 0.
         }
     }
@@ -103,10 +84,7 @@ pub mod detection {
 
     pub struct Bool<const N: usize, F: StateFnMut<N, bool>>(pub F);
     impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for Bool<N, F> {
-        fn detect<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> bool
-        where
-            [(); S * (S - 1) / 2]:,
-        {
+        fn detect(&mut self, state: &impl IsState<N>) -> bool {
             self.0.eval(state) != self.0.eval_prev(state)
         }
     }
@@ -114,7 +92,7 @@ pub mod detection {
 
     pub struct True<const N: usize, F: StateFnMut<N, bool>>(pub F);
     impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for True<N, F> {
-        fn detect<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> bool where [(); S * (S - 1) / 2]: {
+        fn detect(&mut self, state: &impl IsState<N>) -> bool {
             self.0.eval(state) && !self.0.eval_prev(state)
         }
     }
@@ -122,7 +100,7 @@ pub mod detection {
 
     pub struct False<const N: usize, F: StateFnMut<N, bool>>(pub F);
     impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for False<N, F> {
-        fn detect<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> bool where [(); S * (S - 1) / 2]: {
+        fn detect(&mut self, state: &impl IsState<N>) -> bool {
             !self.0.eval(state) && self.0.eval_prev(state)
         }
     }
@@ -130,7 +108,7 @@ pub mod detection {
 
     pub struct WhileTrue<const N: usize, F: StateFnMut<N, bool>>(pub F);
     impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for WhileTrue<N, F> {
-        fn detect<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> bool where [(); S * (S - 1) / 2]: {
+        fn detect(&mut self, state: &impl IsState<N>) -> bool {
             self.0.eval(state)
         }
     }
@@ -138,7 +116,7 @@ pub mod detection {
 
     pub struct WhileFalse<const N: usize, F: StateFnMut<N, bool>>(pub F);
     impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for WhileFalse<N, F> {
-        fn detect<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> bool where [(); S * (S - 1) / 2]: {
+        fn detect(&mut self, state: &impl IsState<N>) -> bool {
             !self.0.eval(state)
         }
     }
@@ -162,18 +140,18 @@ pub use location::*;
 pub struct Loc<D, L>(pub D, pub L);
 
 impl<const N: usize, D: Detect<N>> Locate<N> for Loc<D, StepBegin> {
-    fn locate<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Option<f64> where [(); S * (S - 1) / 2]: {
-        self.0.detect(state).then_some(state.t_prev)
+    fn locate(&mut self, state: &impl IsState<N>) -> Option<f64> {
+        self.0.detect(state).then_some(state.t_prev())
     }
 }
 impl<const N: usize, D: Detect<N>> Locate<N> for Loc<D, StepEnd> {
-    fn locate<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Option<f64> where [(); S * (S - 1) / 2]: {
-        self.0.detect(state).then_some(state.t)
+    fn locate(&mut self, state: &impl IsState<N>) -> Option<f64> {
+        self.0.detect(state).then_some(state.t())
     }
 }
 impl<const N: usize, D: Detect<N>> Locate<N> for Loc<D, HalfStep> {
-    fn locate<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Option<f64> where [(); S * (S - 1) / 2]: {
-        self.0.detect(state).then(|| 0.5 * (state.t_prev + state.t))
+    fn locate(&mut self, state: &impl IsState<N>) -> Option<f64> {
+        self.0.detect(state).then(|| 0.5 * (state.t_prev() + state.t()))
     }
 }
 impl<const N: usize, D> Locate<N> for Loc<D, Lerp>
@@ -181,14 +159,11 @@ where
     D: Detect<N> + DerefMut,
     <D as Deref>::Target: StateFnMut<N, f64>,
 {
-    fn locate<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Option<f64>
-    where
-        [(); S * (S - 1) / 2]:,
-    {
+    fn locate(&mut self, state: &impl IsState<N>) -> Option<f64> {
         self.0.detect(state).then(|| {
             let curr = self.0.eval(state);
             let prev = self.0.eval_prev(state);
-            (curr * state.t_prev - prev * state.t) / (curr - prev)
+            (curr * state.t_prev() - prev * state.t()) / (curr - prev)
         })
     }
 }
@@ -198,13 +173,10 @@ where
     D: Detect<N> + DerefMut,
     <D as Deref>::Target: StateFnMut<N, bool>,
 {
-    fn locate<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Option<f64>
-    where
-        [(); S * (S - 1) / 2]:,
-    {
+    fn locate(&mut self, state: &impl IsState<N>) -> Option<f64> {
         self.0.detect(state).then(|| {
-            let mut l = state.t_prev;
-            let mut r = state.t;
+            let mut l = state.t_prev();
+            let mut r = state.t();
             if self.0.eval_prev(state) {
                 swap(&mut l, &mut r);
             }
@@ -227,13 +199,10 @@ where
     D: Detect<N> + DerefMut,
     <D as Deref>::Target: StateFnMut<N, f64>,
 {
-    fn locate<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Option<f64>
-    where
-        [(); S * (S - 1) / 2]:,
-    {
+    fn locate(&mut self, state: &impl IsState<N>) -> Option<f64> {
         self.0.detect(state).then(|| {
-            let mut l = state.t_prev;
-            let mut r = state.t;
+            let mut l = state.t_prev();
+            let mut r = state.t();
             if self.0.eval(state) < 0. {
                 swap(&mut l, &mut r);
             }
@@ -257,13 +226,10 @@ where
     D: Detect<N> + DerefMut,
     <D as Deref>::Target: StateFnMut<N, f64>,
 {
-    fn locate<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Option<f64>
-    where
-        [(); S * (S - 1) / 2]:,
-    {
+    fn locate(&mut self, state: &impl IsState<N>) -> Option<f64> {
         self.0.detect(state).then(|| {
-            let mut l = state.t_prev;
-            let mut r = state.t;
+            let mut l = state.t_prev();
+            let mut r = state.t();
             if self.0.eval(state) < 0. {
                 swap(&mut l, &mut r);
             }

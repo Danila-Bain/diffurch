@@ -159,6 +159,29 @@ impl<const N: usize, const MUT: bool, Subdivision, Callback, Output, Stream, Fil
     }
 }
 
+impl<const N: usize, const MUT: bool, Subdivision, Callback, Stream, Filter, Output>
+    Event<N, MUT, Subdivision, Callback, Output, Stream, Filter>
+{
+    /// Set [Event::subdivision] field to `Some(n)`, that tells the solver, that event needs to be
+    /// triggered `n` times on the current step.
+    pub fn with_subdivision(
+        self,
+        n: usize,
+    ) -> Event<N, MUT, usize, Callback, Output, Stream, Filter> {
+        let callback = self.callback;
+        let stream = self.stream;
+        let filter = self.filter;
+        let subdivision = n;
+        Event {
+            callback,
+            stream,
+            filter,
+            subdivision,
+            output_marker: self.output_marker,
+        }
+    }
+}
+
 // appenders for stream field
 impl<const N: usize, const MUT: bool, Subdivision, Callback, Stream, Filter, Output>
     Event<N, MUT, Subdivision, Callback, Output, Stream, Filter>
@@ -186,7 +209,17 @@ where
 
     /// Push a new function to [Event::stream], that prints the output of [Event::callback] to the
     /// standard output using `println!`.
-    pub fn to_std(self) -> Event<N, MUT, Subdivision, Callback, Output, impl HList, Filter>
+    pub fn to_std(
+        self,
+    ) -> Event<
+        N,
+        MUT,
+        Subdivision,
+        Callback,
+        Output,
+        <Stream as Append>::Output<impl FnMut(Output)>,
+        Filter,
+    >
     where
         Output: std::fmt::Debug,
     {
@@ -200,7 +233,15 @@ where
     pub fn to_file(
         self,
         filename: &str,
-    ) -> Event<N, MUT, Subdivision, Callback, Output, impl HList, Filter>
+    ) -> Event<
+        N,
+        MUT,
+        Subdivision,
+        Callback,
+        Output,
+        <Stream as Append>::Output<impl FnMut(Output)>,
+        Filter,
+    >
     where
         Output: std::fmt::Debug,
     {
@@ -214,7 +255,15 @@ where
     pub fn to_vec(
         self,
         vec: &mut Vec<Output>,
-    ) -> Event<N, MUT, Subdivision, Callback, Output, impl HList, Filter> {
+    ) -> Event<
+        N,
+        MUT,
+        Subdivision,
+        Callback,
+        Output,
+        <Stream as Append>::Output<impl FnMut(Output)>,
+        Filter,
+    > {
         self.to(|value: Output| vec.push(value))
     }
 
@@ -223,7 +272,15 @@ where
     pub fn to_var(
         self,
         value: &mut Output,
-    ) -> Event<N, MUT, Subdivision, Callback, Output, impl HList, Filter> {
+    ) -> Event<
+        N,
+        MUT,
+        Subdivision,
+        Callback,
+        Output,
+        <Stream as Append>::Output<impl FnMut(Output)>,
+        Filter,
+    > {
         self.to(|v: Output| *value = v)
     }
 
@@ -235,31 +292,20 @@ where
     pub fn to_float_range(
         self,
         range: &mut std::ops::Range<Output>,
-    ) -> Event<N, MUT, Subdivision, Callback, Output, impl HList, Filter>
+    ) -> Event<
+        N,
+        MUT,
+        Subdivision,
+        Callback,
+        Output,
+        <Stream as Append>::Output<impl FnMut(Output)>,
+        Filter,
+    >
     where
         Output: num_traits::Float,
     {
         *range = Output::infinity()..Output::neg_infinity();
         self.to(|v: Output| *range = range.start.min(v)..range.end.max(v))
-    }
-
-    /// Set [Event::subdivision] field to `Some(n)`, that tells the solver, that event needs to be
-    /// triggered `n` times on the current step.
-    pub fn with_subdivision(
-        self,
-        n: usize,
-    ) -> Event<N, MUT, usize, Callback, Output, Stream, Filter> {
-        let callback = self.callback;
-        let stream = self.stream;
-        let filter = self.filter;
-        let subdivision = n;
-        Event {
-            callback,
-            stream,
-            filter,
-            subdivision,
-            output_marker: self.output_marker,
-        }
     }
 }
 
@@ -405,11 +451,11 @@ where
 {
     fn all(&mut self, state: &impl IsState<N>) -> bool {
         let Cons(head, tail) = self;
-        tail.all(state) && head.eval(state)
+        head.eval(state) && tail.all(state)
     }
     fn all_at(&mut self, state: &impl IsState<N>, t: f64) -> bool {
         let Cons(head, tail) = self;
-        tail.all_at(state, t) && head.eval_at(state, t)
+        head.eval_at(state, t) && tail.all_at(state, t)
     }
 }
 
@@ -438,7 +484,7 @@ where
     Filter: FilterHList<N>,
 {
     fn call(&mut self, state: &mut impl IsState<N>) {
-        for i in 1..(self.subdivision - 1) {
+        for i in 1..self.subdivision {
             let t = state.t_prev()
                 + (state.t() - state.t_prev()) * (i as f64) / (self.subdivision as f64);
             if self.filter.all_at(state, t) {

@@ -1,10 +1,13 @@
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
+
 use diffurch::*;
 
 #[test]
 fn main() {
-    let eq = Equation::time(|t: f64| [polynomial![t => 1.,-2.,3.]]);
+    let eq = equation!(|t| [polynomial![t => 1.,-2.,3.]]);
     let solution = |t: f64| [polynomial![t => 0.,1.,-1.,1.]];
-    let ic = InitialCondition::Function(Box::new(|t: f64| [polynomial![t => 0.,1.,-1.,1.]]));
+    let ic = |t: f64| [polynomial![t => 0.,1.,-1.,1.]];
     let interval = 0. ..50.;
 
     let f = |t: f64, [x]: [f64; 1]| (t, x);
@@ -65,12 +68,13 @@ fn main() {
         .once();
 
     let mut p_sub2 = Vec::new();
-    let event_sub2 = Event::ode2(f).to_vec(&mut p_sub2).subdivide(2);
+    let event_sub2 = Event::ode2(f).to_vec(&mut p_sub2).with_subdivision(2);
 
     let mut p_sub4 = Vec::new();
-    let event_sub4 = Event::ode2(f).to_vec(&mut p_sub4).subdivide(4);
+    let event_sub4 = Event::ode2(f).to_vec(&mut p_sub4).with_subdivision(4);
 
-    Solver::rk(&rk::RK98) // it is exact for polynomials up to 8th or 9th order
+    Solver::new()
+        .rk(&rk::RK98) // it is exact for polynomials up to 8th or 9th order
         .stepsize(1.)
         .on_step(event)
         .on_step(event_e2)
@@ -98,8 +102,8 @@ fn main() {
     assert_eq!(p_e2_e2, (0..=50).step_by(4).map(f_i).collect::<Vec<_>>());
     assert_eq!(p_s4, p_e2_e2);
     assert_eq!(p_r, (10..20).map(f_i).collect::<Vec<_>>());
-    assert_eq!(p_e3_r, (12..20).step_by(3).map(f_i).collect::<Vec<_>>());
     assert_eq!(p_r_e3, (10..20).step_by(3).map(f_i).collect::<Vec<_>>());
+    assert_eq!(p_e3_r, (12..20).step_by(3).map(f_i).collect::<Vec<_>>());
     assert_eq!(p_t_5_10, (5..10).map(f_i).collect::<Vec<_>>());
     assert_eq!(p_t_0_oo, p);
     assert_eq!(p_t_0_5, (0..5).map(f_i).collect::<Vec<_>>());
