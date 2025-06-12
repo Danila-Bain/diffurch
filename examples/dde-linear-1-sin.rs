@@ -1,3 +1,5 @@
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
 use diffurch::*;
 
 fn main() {
@@ -15,7 +17,7 @@ fn main() {
     let mut t = vec![];
     let mut x = vec![];
 
-    Solver::rk(&rk::RK98)
+    Solver::new().rk(&rk::RK98)
         .stepsize(0.33)
         .on_step(
             event!(|t, [x]| [t, x])

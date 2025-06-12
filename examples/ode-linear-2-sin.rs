@@ -1,3 +1,6 @@
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
+
 use diffurch::*;
 
 fn main() {
@@ -10,7 +13,7 @@ fn main() {
     let mut points1 = vec![];
     let mut points2 = vec![];
 
-    Solver::rk(&rk::RK98)
+    Solver::new().rk(&rk::RK98)
         .stepsize(1.)
         .on_step(event!(|t, [x, _dx]| points1.push((t as f32, x as f32))).subdivide(10))
         .on_step(event!(|t, [x, _dx]| points2.push((t, x).into())).subdivide(10))

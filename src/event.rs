@@ -124,7 +124,7 @@ impl<const N: usize> Event<N> {
     /// Creates an event, the callback of which returns the coordinate vector of the state.
     ///
     /// A short-hand for `Event::new(MutStateFn::ode(|x| x))`.
-    pub fn ode_state() -> Event<N, false, (), impl MutStateFnMut<N, [f64; N]>, [f64; N]> {
+    pub fn ode_state() -> Event<N, false, (), impl StateFnMut<N, [f64; N]>, [f64; N]> {
         Event::new(ODEStateFnMut(|x| x))
     }
 
@@ -132,7 +132,7 @@ impl<const N: usize> Event<N> {
     ///
     /// A short-hand for `Event::new(MutStateFn::ode2(|t, x| (t, x)))`.
     pub fn ode2_state()
-    -> Event<N, false, (), impl MutStateFnMut<N, (f64, [f64; N])>, (f64, [f64; N])> {
+    -> Event<N, false, (), impl StateFnMut<N, (f64, [f64; N])>, (f64, [f64; N])> {
         Event::new(ODE2StateFnMut(|t, x| (t, x)))
     }
 }
@@ -164,7 +164,7 @@ impl<const N: usize, const MUT: bool, Subdivision, Callback, Stream, Filter, Out
 {
     /// Set [Event::subdivision] field to `Some(n)`, that tells the solver, that event needs to be
     /// triggered `n` times on the current step.
-    pub fn with_subdivision(
+    pub fn subdivide(
         self,
         n: usize,
     ) -> Event<N, MUT, usize, Callback, Output, Stream, Filter> {
@@ -319,7 +319,7 @@ where
     pub fn to_csv(
         self,
         filename: &str,
-    ) -> Event<N, MUT, Subdivision, Callback, [Item; M], impl HList, Filter>
+    ) -> Event<N, MUT, Subdivision, Callback, [Item; M], <Stream as Append>::Output<impl FnMut([Item; M])>, Filter>
     where
         Item: std::fmt::Display,
     {
@@ -338,7 +338,7 @@ where
         filename: &str,
         separator: &str,
         header: Option<&str>,
-    ) -> Event<N, MUT, Subdivision, Callback, [Item; M], impl HList, Filter>
+    ) -> Event<N, MUT, Subdivision, Callback, [Item; M], <Stream as Append>::Output<impl FnMut([Item; M])>, Filter>
     where
         Item: std::fmt::Display,
     {
@@ -361,7 +361,7 @@ where
     pub fn to_vecs(
         self,
         vecs: [&mut Vec<Item>; M],
-    ) -> Event<N, MUT, Subdivision, Callback, [Item; M], impl HList, Filter>
+    ) -> Event<N, MUT, Subdivision, Callback, [Item; M], <Stream as Append>::Output<impl FnMut([Item; M])>, Filter>
     where
         Item: Copy,
     {
@@ -376,7 +376,7 @@ where
     pub fn to_float_ranges(
         self,
         mut ranges: [&mut std::ops::Range<Item>; M],
-    ) -> Event<N, MUT, Subdivision, Callback, [Item; M], impl HList, Filter>
+    ) -> Event<N, MUT, Subdivision, Callback, [Item; M], <Stream as Append>::Output<impl FnMut([Item; M])>, Filter>
     where
         Item: num_traits::Float,
     {

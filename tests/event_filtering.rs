@@ -68,10 +68,10 @@ fn main() {
         .once();
 
     let mut p_sub2 = Vec::new();
-    let event_sub2 = Event::ode2(f).to_vec(&mut p_sub2).with_subdivision(2);
+    let event_sub2 = Event::ode2(f).to_vec(&mut p_sub2).subdivide(2);
 
     let mut p_sub4 = Vec::new();
-    let event_sub4 = Event::ode2(f).to_vec(&mut p_sub4).with_subdivision(4);
+    let event_sub4 = Event::ode2(f).to_vec(&mut p_sub4).subdivide(4);
 
     Solver::new()
         .rk(&rk::RK98) // it is exact for polynomials up to 8th or 9th order

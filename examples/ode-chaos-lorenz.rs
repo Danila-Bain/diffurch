@@ -1,3 +1,6 @@
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
+
 fn main() {
     // system parameters
     let sigma = 10.;

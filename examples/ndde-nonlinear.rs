@@ -1,3 +1,7 @@
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
+
+
 use core::f64::consts::PI;
 
 use diffurch::*;
@@ -19,7 +23,7 @@ fn solution(epsilon: f64, alpha: f64, beta: f64) {
     //
     Solver::new()
         .stepsize(0.05)
-        .on_step(event!(|t, [x]| (t, x)).to_std().separated_by(1.))
+        .on_step(event!(|t, [x]| (t, x)).to_std().separated_by(0.99))
         .on_step(
             event!(|t, [x]| [t, x])
                 .to_vecs([&mut t, &mut x])

@@ -60,20 +60,6 @@ impl<'a, const N: usize> Solver<'a, N, 26> {
             loc_events: Nil,
         }
     }
-    /// Constructor which sets Runge-Kutta table and defaults stepsize to 0.05. Returns self.
-    pub fn with_rk<const S: usize>(rk: &'a RungeKuttaTable<S>) -> Solver<'a, N, S>
-    where
-        [(); S * (S - 1) / 2]:,
-    {
-        Solver {
-            rk,
-            stepsize: 0.05,
-            step_events: Nil,
-            start_events: Nil,
-            stop_events: Nil,
-            loc_events: Nil,
-        }
-    }
 }
 
 impl<

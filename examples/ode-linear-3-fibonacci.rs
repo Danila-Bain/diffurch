@@ -1,3 +1,5 @@
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
 use diffurch::*;
 
 // Solving linear 3-dimensional system, which produces consecutive

@@ -9,7 +9,8 @@ fn constant() {
     let ic = [0., 0., 0.];
     let solution = |t: f64| [t, -t, 0.];
 
-    Solver::with_rk(&rk::RK98)
+    Solver::new()
+        .rk(&rk::RK98)
         .stepsize(0.25)
         .on_step(Event::ode2(|t, x| assert_eq!(x, solution(t))))
         .run(eq, ic, 0. ..10.);
@@ -21,7 +22,8 @@ fn time() {
     let ic = [0., 0., 0.];
     let solution = |t: f64| [0., t, t * t / 2.];
 
-    Solver::with_rk(&rk::RK98)
+    Solver::new()
+        .rk(&rk::RK98)
         .stepsize(0.5)
         .on_step(Event::ode2(|t, x| assert_eq!(x, solution(t))))
         .run(eq, ic, 0. ..10.);
@@ -33,7 +35,8 @@ fn ode_exponent() {
     let ic = [1.];
     let solution = |t: f64| (-t).exp();
 
-    Solver::with_rk(&rk::RK98)
+    Solver::new()
+        .rk(&rk::RK98)
         .stepsize(0.1)
         .on_step(Event::ode2(|t, [x]| {
             assert!((x - solution(t)).abs() < 1e-14)
@@ -47,7 +50,8 @@ fn ode_harmonic() {
     let ic = [0., 1.];
     let solution = |t: f64| t.sin();
 
-    Solver::with_rk(&rk::RK98)
+    Solver::new()
+        .rk(&rk::RK98)
         .stepsize(0.1)
         .on_step(Event::ode2(|t, [x, _dx]| {
             assert!((x - solution(t)).abs() < 1e-13)
@@ -61,7 +65,8 @@ fn ode2_lin() {
     let ic = |t: f64| [t * t];
     let sol = |t: f64| t * t;
 
-    Solver::with_rk(&rk::RK98)
+    Solver::new()
+        .rk(&rk::RK98)
         .stepsize(0.1)
         .on_step(Event::ode2(|t, [x]| assert!((x - sol(t)).abs() < 1e-11)))
         .run(eq, ic, 1. ..10.);
@@ -79,7 +84,8 @@ fn dde_sin() {
     let ic = |t: f64| [(k * t).sin()];
     let sol = |t: f64| (k * t).sin();
 
-    Solver::with_rk(&rk::RK98)
+    Solver::new()
+        .rk(&rk::RK98)
         .stepsize(0.33)
         .on_step(Event::ode2(|t, [x]| assert!((x - sol(t)).abs() < 1e-11)))
         .run(eq, ic, ..10.);
@@ -97,7 +103,8 @@ fn ndde_sin() {
     let ic = (|t: f64| [(k * t).sin()], |t: f64| [k * (k * t).cos()]);
     let sol = |t: f64| (k * t).sin();
 
-    Solver::with_rk(&rk::RK98)
+    Solver::new()
+        .rk(&rk::RK98)
         .stepsize(0.25)
         .on_step(Event::ode2(|t, [x]| assert!((x - sol(t)).abs() < 1e-10)))
         .run(eq, ic, ..10.);
