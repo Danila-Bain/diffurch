@@ -1,27 +1,15 @@
-use hlist2::ops::MapFn;
-
-pub struct CopyMapFn<Arg>(pub Arg);
-impl<T, Arg: Copy, Ret> MapFn<T> for CopyMapFn<Arg>
-where
-    T: FnMut(Arg) -> Ret,
-{
-    type Output = Ret;
-    fn map(&mut self, mut f: T) -> Self::Output {
-        f(self.0)
-    }
-}
-
-
-pub struct ReborrowMapFn<Arg>(pub Arg);
-impl<T, Arg, Ret> MapFn<T> for ReborrowMapFn<Arg>
-where
-    T: for<'a> FnMut(&'a mut Arg) -> Ret,
-{
-    type Output = Ret;
-    fn map(&mut self, mut f: T) -> Self::Output {
-        f(&mut self.0)
-    }
-}
+// use hlist2::ops::MapFn;
+//
+// pub struct ReborrowMapFn<Arg>(pub Arg);
+// impl<T, Arg, Ret> MapFn<T> for ReborrowMapFn<Arg>
+// where
+//     T: for<'a> FnMut(&'a mut Arg) -> Ret,
+// {
+//     type Output = Ret;
+//     fn map(&mut self, mut f: T) -> Self::Output {
+//         f(&mut self.0)
+//     }
+// }
 
 // use std::marker::Tuple;
 //

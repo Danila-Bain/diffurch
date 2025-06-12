@@ -3,7 +3,7 @@
 use crate::rk::{RK98, RungeKuttaTable};
 use crate::*;
 
-use hlist2::ops::{Append, ToRef};
+use hlist2::ops::{Append, Map, Mapper, ToRef};
 use hlist2::*;
 
 /// Implements the integration of differential equation, containing the implementation specific (not
@@ -115,14 +115,14 @@ where
     /// The step may be not completed if it were rejected by a step size controller (currently
     /// unimplemented), or located event (see [Solver::on_loc]).
     ///
-    pub fn on_step<E: IntoEventFunction<N>>(
+    pub fn on_step<E: EventCall<N>>(
         self,
         event: E,
     ) -> Solver<
         'a,
         N,
         S,
-        <EventsOnStep as Append>::Output<E::Output<S>>,
+        <EventsOnStep as Append>::Output<E>,
         EventsOnStart,
         EventsOnStop,
         EventsOnLoc,
@@ -142,7 +142,7 @@ where
         Solver {
             rk,
             stepsize,
-            step_events: step_events.append(event.into_event_function()),
+            step_events: step_events.append(event),
             start_events,
             stop_events,
             loc_events,
@@ -152,7 +152,7 @@ where
     /// Add event to a list of start events.
     /// Events in that list trigger before the start of integration
     /// and before the first trigger of step events (see [Solver::on_step]).
-    pub fn on_start<E: IntoEventFunction<N>>(
+    pub fn on_start<E: EventCall<N>>(
         self,
         event: E,
     ) -> Solver<
@@ -160,7 +160,7 @@ where
         N,
         S,
         EventsOnStep,
-        <EventsOnStart as Append>::Output<E::Output<S>>,
+        <EventsOnStart as Append>::Output<E>,
         EventsOnStop,
         EventsOnLoc,
     >
@@ -180,14 +180,14 @@ where
             rk,
             stepsize,
             step_events,
-            start_events: start_events.append(event.into_event_function()),
+            start_events: start_events.append(event),
             stop_events,
             loc_events,
         }
     }
     /// Add event to a list of stop events.
     /// Events in that list trigger after the last step in integration has been made.
-    pub fn on_stop<E: IntoEventFunction<N>>(
+    pub fn on_stop<E: EventCall<N>>(
         self,
         event: E,
     ) -> Solver<
@@ -196,7 +196,7 @@ where
         S,
         EventsOnStep,
         EventsOnStart,
-        <EventsOnStop as Append>::Output<E::Output<S>>,
+        <EventsOnStop as Append>::Output<E>,
         EventsOnLoc,
     >
     where
@@ -216,7 +216,7 @@ where
             stepsize,
             step_events,
             start_events,
-            stop_events: stop_events.append(event.into_event_function()),
+            stop_events: stop_events.append(event),
             loc_events,
         }
     }
@@ -240,15 +240,12 @@ where
     pub fn run<RHS: StateFnMut<N, [f64; N]>>(
         mut self,
         eq: Equation<N, RHS>,
-        ic: impl Into<InitialCondition<'a, N>>,
+        ic: impl InitialCondition<N>,
         interval: impl std::ops::RangeBounds<f64>,
     ) where
-        // EventsOnStep: Iterator<Item: FnMut(&mut State<'a, N, S>)>
-        EventsOnStep: ToRef,
-        // for<'b,'c> <EventsOnStep as ToRef>::RefMut<'b>: Map<Mapper<ReborrowMapFn<State<'c, N, S>>>>,
-        // EventsOnStep: for<'s> MutRefFnMutHList<State<'s, N, S>>,
-        // EventsOnStart: for<'s> MutRefFnMutHList<State<'s, N, S>>,
-        // EventsOnStop: for<'s> MutRefFnMutHList<State<'s, N, S>>,
+        EventsOnStep: EventHList<N>,
+        EventsOnStart: EventHList<N>,
+        EventsOnStop: EventHList<N>,
     {
         use std::ops::Bound::*;
         let t_init = match interval.start_bound() {
@@ -261,17 +258,11 @@ where
         };
 
         let mut rhs = eq.rhs;
-        let mut state: State<'a, N, S> = State::new(t_init, ic.into(), eq.max_delay, &self.rk);
+        let mut state = State::new(t_init, ic, eq.max_delay, &self.rk);
         let mut stepsize = self.stepsize;
 
-        // self.start_events.call_mut(&mut state);
-
-        // self.step_events.call_mut(&mut state);
-
-        // .iter_mut()
-        // .for_each(|event| event(&mut state));
-        // .iter_mut()
-        // .for_each(|event| event(&mut state));
+        self.start_events.call_each(&mut state);
+        self.step_events.call_each(&mut state);
 
         while state.t < t_end {
             state.make_step(&mut rhs, stepsize);
@@ -302,15 +293,10 @@ where
             // }
 
             state.push_current();
-            // self.step_events.call_mut(&mut state);
-            // .iter_mut()
-            // .for_each(|event| event(&mut state));
+            self.step_events.call_each(&mut state);
             stepsize = stepsize.min(t_end - state.t);
         }
 
-        // self.stop_events.call_mut(&mut state);
-        // self.stop_events
-        //     .iter_mut()
-        //     .for_each(|event| event(&mut state));
+        self.stop_events.call_each(&mut state);
     }
 }
