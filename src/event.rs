@@ -1,7 +1,7 @@
 //! Defines [Event]
 
-use crate::{state::*, CopyMapFn};
-use hlist2::ops::{Map, MapFn, Mapper, ToRef};
+use crate::{CopyMapFn, state::*};
+use hlist2::ops::*;
 use hlist2::{HList, Nil, ops::Append};
 // pub trait EventStream: HList + Append {}
 // impl<T: HList + Append> EventStream for T {}
@@ -321,8 +321,12 @@ where
 }
 
 pub trait IntoEventFunction<const N: usize> {
-    type Output<const S: usize>: for<'a> FnMut(&'a mut State<'a, N, S>);
-    fn into_event_function<const S: usize>(self) -> Self::Output<S>;
+    type Output<const S: usize>: for<'a, 'b> FnMut(&'a mut State<'b, N, S>)
+    where
+        [(); S * (S - 1) / 2]:;
+    fn into_event_function<const S: usize>(self) -> Self::Output<S>
+    where
+        [(); S * (S - 1) / 2]:;
 }
 
 impl<const N: usize, Callback, Output, Stream, Filter> IntoEventFunction<N>
@@ -336,8 +340,14 @@ where
     Filter: ToRef,
     for<'a> <Filter as ToRef>::RefMut<'a>: Iterator<Item: StateFnMut<N, bool>>, // optimazable
 {
-    type Output<const S: usize> = impl for<'a> FnMut(&'a mut State<'a, N, S>);
-    fn into_event_function<const S: usize>(self) -> Self::Output<S> {
+    type Output<const S: usize>
+        = impl for<'a, 'b> FnMut(&'a mut State<'b, N, S>)
+    where
+        [(); S * (S - 1) / 2]:;
+    fn into_event_function<const S: usize>(self) -> Self::Output<S>
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         let Event {
             mut callback,
             mut stream,
@@ -367,15 +377,24 @@ where
 }
 
 impl<const N: usize> StateFnMut<N, bool> for Nil {
-    fn eval<'b, const S: usize>(&mut self, _: &'b State<'b, N, S>) -> bool {
+    fn eval<'b, 'c, const S: usize>(&mut self, _: &'b State<'c, N, S>) -> bool
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         true
     }
 
-    fn eval_prev<'b, const S: usize>(&mut self, _: &'b State<'b, N, S>) -> bool {
+    fn eval_prev<'b, 'c, const S: usize>(&mut self, _: &'b State<'c, N, S>) -> bool
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         true
     }
 
-    fn eval_at<'b, const S: usize>(&mut self, _: &'b State<'b, N, S>, _: f64) -> bool {
+    fn eval_at<'b, 'c, const S: usize>(&mut self, _: &'b State<'c, N, S>, _: f64) -> bool
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         true
     }
 }
@@ -387,11 +406,19 @@ where
     Output: Copy,
     Stream: ToRef,
     Filter: ToRef,
+    // Stream: FnMutHlist<(Output,)>,
+    // Filter: StateFnMutHlist<N, bool>
     for<'a> <Stream as ToRef>::RefMut<'a>: Map<Mapper<CopyMapFn<Output>>>,
     for<'a> <Filter as ToRef>::RefMut<'a>: Iterator<Item: StateFnMut<N, bool>>, // optimazable
 {
-    type Output<const S: usize> = impl for<'a> FnMut(&'a mut State<'a, N, S>);
-    fn into_event_function<const S: usize>(self) -> Self::Output<S> {
+    type Output<const S: usize>
+        = impl for<'a, 'b> FnMut(&'a mut State<'b, N, S>)
+    where
+        [(); S * (S - 1) / 2]:;
+    fn into_event_function<const S: usize>(self) -> Self::Output<S>
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         assert_eq!(
             self.subdivision, None,
             "For events that can mutate state, subdivision is not applicable"
@@ -407,30 +434,30 @@ where
             if filter.to_mut().all(|mut f| f.eval(state)) {
                 let output = callback.eval_mut(state);
                 stream.to_mut().map(Mapper(CopyMapFn(output)));
-            }
+            };
         }
     }
 }
-
-/// Creates a [crate::Event] from a closure.
-///
-/// `event!` allows `Event` to be defined with closures of different calling signatures,
-/// being a replacement of some constructors of [crate::Event]:
-///
-/// ```rust
-/// use diffurch::event;
-///
-/// // use in solver for generic parameters inference
-/// let solver = diffurch::Solver::new()
-///     .on_step(event!(|| 1.)) // equivalent to .on_step(Event::constant(...))
-///     .on_step(event!(|t| t + t.cos())) // equivalent to .on_step(Event::time(...))
-///     .on_step(event!(|[x, y]| [x, y, x+y])) // equivalent to .on_step(Event::ode(...))
-///     .on_step(event!(|t, [x, y]| [t, x, y])) // equivalent to .on_step(Event::ode2(...))
-///     .on_step(event!(|t, [x, y], [x_, y_]| [t, x, x_(t - 1.)])) // equivalent to .on_step(Event::dde(...))
-///     .on_step(event!(|t, [x, y], [x_, y_]| [t, x, x_(t - 1.), x_.d(t - 1.)])); // equivalent to .on_step(Event::dde(...))
-/// ```
-///
-/// For state mutating events, use [event_mut!].
+//
+// /// Creates a [crate::Event] from a closure.
+// ///
+// /// `event!` allows `Event` to be defined with closures of different calling signatures,
+// /// being a replacement of some constructors of [crate::Event]:
+// ///
+// /// ```rust
+// /// use diffurch::event;
+// ///
+// /// // use in solver for generic parameters inference
+// /// let solver = diffurch::Solver::new()
+// ///     .on_step(event!(|| 1.)) // equivalent to .on_step(Event::constant(...))
+// ///     .on_step(event!(|t| t + t.cos())) // equivalent to .on_step(Event::time(...))
+// ///     .on_step(event!(|[x, y]| [x, y, x+y])) // equivalent to .on_step(Event::ode(...))
+// ///     .on_step(event!(|t, [x, y]| [t, x, y])) // equivalent to .on_step(Event::ode2(...))
+// ///     .on_step(event!(|t, [x, y], [x_, y_]| [t, x, x_(t - 1.)])) // equivalent to .on_step(Event::dde(...))
+// ///     .on_step(event!(|t, [x, y], [x_, y_]| [t, x, x_(t - 1.), x_.d(t - 1.)])); // equivalent to .on_step(Event::dde(...))
+// /// ```
+// ///
+// /// For state mutating events, use [event_mut!].
 #[macro_export]
 macro_rules! event {
     () => {
@@ -452,22 +479,22 @@ macro_rules! event {
         $crate::Event::dde(|$t, [$($x),+], [$($x_),+]| $expr)
     };
 }
-
-/// State-mutating counter-part of [event!].
-///
-/// `event_mut!` allows `Event` to be defined with closures of different calling signatures,
-/// being a replacement of some constructors of [crate::Event]:
-///
-/// ```rust
-/// use diffurch::event_mut;
-///
-/// // use in solver for generic parameters inference
-/// let solver = diffurch::Solver::new()
-///     .on_step(event_mut!(|t| *t = f64::INFINITY))
-///     .on_step(event_mut!(|[x, y]| {*x = -*x; [*x, *y, *x + *y]}))
-///     .on_step(event_mut!(|t, [x, y]| {*x = -*y; *t = f64::INFINITY;}));
-/// ```
-///
+//
+// /// State-mutating counter-part of [event!].
+// ///
+// /// `event_mut!` allows `Event` to be defined with closures of different calling signatures,
+// /// being a replacement of some constructors of [crate::Event]:
+// ///
+// /// ```rust
+// /// use diffurch::event_mut;
+// ///
+// /// // use in solver for generic parameters inference
+// /// let solver = diffurch::Solver::new()
+// ///     .on_step(event_mut!(|t| *t = f64::INFINITY))
+// ///     .on_step(event_mut!(|[x, y]| {*x = -*x; [*x, *y, *x + *y]}))
+// ///     .on_step(event_mut!(|t, [x, y]| {*x = -*y; *t = f64::INFINITY;}));
+// /// ```
+// ///
 #[macro_export]
 macro_rules! event_mut {
     (|$t:ident| $expr:expr) => {

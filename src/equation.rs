@@ -1,6 +1,6 @@
 //! Defines [Equation], which holds the right hand side of the equation.
 
-use crate::{StateCoordFnTrait, StateFnMut};
+use crate::*;
 
 // /// Constructing equations from closures with different signatures:
 // /// ```rust

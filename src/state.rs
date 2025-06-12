@@ -7,7 +7,10 @@
 /// differential equations without overcomplicating api for ordinary differential equations.
 ///
 /// For functions on [State], see [StateFn] and [MutStateFn]
-pub struct State<'a, const N: usize, const S: usize> {
+pub struct State<'a, const N: usize, const S: usize>
+where
+    [(); S * (S - 1) / 2]:,
+{
     /// time of the state at the current step
     pub t: f64,
     /// time of the state at the previous step
@@ -45,16 +48,19 @@ pub struct State<'a, const N: usize, const S: usize> {
     pub k_seq: std::collections::VecDeque<[[f64; N]; S]>,
 
     /// Used Runge-Kutta scheme
-    pub rk: &'a crate::rk::RungeKuttaTable<'a, S>,
+    pub rk: &'a crate::rk::RungeKuttaTable<S>,
 }
 
-impl<'a, const N: usize, const S: usize> State<'a, N, S> {
+impl<'a, const N: usize, const S: usize> State<'a, N, S>
+where
+    [(); S * (S - 1) / 2]:,
+{
     /// State constructor used in [crate::Solver]
     pub fn new(
         t_init: f64,
         x_init: impl Into<crate::InitialCondition<'a, N>>,
         t_span: f64,
-        rk: &'a crate::rk::RungeKuttaTable<'a, S>,
+        rk: &'a crate::rk::RungeKuttaTable<S>,
     ) -> Self {
         let x_init: crate::InitialCondition<'_, N> = x_init.into();
         let x = match &x_init {
@@ -106,13 +112,15 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
         self.t_prev = self.t;
         self.x_prev = self.x;
 
+        let mut a_i = 0;
         for i in 0..S {
             self.t = self.t_prev + self.rk.c[i] * t_step;
 
             self.x = std::array::from_fn(|k| {
                 self.x_prev[k]
-                    + t_step * (0..i).fold(0., |acc, j| acc + self.rk.a[i][j] * self.k[j][k])
+                    + t_step * (0..i).fold(0., |acc, j| acc + self.rk.a[a_i + j] * self.k[j][k])
             });
+            a_i += i;
             self.k[i] = rhs.eval(self);
         }
 
@@ -301,36 +309,56 @@ impl<'a, const N: usize, const S: usize> State<'a, N, S> {
 
 pub trait StateFnMut<const N: usize, Ret> {
     /// Evaluate the function at the current state.
-    fn eval<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret;
+    fn eval<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret
+    where
+        [(); S * (S - 1) / 2]:;
     /// Evaluate the function at the previous step of the state.
-    fn eval_prev<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret;
+    fn eval_prev<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret
+    where
+        [(); S * (S - 1) / 2]:;
     /// Evaluate the function at the state at the time `t` by means of [State::eval_all]
-    fn eval_at<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>, t: f64) -> Ret;
+    fn eval_at<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>, t: f64) -> Ret
+    where
+        [(); S * (S - 1) / 2]:;
 }
 
 pub trait MutStateFnMut<const N: usize, Ret> {
     /// Evaluate the function at the current state.
-    fn eval_mut<'b, const S: usize>(&mut self, state: &'b mut State<'b, N, S>) -> Ret;
+    fn eval_mut<'b, 'c, const S: usize>(&mut self, state: &'b mut State<'c, N, S>) -> Ret
+    where
+        [(); S * (S - 1) / 2]:;
 }
 
 pub struct ConstantStateFnMut<F: FnMut<(), Output = Ret>, Ret>(pub F);
 impl<F: FnMut<(), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
     for ConstantStateFnMut<F, Ret>
 {
-    fn eval<'b, const S: usize>(&mut self, _state: &'b State<'b, N, S>) -> Ret {
+    fn eval<'b, const S: usize>(&mut self, _state: &'b State<'b, N, S>) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)()
     }
-    fn eval_prev<'b, const S: usize>(&mut self, _state: &'b State<'b, N, S>) -> Ret {
+    fn eval_prev<'b, const S: usize>(&mut self, _state: &'b State<'b, N, S>) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)()
     }
-    fn eval_at<'b, const S: usize>(&mut self, _state: &'b State<'b, N, S>, _t: f64) -> Ret {
+    fn eval_at<'b, const S: usize>(&mut self, _state: &'b State<'b, N, S>, _t: f64) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)()
     }
 }
 impl<F: FnMut<(), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
     for ConstantStateFnMut<F, Ret>
 {
-    fn eval_mut<'b, const S: usize>(&mut self, _state: &'b mut State<'b, N, S>) -> Ret {
+    fn eval_mut<'b, 'c, const S: usize>(&mut self, _state: &'b mut State<'c, N, S>) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)()
     }
 }
@@ -339,20 +367,32 @@ pub struct TimeStateFnMut<F: FnMut<(f64,), Output = Ret>, Ret>(pub F);
 impl<F: FnMut<(f64,), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
     for TimeStateFnMut<F, Ret>
 {
-    fn eval<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret {
+    fn eval<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)(state.t)
     }
-    fn eval_prev<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret {
+    fn eval_prev<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)(state.t_prev)
     }
-    fn eval_at<'b, const S: usize>(&mut self, _state: &'b State<'b, N, S>, t: f64) -> Ret {
+    fn eval_at<'b, const S: usize>(&mut self, _state: &'b State<'b, N, S>, t: f64) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)(t)
     }
 }
 impl<F: FnMut<(f64,), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
     for TimeStateFnMut<F, Ret>
 {
-    fn eval_mut<'b, const S: usize>(&mut self, state: &'b mut State<'b, N, S>) -> Ret {
+    fn eval_mut<'b, 'c, const S: usize>(&mut self, state: &'b mut State<'c, N, S>) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)(state.t)
     }
 }
@@ -361,7 +401,10 @@ pub struct TimeMutStateFnMut<F: for<'a> FnMut<(&'a mut f64,), Output = Ret>, Ret
 impl<F: for<'a> FnMut<(&'a mut f64,), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
     for TimeMutStateFnMut<F, Ret>
 {
-    fn eval_mut<'b, const S: usize>(&mut self, state: &'b mut State<'b, N, S>) -> Ret {
+    fn eval_mut<'b, 'c, const S: usize>(&mut self, state: &'b mut State<'c, N, S>) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)(&mut state.t)
     }
 }
@@ -370,20 +413,32 @@ pub struct ODEStateFnMut<const N: usize, F: FnMut<([f64; N],), Output = Ret>, Re
 impl<F: FnMut<([f64; N],), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
     for ODEStateFnMut<N, F, Ret>
 {
-    fn eval<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret {
+    fn eval<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)(state.x)
     }
-    fn eval_prev<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret {
+    fn eval_prev<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)(state.x_prev)
     }
-    fn eval_at<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>, t: f64) -> Ret {
+    fn eval_at<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>, t: f64) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)(state.eval_all(t))
     }
 }
 impl<F: for<'a> FnMut<([f64; N],), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
     for ODEStateFnMut<N, F, Ret>
 {
-    fn eval_mut<'b, const S: usize>(&mut self, state: &'b mut State<'b, N, S>) -> Ret {
+    fn eval_mut<'b, 'c, const S: usize>(&mut self, state: &'b mut State<'c, N, S>) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)(state.x)
     }
 }
@@ -396,7 +451,10 @@ pub struct ODEMutStateFnMut<
 impl<F: for<'a> FnMut<(&'a mut [f64; N],), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
     for ODEMutStateFnMut<N, F, Ret>
 {
-    fn eval_mut<'b, const S: usize>(&mut self, state: &'b mut State<'b, N, S>) -> Ret {
+    fn eval_mut<'b, 'c, const S: usize>(&mut self, state: &'b mut State<'c, N, S>) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)(&mut state.x)
     }
 }
@@ -405,20 +463,32 @@ pub struct ODE2StateFnMut<const N: usize, F: FnMut<(f64, [f64; N]), Output = Ret
 impl<F: FnMut<(f64, [f64; N]), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
     for ODE2StateFnMut<N, F, Ret>
 {
-    fn eval<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret {
+    fn eval<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)(state.t, state.x)
     }
-    fn eval_prev<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret {
+    fn eval_prev<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)(state.t_prev, state.x_prev)
     }
-    fn eval_at<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>, t: f64) -> Ret {
+    fn eval_at<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>, t: f64) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)(t, state.eval_all(t))
     }
 }
 impl<F: for<'a> FnMut<(f64, [f64; N]), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
     for ODE2StateFnMut<N, F, Ret>
 {
-    fn eval_mut<'b, const S: usize>(&mut self, state: &'b mut State<'b, N, S>) -> Ret {
+    fn eval_mut<'b, 'c, const S: usize>(&mut self, state: &'b mut State<'c, N, S>) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)(state.t, state.x)
     }
 }
@@ -431,7 +501,10 @@ pub struct ODE2MutStateFnMut<
 impl<F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N]), Output = Ret>, Ret, const N: usize>
     MutStateFnMut<N, Ret> for ODE2MutStateFnMut<N, F, Ret>
 {
-    fn eval_mut<'b, const S: usize>(&mut self, state: &'b mut State<'b, N, S>) -> Ret {
+    fn eval_mut<'b, 'c, const S: usize>(&mut self, state: &'b mut State<'c, N, S>) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)(&mut state.t, &mut state.x)
     }
 }
@@ -447,10 +520,10 @@ impl<F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N]), Output = Ret>, Ret, const
 // impl<F: FnMut<(f64, [f64; N]), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
 //     for DDEStateFnMut<F>
 // {
-//     fn eval<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret {
+//     fn eval<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret where [(); S * (S - 1) / 2]:  {
 //         (self.0)(state.t, state.x)
 //     }
-//     fn eval_prev<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret {
+//     fn eval_prev<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret where [(); S * (S - 1) / 2]:  {
 //         (self.0)(state.t_prev, state.x_prev)
 //     }
 //     fn eval_at<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>, t: f64) -> Ret {
@@ -469,13 +542,22 @@ impl<
     const N: usize,
 > StateFnMut<N, Ret> for DDEStateFnMut<N, F, Ret>
 {
-    fn eval<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret {
+    fn eval<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)(state.t, state.x, state.coord_fns())
     }
-    fn eval_prev<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret {
+    fn eval_prev<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)(state.t_prev, state.x_prev, state.coord_fns())
     }
-    fn eval_at<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>, t: f64) -> Ret {
+    fn eval_at<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>, t: f64) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)(t, state.eval_all(t), state.coord_fns())
     }
 }
@@ -485,7 +567,10 @@ impl<
     const N: usize,
 > MutStateFnMut<N, Ret> for DDEStateFnMut<N, F, Ret>
 {
-    fn eval_mut<'b, const S: usize>(&mut self, state: &'b mut State<'b, N, S>) -> Ret {
+    fn eval_mut<'b, 'c, const S: usize>(&mut self, state: &'b mut State<'c, N, S>) -> Ret
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         (self.0)(state.t, state.x, state.coord_fns())
     }
 }
@@ -707,7 +792,10 @@ impl<
 ///
 /// It implements Fn() -> f64 and Fn(f64) -> f64 traits, as evaluation of current and past state
 /// respectively.
-pub struct StateCoordFn<'a, const N: usize, const S: usize> {
+pub struct StateCoordFn<'a, const N: usize, const S: usize>
+where
+    [(); S * (S - 1) / 2]:,
+{
     /// Reference to the state
     pub state: &'a State<'a, N, S>,
     /// Coordinate index
@@ -720,7 +808,10 @@ pub trait StateCoordFnTrait: Fn() -> f64 + Fn(f64) -> f64 {
     fn d(&self, t: f64) -> f64;
 }
 
-impl<'a, const N: usize, const S: usize> FnOnce<()> for StateCoordFn<'a, N, S> {
+impl<'a, const N: usize, const S: usize> FnOnce<()> for StateCoordFn<'a, N, S>
+where
+    [(); S * (S - 1) / 2]:,
+{
     type Output = f64;
     #[inline]
     extern "rust-call" fn call_once(self, _: ()) -> Self::Output {
@@ -728,21 +819,30 @@ impl<'a, const N: usize, const S: usize> FnOnce<()> for StateCoordFn<'a, N, S> {
     }
 }
 
-impl<'a, const N: usize, const S: usize> FnMut<()> for StateCoordFn<'a, N, S> {
+impl<'a, const N: usize, const S: usize> FnMut<()> for StateCoordFn<'a, N, S>
+where
+    [(); S * (S - 1) / 2]:,
+{
     #[inline]
     extern "rust-call" fn call_mut(&mut self, _: ()) -> Self::Output {
         self.state.x[self.coord]
     }
 }
 
-impl<'a, const N: usize, const S: usize> Fn<()> for StateCoordFn<'a, N, S> {
+impl<'a, const N: usize, const S: usize> Fn<()> for StateCoordFn<'a, N, S>
+where
+    [(); S * (S - 1) / 2]:,
+{
     #[inline]
     extern "rust-call" fn call(&self, _: ()) -> Self::Output {
         self.state.x[self.coord]
     }
 }
 
-impl<'a, const N: usize, const S: usize> FnOnce<(f64,)> for StateCoordFn<'a, N, S> {
+impl<'a, const N: usize, const S: usize> FnOnce<(f64,)> for StateCoordFn<'a, N, S>
+where
+    [(); S * (S - 1) / 2]:,
+{
     type Output = f64;
     #[inline]
     extern "rust-call" fn call_once(self, arg: (f64,)) -> Self::Output {
@@ -750,20 +850,29 @@ impl<'a, const N: usize, const S: usize> FnOnce<(f64,)> for StateCoordFn<'a, N, 
     }
 }
 
-impl<'a, const N: usize, const S: usize> FnMut<(f64,)> for StateCoordFn<'a, N, S> {
+impl<'a, const N: usize, const S: usize> FnMut<(f64,)> for StateCoordFn<'a, N, S>
+where
+    [(); S * (S - 1) / 2]:,
+{
     #[inline]
     extern "rust-call" fn call_mut(&mut self, arg: (f64,)) -> Self::Output {
         self.state.eval(arg.0, self.coord)
     }
 }
 
-impl<'a, const N: usize, const S: usize> Fn<(f64,)> for StateCoordFn<'a, N, S> {
+impl<'a, const N: usize, const S: usize> Fn<(f64,)> for StateCoordFn<'a, N, S>
+where
+    [(); S * (S - 1) / 2]:,
+{
     extern "rust-call" fn call(&self, arg: (f64,)) -> Self::Output {
         self.state.eval(arg.0, self.coord)
     }
 }
 
-impl<'a, const N: usize, const S: usize> StateCoordFnTrait for StateCoordFn<'a, N, S> {
+impl<'a, const N: usize, const S: usize> StateCoordFnTrait for StateCoordFn<'a, N, S>
+where
+    [(); S * (S - 1) / 2]:,
+{
     fn d(&self, t: f64) -> f64 {
         self.state.eval_derivative(t, self.coord)
     }

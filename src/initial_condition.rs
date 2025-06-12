@@ -1,5 +1,7 @@
 //! Defines [InitialCondition].
 
+// TODO expand enum to HList of function with derivatives
+
 /// Container of initial conditions.
 pub enum InitialCondition<'a, const N: usize> {
     /// Represents an initial value (for ordinary differential equations) or a constant function (for (neutral) delay differential equations)

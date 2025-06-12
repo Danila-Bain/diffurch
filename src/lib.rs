@@ -4,6 +4,8 @@
 #![feature(type_alias_impl_trait)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(file_buffered)]
+#![feature(generic_const_exprs)]
+#![allow(incomplete_features)]
 // #![warn(missing_docs)]
 
 pub mod equation;

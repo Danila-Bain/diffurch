@@ -3,7 +3,7 @@
 use crate::rk::{RK98, RungeKuttaTable};
 use crate::*;
 
-use hlist2::ops::{Append, Map, Mapper, ToRef};
+use hlist2::ops::{Append, ToRef};
 use hlist2::*;
 
 /// Implements the integration of differential equation, containing the implementation specific (not
@@ -16,11 +16,13 @@ pub struct Solver<
     EventsOnStart: HList = Nil,
     EventsOnStop: HList = Nil,
     EventsOnLoc: HList = Nil,
-> {
+> where
+    [(); S * (S - 1) / 2]:,
+{
     /// Runge-Kutta scheme used during integration. See [crate::rk].
     ///
     /// Set in constructor [Solver::rk].
-    pub rk: &'a RungeKuttaTable<'a, S>,
+    pub rk: &'a RungeKuttaTable<S>,
     /// Stepsize used during integration. In the future may be replaced with more generic stepsize
     /// controller.
     ///
@@ -59,7 +61,10 @@ impl<'a, const N: usize> Solver<'a, N, 26> {
         }
     }
     /// Constructor which sets Runge-Kutta table and defaults stepsize to 0.05. Returns self.
-    pub fn with_rk<const S: usize>(rk: &'a RungeKuttaTable<'a, S>) -> Solver<'a, N, S> {
+    pub fn with_rk<const S: usize>(rk: &'a RungeKuttaTable<S>) -> Solver<'a, N, S>
+    where
+        [(); S * (S - 1) / 2]:,
+    {
         Solver {
             rk,
             stepsize: 0.05,
@@ -80,11 +85,16 @@ impl<
     EventsOnStop: HList,
     EventsOnLoc: HList,
 > Solver<'a, N, S, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>
+where
+    [(); S * (S - 1) / 2]:,
 {
     pub fn rk<const S_: usize>(
         self,
-        rk: &'a RungeKuttaTable<'a, S_>,
-    ) -> Solver<'a, N, S_, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc> {
+        rk: &'a RungeKuttaTable<S_>,
+    ) -> Solver<'a, N, S_, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>
+    where
+        [(); S_ * (S_ - 1) / 2]:,
+    {
         Solver {
             rk,
             stepsize: 0.05,
@@ -234,8 +244,8 @@ impl<
         interval: impl std::ops::RangeBounds<f64>,
     ) where
         // EventsOnStep: Iterator<Item: FnMut(&mut State<'a, N, S>)>
-        // EventsOnStep: ToRef,
-        // for<'b> <EventsOnStep as ToRef>::RefMut<'b>: Map<Mapper<ReborrowMapFn<State<'a, N, S>>>>,
+        EventsOnStep: ToRef,
+        // for<'b,'c> <EventsOnStep as ToRef>::RefMut<'b>: Map<Mapper<ReborrowMapFn<State<'c, N, S>>>>,
         // EventsOnStep: for<'s> MutRefFnMutHList<State<'s, N, S>>,
         // EventsOnStart: for<'s> MutRefFnMutHList<State<'s, N, S>>,
         // EventsOnStop: for<'s> MutRefFnMutHList<State<'s, N, S>>,
@@ -251,7 +261,7 @@ impl<
         };
 
         let mut rhs = eq.rhs;
-        let mut state : State<'a, N, S> = State::new(t_init, ic.into(), eq.max_delay, &self.rk);
+        let mut state: State<'a, N, S> = State::new(t_init, ic.into(), eq.max_delay, &self.rk);
         let mut stepsize = self.stepsize;
 
         // self.start_events.call_mut(&mut state);
