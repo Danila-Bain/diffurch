@@ -3,7 +3,7 @@
 use crate::rk::{RK98, RungeKuttaTable};
 use crate::*;
 
-use hlist2::ops::Append;
+use hlist2::ops::{Append, Map, Mapper, ToRef};
 use hlist2::*;
 
 /// Implements the integration of differential equation, containing the implementation specific (not
@@ -58,6 +58,17 @@ impl<'a, const N: usize> Solver<'a, N, 26> {
             loc_events: Nil,
         }
     }
+    /// Constructor which sets Runge-Kutta table and defaults stepsize to 0.05. Returns self.
+    pub fn with_rk<const S: usize>(rk: &'a RungeKuttaTable<'a, S>) -> Solver<'a, N, S> {
+        Solver {
+            rk,
+            stepsize: 0.05,
+            step_events: Nil,
+            start_events: Nil,
+            stop_events: Nil,
+            loc_events: Nil,
+        }
+    }
 }
 
 impl<
@@ -70,18 +81,6 @@ impl<
     EventsOnLoc: HList,
 > Solver<'a, N, S, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>
 {
-    /// Constructor which sets Runge-Kutta table and defaults stepsize to 0.05. Returns self.
-    pub fn with_rk(rk: &'a RungeKuttaTable<'a, S>) -> Solver<'a, N, S> {
-        Solver {
-            rk,
-            stepsize: 0.05,
-            step_events: Nil,
-            start_events: Nil,
-            stop_events: Nil,
-            loc_events: Nil,
-        }
-    }
-
     pub fn rk<const S_: usize>(
         self,
         rk: &'a RungeKuttaTable<'a, S_>,
@@ -234,9 +233,12 @@ impl<
         ic: impl Into<InitialCondition<'a, N>>,
         interval: impl std::ops::RangeBounds<f64>,
     ) where
-        EventsOnStep: for <'s> FnMutHList<(&'s mut State<'a, N, S>,)>,
-        EventsOnStart: for <'s> FnMutHList<(&'s mut State<'a, N, S>,)>,
-        EventsOnStop: for <'s> FnMutHList<(&'s mut State<'a, N, S>,)>,
+        // EventsOnStep: Iterator<Item: FnMut(&mut State<'a, N, S>)>
+        // EventsOnStep: ToRef,
+        // for<'b> <EventsOnStep as ToRef>::RefMut<'b>: Map<Mapper<ReborrowMapFn<State<'a, N, S>>>>,
+        // EventsOnStep: for<'s> MutRefFnMutHList<State<'s, N, S>>,
+        // EventsOnStart: for<'s> MutRefFnMutHList<State<'s, N, S>>,
+        // EventsOnStop: for<'s> MutRefFnMutHList<State<'s, N, S>>,
     {
         use std::ops::Bound::*;
         let t_init = match interval.start_bound() {
@@ -249,16 +251,17 @@ impl<
         };
 
         let mut rhs = eq.rhs;
-        let mut state = State::new(t_init, ic.into(), eq.max_delay, &self.rk);
+        let mut state : State<'a, N, S> = State::new(t_init, ic.into(), eq.max_delay, &self.rk);
         let mut stepsize = self.stepsize;
-        
-        self.start_events.call_mut((&mut state,));
-        self.step_events.call_mut((&mut state,));
 
-            // .iter_mut()
-            // .for_each(|event| event(&mut state));
-            // .iter_mut()
-            // .for_each(|event| event(&mut state));
+        // self.start_events.call_mut(&mut state);
+
+        // self.step_events.call_mut(&mut state);
+
+        // .iter_mut()
+        // .for_each(|event| event(&mut state));
+        // .iter_mut()
+        // .for_each(|event| event(&mut state));
 
         while state.t < t_end {
             state.make_step(&mut rhs, stepsize);
@@ -289,13 +292,13 @@ impl<
             // }
 
             state.push_current();
-            self.step_events.call_mut((&mut state,));
-                // .iter_mut()
-                // .for_each(|event| event(&mut state));
+            // self.step_events.call_mut(&mut state);
+            // .iter_mut()
+            // .for_each(|event| event(&mut state));
             stepsize = stepsize.min(t_end - state.t);
         }
 
-        self.stop_events.call_mut((&mut state,));
+        // self.stop_events.call_mut(&mut state);
         // self.stop_events
         //     .iter_mut()
         //     .for_each(|event| event(&mut state));

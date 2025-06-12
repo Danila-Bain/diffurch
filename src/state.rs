@@ -314,7 +314,9 @@ pub trait MutStateFnMut<const N: usize, Ret> {
 }
 
 pub struct ConstantStateFnMut<F: FnMut<(), Output = Ret>, Ret>(pub F);
-impl<F: FnMut<(), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret> for ConstantStateFnMut<F, Ret> {
+impl<F: FnMut<(), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
+    for ConstantStateFnMut<F, Ret>
+{
     fn eval<'b, const S: usize>(&mut self, _state: &'b State<'b, N, S>) -> Ret {
         (self.0)()
     }
@@ -333,8 +335,10 @@ impl<F: FnMut<(), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
     }
 }
 
-pub struct TimeStateFnMut<F: FnMut<(f64,), Output=Ret>, Ret>(pub F);
-impl<F: FnMut<(f64,), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret> for TimeStateFnMut<F, Ret> {
+pub struct TimeStateFnMut<F: FnMut<(f64,), Output = Ret>, Ret>(pub F);
+impl<F: FnMut<(f64,), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
+    for TimeStateFnMut<F, Ret>
+{
     fn eval<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret {
         (self.0)(state.t)
     }
@@ -345,7 +349,9 @@ impl<F: FnMut<(f64,), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret> for
         (self.0)(t)
     }
 }
-impl<F: FnMut<(f64,), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret> for TimeStateFnMut<F, Ret> {
+impl<F: FnMut<(f64,), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
+    for TimeStateFnMut<F, Ret>
+{
     fn eval_mut<'b, const S: usize>(&mut self, state: &'b mut State<'b, N, S>) -> Ret {
         (self.0)(state.t)
     }
@@ -382,7 +388,11 @@ impl<F: for<'a> FnMut<([f64; N],), Output = Ret>, Ret, const N: usize> MutStateF
     }
 }
 
-pub struct ODEMutStateFnMut<const N: usize, F: for<'a> FnMut<(&'a mut [f64; N],), Output=Ret>, Ret>(pub F);
+pub struct ODEMutStateFnMut<
+    const N: usize,
+    F: for<'a> FnMut<(&'a mut [f64; N],), Output = Ret>,
+    Ret,
+>(pub F);
 impl<F: for<'a> FnMut<(&'a mut [f64; N],), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
     for ODEMutStateFnMut<N, F, Ret>
 {
@@ -405,15 +415,19 @@ impl<F: FnMut<(f64, [f64; N]), Output = Ret>, Ret, const N: usize> StateFnMut<N,
         (self.0)(t, state.eval_all(t))
     }
 }
-impl<F: for<'a> FnMut<(f64, [f64; N]), Output = Ret>, Ret, const N: usize>
-    MutStateFnMut<N, Ret> for ODE2StateFnMut<N, F, Ret>
+impl<F: for<'a> FnMut<(f64, [f64; N]), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
+    for ODE2StateFnMut<N, F, Ret>
 {
     fn eval_mut<'b, const S: usize>(&mut self, state: &'b mut State<'b, N, S>) -> Ret {
         (self.0)(state.t, state.x)
     }
 }
 
-pub struct ODE2MutStateFnMut<const N: usize, F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N]), Output = Ret>, Ret>(pub F);
+pub struct ODE2MutStateFnMut<
+    const N: usize,
+    F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N]), Output = Ret>,
+    Ret,
+>(pub F);
 impl<F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N]), Output = Ret>, Ret, const N: usize>
     MutStateFnMut<N, Ret> for ODE2MutStateFnMut<N, F, Ret>
 {
@@ -428,7 +442,6 @@ impl<F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N]), Output = Ret>, Ret, const
 //         [-x + 2. * x_(t - 1.)]
 //     }
 // }
-
 
 // struct DDEStateFnMut<F>(F);
 // impl<F: FnMut<(f64, [f64; N]), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
@@ -445,9 +458,16 @@ impl<F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N]), Output = Ret>, Ret, const
 //     }
 // }
 
-pub struct DDEStateFnMut<const N: usize, F: for<'a> FnMut<(f64, [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]), Output = Ret>, Ret>(pub F);
-impl<F: for<'a> FnMut<(f64, [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
-    for DDEStateFnMut<N, F, Ret>
+pub struct DDEStateFnMut<
+    const N: usize,
+    F: for<'a> FnMut<(f64, [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]), Output = Ret>,
+    Ret,
+>(pub F);
+impl<
+    F: for<'a> FnMut<(f64, [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]), Output = Ret>,
+    Ret,
+    const N: usize,
+> StateFnMut<N, Ret> for DDEStateFnMut<N, F, Ret>
 {
     fn eval<'b, const S: usize>(&mut self, state: &'b State<'b, N, S>) -> Ret {
         (self.0)(state.t, state.x, state.coord_fns())
@@ -459,14 +479,16 @@ impl<F: for<'a> FnMut<(f64, [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]), Out
         (self.0)(t, state.eval_all(t), state.coord_fns())
     }
 }
-impl<F: for<'a> FnMut<(f64, [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
-    for DDEStateFnMut<N, F, Ret>
+impl<
+    F: for<'a> FnMut<(f64, [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]), Output = Ret>,
+    Ret,
+    const N: usize,
+> MutStateFnMut<N, Ret> for DDEStateFnMut<N, F, Ret>
 {
     fn eval_mut<'b, const S: usize>(&mut self, state: &'b mut State<'b, N, S>) -> Ret {
         (self.0)(state.t, state.x, state.coord_fns())
     }
 }
-
 
 // struct DDEMutStateFnMut<F>(F);
 // impl<F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N]), Output = Ret>, Ret, const N: usize>
@@ -680,7 +702,6 @@ impl<F: for<'a> FnMut<(f64, [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]), Out
 //         MutStateFn::DDE(Box::new(f))
 //     }
 // }
-
 
 /// Struct that holds a reference to the state, and the coordinate index.
 ///

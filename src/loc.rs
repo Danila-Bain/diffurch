@@ -242,7 +242,6 @@ where
     }
 }
 
-
 // pub struct Loc<'a, const N: usize> {
 //     /// detection part of the event
 //     pub detection: Detection<'a, N>,

@@ -1,9 +1,8 @@
 //! Defines [Event]
 
-use crate::state::*;
+use crate::{state::*, CopyMapFn};
 use hlist2::ops::{Map, MapFn, Mapper, ToRef};
 use hlist2::{HList, Nil, ops::Append};
-
 // pub trait EventStream: HList + Append {}
 // impl<T: HList + Append> EventStream for T {}
 
@@ -47,9 +46,7 @@ impl<const N: usize> Event<N> {
             output_marker: Default::default(),
         }
     }
-    pub fn new_mut<F: MutStateFnMut<N, Output>, Output>(
-        callback: F,
-    ) -> Event<N, true, F, Output> {
+    pub fn new_mut<F: MutStateFnMut<N, Output>, Output>(callback: F) -> Event<N, true, F, Output> {
         Event {
             callback,
             stream: Nil,
@@ -131,8 +128,8 @@ impl<const N: usize> Event<N> {
     /// Creates an event, the callback of which returns the time and coordinate vector of the state.
     ///
     /// A short-hand for `Event::new(MutStateFn::ode2(|t, x| (t, x)))`.
-    pub fn ode2_state()
-    -> Event<N, false, impl MutStateFnMut<N, (f64, [f64; N])>, (f64, [f64; N])> {
+    pub fn ode2_state() -> Event<N, false, impl MutStateFnMut<N, (f64, [f64; N])>, (f64, [f64; N])>
+    {
         Event::new(ODE2StateFnMut(|t, x| (t, x)))
     }
 }
@@ -196,10 +193,7 @@ where
     /// the output of [Event::callback] in that file.
     ///
     /// Panics, if file opening or writing fails.
-    pub fn to_file(
-        self,
-        filename: &str,
-    ) -> Event<N, MUT, Callback, Output, impl HList, Filter>
+    pub fn to_file(self, filename: &str) -> Event<N, MUT, Callback, Output, impl HList, Filter>
     where
         Output: std::fmt::Debug,
     {
@@ -219,10 +213,7 @@ where
 
     /// Push a new function to [Event::stream], that writes the output of [Event::callback] to the
     /// provided variable.
-    pub fn to_var(
-        self,
-        value: &mut Output,
-    ) -> Event<N, MUT, Callback, Output, impl HList, Filter> {
+    pub fn to_var(self, value: &mut Output) -> Event<N, MUT, Callback, Output, impl HList, Filter> {
         self.to(|v: Output| *value = v)
     }
 
@@ -257,10 +248,7 @@ where
     Stream: HList + Append,
 {
     /// Like [Event::to_file] but only works with arrays, and prints array as a comma-separated values.
-    pub fn to_csv(
-        self,
-        filename: &str,
-    ) -> Event<N, MUT, Callback, [Item; M], impl HList, Filter>
+    pub fn to_csv(self, filename: &str) -> Event<N, MUT, Callback, [Item; M], impl HList, Filter>
     where
         Item: std::fmt::Display,
     {
@@ -337,56 +325,59 @@ pub trait IntoEventFunction<const N: usize> {
     fn into_event_function<const S: usize>(self) -> Self::Output<S>;
 }
 
-struct StreamMapFn<Output>(Output);
-impl<T, Output: Copy> MapFn<T> for StreamMapFn<Output>
-where
-    T: FnMut(Output) -> f64,
-{
-    type Output = f64;
-    fn map(&mut self, mut f: T) -> Self::Output {
-        f(self.0)
-    }
-}
-
 impl<const N: usize, Callback, Output, Stream, Filter> IntoEventFunction<N>
     for Event<N, false, Callback, Output, Stream, Filter>
 where
     Callback: StateFnMut<N, Output>,
     Output: Copy,
+    // Stream: FnMutHList<(Output,)>,
     Stream: ToRef,
+    for<'a> <Stream as ToRef>::RefMut<'a>: Map<Mapper<CopyMapFn<Output>>>,
     Filter: ToRef,
-    for<'a> <Stream as ToRef>::RefMut<'a>: Map<Mapper<StreamMapFn<Output>>>,
     for<'a> <Filter as ToRef>::RefMut<'a>: Iterator<Item: StateFnMut<N, bool>>, // optimazable
 {
     type Output<const S: usize> = impl for<'a> FnMut(&'a mut State<'a, N, S>);
-    fn into_event_function<const S: usize>(
-        mut self,
-    ) ->  Self::Output<S> {
-        move |state: &mut State<N, S>| {
-            let Event {
-                ref mut callback,
-                ref mut stream,
-                ref mut filter,
-                subdivision,
-                ..
-            } = self;
+    fn into_event_function<const S: usize>(self) -> Self::Output<S> {
+        let Event {
+            mut callback,
+            mut stream,
+            mut filter,
+            subdivision,
+            ..
+        } = self;
 
+        move |state: &mut State<N, S>| {
             if let Some(n) = subdivision {
                 for i in 1..(n - 1) {
                     let t = state.t_prev + (state.t - state.t_prev) * (i as f64) / (n as f64);
                     if filter.to_mut().all(|mut f| f.eval_at(state, t)) {
                         let output = callback.eval_at(state, t);
-                        stream.to_mut().map(Mapper(StreamMapFn(output)));
+                        // stream.call_mut((output,));
+                        stream.to_mut().map(Mapper(CopyMapFn(output)));
                     }
                 }
             }
             if filter.to_mut().all(|mut f| f.eval(state)) {
                 let output = callback.eval(state);
-                stream.to_mut().map(Mapper(StreamMapFn(output)));
+                // stream.call_mut((output,));
+                stream.to_mut().map(Mapper(CopyMapFn(output)));
             }
         }
     }
+}
 
+impl<const N: usize> StateFnMut<N, bool> for Nil {
+    fn eval<'b, const S: usize>(&mut self, _: &'b State<'b, N, S>) -> bool {
+        true
+    }
+
+    fn eval_prev<'b, const S: usize>(&mut self, _: &'b State<'b, N, S>) -> bool {
+        true
+    }
+
+    fn eval_at<'b, const S: usize>(&mut self, _: &'b State<'b, N, S>, _: f64) -> bool {
+        true
+    }
 }
 
 impl<const N: usize, Callback, Output, Stream, Filter> IntoEventFunction<N>
@@ -396,99 +387,96 @@ where
     Output: Copy,
     Stream: ToRef,
     Filter: ToRef,
-    for<'a> <Stream as ToRef>::RefMut<'a>: Map<Mapper<StreamMapFn<Output>>>,
+    for<'a> <Stream as ToRef>::RefMut<'a>: Map<Mapper<CopyMapFn<Output>>>,
     for<'a> <Filter as ToRef>::RefMut<'a>: Iterator<Item: StateFnMut<N, bool>>, // optimazable
 {
     type Output<const S: usize> = impl for<'a> FnMut(&'a mut State<'a, N, S>);
-    fn into_event_function<const S: usize>(
-        mut self,
-    ) ->  Self::Output<S> {
+    fn into_event_function<const S: usize>(self) -> Self::Output<S> {
         assert_eq!(
             self.subdivision, None,
             "For events that can mutate state, subdivision is not applicable"
         );
+        let Event {
+            mut callback,
+            mut stream,
+            mut filter,
+            ..
+        } = self;
 
         move |state: &mut State<N, S>| {
-            let Event {
-                ref mut callback,
-                ref mut stream,
-                ref mut filter,
-                ..
-            } = self;
-
             if filter.to_mut().all(|mut f| f.eval(state)) {
                 let output = callback.eval_mut(state);
-                stream.to_mut().map(Mapper(StreamMapFn(output)));
+                stream.to_mut().map(Mapper(CopyMapFn(output)));
             }
         }
     }
 }
 
-// /// Creates a [crate::Event] from a closure.
-// ///
-// /// `event!` allows `Event` to be defined with closures of different calling signatures,
-// /// being a replacement of some constructors of [crate::Event]:
-// ///
-// /// ```rust
-// /// use diffurch::event;
-// ///
-// /// // use in solver for generic parameters inference
-// /// let solver = diffurch::Solver::new()
-// ///     .on_step(event!(|| 1.)) // equivalent to .on_step(Event::constant(...))
-// ///     .on_step(event!(|t| t + t.cos())) // equivalent to .on_step(Event::time(...))
-// ///     .on_step(event!(|[x, y]| [x, y, x+y])) // equivalent to .on_step(Event::ode(...))
-// ///     .on_step(event!(|t, [x, y]| [t, x, y])) // equivalent to .on_step(Event::ode2(...))
-// ///     .on_step(event!(|t, [x, y], [x_, y_]| [t, x, x_(t - 1.)])) // equivalent to .on_step(Event::dde(...))
-// ///     .on_step(event!(|t, [x, y], [x_, y_]| [t, x, x_(t - 1.), x_.d(t - 1.)])); // equivalent to .on_step(Event::dde(...))
-// /// ```
-// ///
-// /// For state mutating events, use [event_mut!].
-// #[macro_export]
-// macro_rules! event {
-//     () => {
-//         $crate::Event::constant(|| {})
-//     };
-//     (|| $expr:expr) => {
-//         $crate::Event::constant(|| $expr)
-//     };
-//     (|$t:ident| $expr:expr) => {
-//         $crate::Event::time(|$t| $expr)
-//     };
-//     (|[$($x:ident),+]| $expr:expr) => {
-//         $crate::Event::ode(|[$($x),+]| $expr)
-//     };
-//     (|$t:ident, [$($x:ident),+]| $expr:expr) => {
-//         $crate::Event::ode2(|$t, [$($x),+]| $expr)
-//     };
-//     (|$t:ident, [$($x:ident),+], [$($x_:ident),+]| $expr:expr) => {
-//         $crate::Event::dde(|$t, [$($x),+], [$($x_),+]| $expr)
-//     };
-// }
-//
-// /// State-mutating counter-part of [event!].
-// ///
-// /// `event_mut!` allows `Event` to be defined with closures of different calling signatures,
-// /// being a replacement of some constructors of [crate::Event]:
-// ///
-// /// ```rust
-// /// use diffurch::event_mut;
-// ///
-// /// // use in solver for generic parameters inference
-// /// let solver = diffurch::Solver::new()
-// ///     .on_step(event_mut!(|t| *t = f64::INFINITY))
-// ///     .on_step(event_mut!(|[x, y]| {*x = -*x; [*x, *y, *x + *y]}))
-// ///     .on_step(event_mut!(|t, [x, y]| {*x = -*y; *t = f64::INFINITY;}));
-// /// ```
-// ///
-// #[macro_export]
-// macro_rules! event_mut {
-//     (|$t:ident| $expr:expr) => {
-//         $crate::Event::time_mut(|$t| $expr)
-//     };
-//     (|[$($x:ident),+]| $expr:expr) => {
-//         $crate::Event::ode_mut(|[$($x),+]| $expr)
-//     };
-//     (|$t:ident, [$($x:ident),+]| $expr:expr) => {
-//         $crate::Event::ode2_mut(|$t, [$($x),+]| $expr)
-//     };
-// }
+/// Creates a [crate::Event] from a closure.
+///
+/// `event!` allows `Event` to be defined with closures of different calling signatures,
+/// being a replacement of some constructors of [crate::Event]:
+///
+/// ```rust
+/// use diffurch::event;
+///
+/// // use in solver for generic parameters inference
+/// let solver = diffurch::Solver::new()
+///     .on_step(event!(|| 1.)) // equivalent to .on_step(Event::constant(...))
+///     .on_step(event!(|t| t + t.cos())) // equivalent to .on_step(Event::time(...))
+///     .on_step(event!(|[x, y]| [x, y, x+y])) // equivalent to .on_step(Event::ode(...))
+///     .on_step(event!(|t, [x, y]| [t, x, y])) // equivalent to .on_step(Event::ode2(...))
+///     .on_step(event!(|t, [x, y], [x_, y_]| [t, x, x_(t - 1.)])) // equivalent to .on_step(Event::dde(...))
+///     .on_step(event!(|t, [x, y], [x_, y_]| [t, x, x_(t - 1.), x_.d(t - 1.)])); // equivalent to .on_step(Event::dde(...))
+/// ```
+///
+/// For state mutating events, use [event_mut!].
+#[macro_export]
+macro_rules! event {
+    () => {
+        $crate::Event::constant(|| {})
+    };
+    (|| $expr:expr) => {
+        $crate::Event::constant(|| $expr)
+    };
+    (|$t:ident| $expr:expr) => {
+        $crate::Event::time(|$t| $expr)
+    };
+    (|[$($x:ident),+]| $expr:expr) => {
+        $crate::Event::ode(|[$($x),+]| $expr)
+    };
+    (|$t:ident, [$($x:ident),+]| $expr:expr) => {
+        $crate::Event::ode2(|$t, [$($x),+]| $expr)
+    };
+    (|$t:ident, [$($x:ident),+], [$($x_:ident),+]| $expr:expr) => {
+        $crate::Event::dde(|$t, [$($x),+], [$($x_),+]| $expr)
+    };
+}
+
+/// State-mutating counter-part of [event!].
+///
+/// `event_mut!` allows `Event` to be defined with closures of different calling signatures,
+/// being a replacement of some constructors of [crate::Event]:
+///
+/// ```rust
+/// use diffurch::event_mut;
+///
+/// // use in solver for generic parameters inference
+/// let solver = diffurch::Solver::new()
+///     .on_step(event_mut!(|t| *t = f64::INFINITY))
+///     .on_step(event_mut!(|[x, y]| {*x = -*x; [*x, *y, *x + *y]}))
+///     .on_step(event_mut!(|t, [x, y]| {*x = -*y; *t = f64::INFINITY;}));
+/// ```
+///
+#[macro_export]
+macro_rules! event_mut {
+    (|$t:ident| $expr:expr) => {
+        $crate::Event::time_mut(|$t| $expr)
+    };
+    (|[$($x:ident),+]| $expr:expr) => {
+        $crate::Event::ode_mut(|[$($x),+]| $expr)
+    };
+    (|$t:ident, [$($x:ident),+]| $expr:expr) => {
+        $crate::Event::ode2_mut(|$t, [$($x),+]| $expr)
+    };
+}

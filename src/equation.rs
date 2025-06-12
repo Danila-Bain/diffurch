@@ -8,11 +8,11 @@ use crate::{StateCoordFnTrait, StateFnMut};
 // /// // right hand side (RHS) is a constant:
 // /// let constant = Equation::constant(|| [1.]); // x'(t) = 1
 // /// // RHS is a known time function, independent of coordinates:
-// /// let time = Equation::time(|t| [t.sin(), t.cos()]); // x'(t) = sin(t), y'(t) = cos(t) 
+// /// let time = Equation::time(|t| [t.sin(), t.cos()]); // x'(t) = sin(t), y'(t) = cos(t)
 // /// // RHS of an autonomous ordinary differential equation (ODE):
 // /// let ode = Equation::ode(|[x, y]| [-y, x]); // x'(t) = -y(t), y'(t) = x(t)
 // /// // RHS of a non-autonomous ODE:
-// /// let ode2 = Equation::ode2(|t, [x, y]| [-y / t, x * t]); // x'(t) 
+// /// let ode2 = Equation::ode2(|t, [x, y]| [-y / t, x * t]); // x'(t)
 // /// // RHS of a delay differential equation (DDE):
 // /// let dde = Equation::dde(|t, [x], [x_]| [4. * x * (1. - x_(t - 1.))]); // x'(t) = 4 x(t) (1 - x(t-1))
 // /// // RHS of a neutral delay differential equation (NDDE):
@@ -45,10 +45,10 @@ pub struct Equation<const N: usize, RHS: StateFnMut<N, [f64; N]>> {
     ///
     /// By default, it is zero for ordinary differential equations, and  `f64::INFINITY` for delay
     /// differential equations.
-    /// 
+    ///
     /// In delay differential equations, the past state of the solution must be stored. But
     /// usually, only recent history is needed, and this field tells the solver, that the history
-    /// this old won't be needed. Solver panics, if needed solution history turns out to be deleted. 
+    /// this old won't be needed. Solver panics, if needed solution history turns out to be deleted.
     ///
     /// If you need to integrate delay differential equations for long, you might want to set this field using
     /// [Equation::with_delay] method, to avoid excessive memory usage.
@@ -93,9 +93,25 @@ macro_rules! equation {
     };
 }
 
+/// Bare bones example:
+/// ```rust
+/// use diffurch::{Equation, ODE2StateFnMut};
+/// let eq = Equation {
+///     rhs: ODE2StateFnMut(|t, [x, y]| [-y / t, x]),
+///     max_delay: f64::NAN,
+/// };
+/// ```
 impl<const N: usize, RHS: StateFnMut<N, [f64; N]>> Equation<N, RHS> {
-
-    /// Constructor that accepts [StateFn] and sets [Equation::max_delay] to `f64::NAN`.
+    /// Constructor with arbitrary [StateFnMut] function
+    ///
+    /// # Examples:
+    ///
+    /// ```rust
+    /// use diffurch::{Equation, state::*};
+    /// let eq = Equation::new(ConstantStateFnMut(|| [42.]));
+    /// let eq = Equation::new(ODEStateFnMut(|[x, y]| [-y, x]));
+    /// let eq = Equation::new(ODE2StateFnMut(|t, [x, y]| [-y / t, x]));
+    /// ```
     pub fn new(rhs: RHS) -> Self {
         Equation {
             rhs,
@@ -104,10 +120,7 @@ impl<const N: usize, RHS: StateFnMut<N, [f64; N]>> Equation<N, RHS> {
     }
 
     pub fn new_with_delay(rhs: RHS, max_delay: f64) -> Self {
-        Equation {
-            rhs,
-            max_delay
-        }
+        Equation { rhs, max_delay }
     }
 
     /// Sets [Equation::max_delay] and returns Self
@@ -118,20 +131,4 @@ impl<const N: usize, RHS: StateFnMut<N, [f64; N]>> Equation<N, RHS> {
         }
     }
 }
-//
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//
-//     #[test]
-//     fn creation() {
-//         let _eq = Equation {
-//             rhs: StateFn::ODE2(Box::new(|t, [x, y]| [-y / t, x])),
-//             max_delay: f64::NAN,
-//         };
-//
-//         let _eq = Equation::new(StateFn::Constant(Box::new(|| [42.])));
-//         let _eq = Equation::ode(|[x, y]| [-y, x]);
-//         let _eq = Equation::ode2(|t, [x, y, z]| [t - y, z - x, x - z / t]);
-//     }
-// }
+

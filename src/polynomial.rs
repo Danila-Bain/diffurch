@@ -33,7 +33,6 @@ where
     }
 }
 
-
 /// Produce a fn(f64) -> f64 closure that represents a polynomial function with given coefficients.
 ///
 /// # Examples:
@@ -187,7 +186,6 @@ mod tests {
         assert_eq!(geometric_series(1. / 5.), 1. / (1. - 1. / 5.));
         assert_eq!(geometric_series(1. / 6.), 1. / (1. - 1. / 6.));
     }
-
 
     #[test]
     fn constant_polynomail_derivative() {

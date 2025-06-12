@@ -5,7 +5,6 @@ use crate::state::*;
 /// Trait manages adding filtering functions to a vector field of a class, such as
 /// [crate::Event] and [crate::Loc].
 pub trait Filter<const N: usize>: Sized {
-
     type Output<T>;
     /// push a new [StateFn] which returns `bool` to `self` and return `self` for chained syntax.
     fn filter<S: StateFnMut<N, bool>>(self, f: S) -> Self::Output<S>;
@@ -15,15 +14,21 @@ pub trait Filter<const N: usize>: Sized {
         self.filter(ConstantStateFnMut(f))
     }
     /// push a new [StateFn::Time], constructed from a given closure
-    fn filter_time<F: FnMut(f64) -> bool>(self, f: F) -> Self::Output<impl StateFnMut<N, bool>>{
+    fn filter_time<F: FnMut(f64) -> bool>(self, f: F) -> Self::Output<impl StateFnMut<N, bool>> {
         self.filter(TimeStateFnMut(f))
     }
     /// push a new [StateFn::ODE], constructed from a given closure
-    fn filter_ode<F: FnMut([f64; N]) -> bool>(self, f: F) -> Self::Output<impl StateFnMut<N, bool>> {
+    fn filter_ode<F: FnMut([f64; N]) -> bool>(
+        self,
+        f: F,
+    ) -> Self::Output<impl StateFnMut<N, bool>> {
         self.filter(ODEStateFnMut(f))
     }
     /// push a new [StateFn::ODE2], constructed from a given closure
-    fn filter_ode2<F: FnMut(f64, [f64; N]) -> bool>(self, f: F) -> Self::Output<impl StateFnMut<N, bool>> {
+    fn filter_ode2<F: FnMut(f64, [f64; N]) -> bool>(
+        self,
+        f: F,
+    ) -> Self::Output<impl StateFnMut<N, bool>> {
         self.filter(ODE2StateFnMut(f))
     }
 
@@ -71,7 +76,10 @@ pub trait Filter<const N: usize>: Sized {
 
     /// Push a new filtering function, that filters all events, the state time of which is not
     /// contained in a given f64 range.
-    fn in_range(self, interval: impl std::ops::RangeBounds<f64>) -> Self::Output<impl StateFnMut<N, bool>> {
+    fn in_range(
+        self,
+        interval: impl std::ops::RangeBounds<f64>,
+    ) -> Self::Output<impl StateFnMut<N, bool>> {
         self.filter_time(move |t| interval.contains(&t))
     }
 
@@ -101,7 +109,10 @@ pub trait Filter<const N: usize>: Sized {
 
     /// Push a filtering function, that returns `true` if the number of the invocation of that
     /// function is in `range`.
-    fn times(self, range: impl std::ops::RangeBounds<usize>) -> Self::Output<impl StateFnMut<N, bool>> {
+    fn times(
+        self,
+        range: impl std::ops::RangeBounds<usize>,
+    ) -> Self::Output<impl StateFnMut<N, bool>> {
         let mut counter = 0;
         self.filter_constant(move || {
             let ret = range.contains(&counter);

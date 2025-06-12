@@ -8,20 +8,20 @@
 
 pub mod equation;
 pub mod event;
+pub mod filter;
+pub mod fn_hlist;
 pub mod initial_condition;
 pub mod loc;
+pub mod polynomial;
 pub mod rk;
 pub mod solver;
 pub mod state;
-pub mod filter;
-pub mod polynomial;
-pub mod fn_hlist;
 //
 pub use equation::*;
 pub use event::*;
+pub use filter::*;
+pub use fn_hlist::*;
 pub use initial_condition::*;
 pub use loc::*;
 pub use solver::*;
 pub use state::*;
-pub use filter::*;
-pub use fn_hlist::*;
