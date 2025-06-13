@@ -11,7 +11,6 @@
 pub mod equation;
 pub mod event;
 pub mod filter;
-// pub mod fn_hlist;
 pub mod initial_condition;
 pub mod loc;
 pub mod polynomial;
@@ -22,7 +21,6 @@ pub mod state;
 pub use equation::*;
 pub use event::*;
 pub use filter::*;
-// pub use fn_hlist::*;
 pub use initial_condition::*;
 pub use loc::*;
 pub use solver::*;

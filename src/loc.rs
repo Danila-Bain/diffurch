@@ -134,14 +134,14 @@ pub struct RegulaFalsi;
 pub struct Loc<D = (), L = ()>(pub D, pub L);
 
 impl Loc {
-    pub fn sign<const N: usize, F: StateFnMut<N, f64>>(f: F) -> Loc<Sign<N, F>, RegulaFalsi> {
-        Loc(Sign(f), RegulaFalsi)
+    pub fn sign<const N: usize, F: StateFnMut<N, f64>>(f: F) -> Loc<Sign<N, F>, Bisection> {
+        Loc(Sign(f), Bisection)
     }
-    pub fn pos<const N: usize, F: StateFnMut<N, f64>>(f: F) -> Loc<Pos<N, F>, RegulaFalsi> {
-        Loc(Pos(f), RegulaFalsi)
+    pub fn pos<const N: usize, F: StateFnMut<N, f64>>(f: F) -> Loc<Pos<N, F>, Bisection> {
+        Loc(Pos(f), Bisection)
     }
-    pub fn neg<const N: usize, F: StateFnMut<N, f64>>(f: F) -> Loc<Neg<N, F>, RegulaFalsi> {
-        Loc(Neg(f), RegulaFalsi)
+    pub fn neg<const N: usize, F: StateFnMut<N, f64>>(f: F) -> Loc<Neg<N, F>, Bisection> {
+        Loc(Neg(f), Bisection)
     }
     pub fn while_pos<const N: usize, F: StateFnMut<N, f64>>(
         f: F,
