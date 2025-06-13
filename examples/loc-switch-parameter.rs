@@ -1,6 +1,9 @@
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
+
 use std::cell::Cell;
 
-use diffurch::{Loc, Solver, StateFn, Filter, equation, event, event_mut, rk};
+use diffurch::{equation, event, event_mut, rk, Filter, Loc, ODEStateFnMut, Solver};
 
 fn main() {
     let k = 0.9;
@@ -13,7 +16,7 @@ fn main() {
     let mut points = Vec::new();
     let mut points_continuous = Vec::new();
 
-    Solver::rk(&rk::RK98)
+    Solver::new().rk(&rk::RK98)
         .stepsize(0.5)
         .on_step(
             event!(|t, [x, _dx]| (t, x)).to_vec(&mut points).to_std(), // .separated_by(0.01)
@@ -26,9 +29,9 @@ fn main() {
                 .separated_by(0.01)
                 .subdivide(21),
         )
-        .on_loc(Loc::zero(StateFn::ode(|[_x, dx]| dx)), event!())
+        .on_loc(Loc::sign(ODEStateFnMut(|[_x, dx]| dx)).bisection(), event!())
         .on_loc(
-            Loc::zero(StateFn::ode(|[x, _dx]| x)),
+            Loc::sign(ODEStateFnMut(|[x, _dx]| x)).bisection(),
             event_mut!(|t, [_x, dx]| {
                 *dx *= k;
                 g.set(g.get() * -1.);

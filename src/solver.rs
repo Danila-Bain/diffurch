@@ -207,20 +207,45 @@ where
         }
     }
 
-    // /// Add event to a list of loc events.
-    // /// Events in that list trigger when event is located on a step using [Loc]. If two or more
-    // /// events are detected on a step, only the earliest one is triggered. In current
-    // /// implementation, solver always steps on the located event. Which can be used to implement
-    // /// numerical integration for discontinuous differential equations correctly.
-    // pub fn on_loc<Output: Copy + 'a>(
-    //     mut self,
-    //     event_locator: Loc<'a, N>,
-    //     event: Event<'a, N, Output>,
-    // ) -> Self {
-    //     self.loc_events
-    //         .push((event_locator, Self::event_to_state_function(event)));
-    //     self
-    // }
+    /// Add event to a list of loc events.
+    /// Events in that list trigger when event is located on a step using [Loc]. If two or more
+    /// events are detected on a step, only the earliest one is triggered. In current
+    /// implementation, solver always steps on the located event. Which can be used to implement
+    /// numerical integration for discontinuous differential equations correctly.
+    pub fn on_loc<L: Locate<N>, E: EventCall<N>>(
+        self,
+        event_locator: L,
+        event: E,
+    ) -> Solver<
+        'a,
+        N,
+        S,
+        EventsOnStep,
+        EventsOnStart,
+        EventsOnStop,
+        <EventsOnLoc as Append>::Output<(L, E)>,
+    >
+    where
+        EventsOnLoc: Append,
+    {
+        let Solver {
+            rk,
+            stepsize,
+            step_events,
+            start_events,
+            stop_events,
+            loc_events,
+        } = self;
+
+        Solver {
+            rk,
+            stepsize,
+            step_events,
+            start_events,
+            stop_events,
+            loc_events: loc_events.append((event_locator, event)),
+        }
+    }
 
     /// Run solver.
     pub fn run<RHS: StateFnMut<N, [f64; N]>>(
@@ -232,6 +257,7 @@ where
         EventsOnStep: EventHList<N>,
         EventsOnStart: EventHList<N>,
         EventsOnStop: EventHList<N>,
+        EventsOnLoc: LocEventHList<N>,
     {
         use std::ops::Bound::*;
         let t_init = match interval.start_bound() {
@@ -250,36 +276,26 @@ where
         self.start_events.call_each(&mut state);
         self.step_events.call_each(&mut state);
 
-        while state.t < t_end {
+        while state.t() < t_end {
             state.make_step(&mut rhs, stepsize);
 
-            // // handle earliest detected event, if any
-            // if let Some((event, t)) = self
-            //     .loc_events
-            //     .iter_mut()
-            //     .filter_map(|(locator, event)| {
-            //         if let Some(t) = locator.locate(&state) {
-            //             Some((event, t))
-            //         } else {
-            //             None
-            //         }
-            //     })
-            //     .min_by(|(_, t1), (_, t2)| t1.partial_cmp(t2).unwrap())
-            // {
-            //     if t > state.t_prev {
-            //         state.undo_step();
-            //         state.make_step(&mut rhs, t - state.t);
-            //     }
-            //     state.push_current();
-            //     self.step_events
-            //         .iter_mut()
-            //         .for_each(|event| event(&mut state));
-            //     event(&mut state);
-            //     state.make_zero_step();
-            // }
+            println!("Pre-Locate: {}, {:?}", state.t(), state.x());
+            if let Some((t_loc, event)) = self.loc_events.locate_first(&mut state) && t_loc > state.t_prev() {
+                println!("Event located at t = {t_loc}");
+                state.undo_step();
+                state.make_step(&mut rhs, t_loc - state.t);
+                state.push_current();
+                self.step_events.call_each(&mut state);
+                event.call(&mut state);
+                if state.t_prev() == state.t() { // zero step occured due to event
+                    self.step_events.call_each(&mut state);
+                }
+                println!("Event located end");
+            } else {
+                state.push_current();
+                self.step_events.call_each(&mut state);
+            }
 
-            state.push_current();
-            self.step_events.call_each(&mut state);
             stepsize = stepsize.min(t_end - state.t);
         }
 

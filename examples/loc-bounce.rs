@@ -1,4 +1,7 @@
-use diffurch::{equation, event, event_mut, rk, Filter, Loc, Solver, StateFn};
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
+
+use diffurch::{equation, event, event_mut, rk, Filter, Loc, ODEStateFnMut, Solver};
 
 fn main() {
     let k = 0.90;
@@ -11,7 +14,7 @@ fn main() {
     let mut points = Vec::new();
     let mut points_continuous = Vec::new();
 
-    Solver::rk(&rk::RK98)
+    Solver::new().rk(&rk::RK98)
         .stepsize(0.05)
         .on_step(event!(|t, [x, _dx]| (t, x)).to_vec(&mut points).to_std())
         .on_step(
@@ -21,7 +24,7 @@ fn main() {
                 .subdivide(21),
         )
         .on_loc(
-            Loc::to_neg(StateFn::ode(|[x, _dx]| x)),
+            Loc::while_neg(ODEStateFnMut(|[x, _dx]| x)),
             event_mut!(|t, [x, dx]| {
                 *x = 0.;
                 *dx = k * dx.abs();

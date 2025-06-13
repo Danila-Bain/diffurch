@@ -1,6 +1,6 @@
 //! Defines [Event]
 
-use crate::state::*;
+use crate::{Locate, state::*};
 use hlist2::{Cons, ops::*};
 use hlist2::{HList, Nil, ops::Append};
 // pub trait EventStream: HList + Append {}
@@ -131,8 +131,8 @@ impl<const N: usize> Event<N> {
     /// Creates an event, the callback of which returns the time and coordinate vector of the state.
     ///
     /// A short-hand for `Event::new(MutStateFn::ode2(|t, x| (t, x)))`.
-    pub fn ode2_state()
-    -> Event<N, false, (), impl StateFnMut<N, (f64, [f64; N])>, (f64, [f64; N])> {
+    pub fn ode2_state() -> Event<N, false, (), impl StateFnMut<N, (f64, [f64; N])>, (f64, [f64; N])>
+    {
         Event::new(ODE2StateFnMut(|t, x| (t, x)))
     }
 }
@@ -164,10 +164,7 @@ impl<const N: usize, const MUT: bool, Subdivision, Callback, Stream, Filter, Out
 {
     /// Set [Event::subdivision] field to `Some(n)`, that tells the solver, that event needs to be
     /// triggered `n` times on the current step.
-    pub fn subdivide(
-        self,
-        n: usize,
-    ) -> Event<N, MUT, usize, Callback, Output, Stream, Filter> {
+    pub fn subdivide(self, n: usize) -> Event<N, MUT, usize, Callback, Output, Stream, Filter> {
         let callback = self.callback;
         let stream = self.stream;
         let filter = self.filter;
@@ -319,7 +316,15 @@ where
     pub fn to_csv(
         self,
         filename: &str,
-    ) -> Event<N, MUT, Subdivision, Callback, [Item; M], <Stream as Append>::Output<impl FnMut([Item; M])>, Filter>
+    ) -> Event<
+        N,
+        MUT,
+        Subdivision,
+        Callback,
+        [Item; M],
+        <Stream as Append>::Output<impl FnMut([Item; M])>,
+        Filter,
+    >
     where
         Item: std::fmt::Display,
     {
@@ -338,7 +343,15 @@ where
         filename: &str,
         separator: &str,
         header: Option<&str>,
-    ) -> Event<N, MUT, Subdivision, Callback, [Item; M], <Stream as Append>::Output<impl FnMut([Item; M])>, Filter>
+    ) -> Event<
+        N,
+        MUT,
+        Subdivision,
+        Callback,
+        [Item; M],
+        <Stream as Append>::Output<impl FnMut([Item; M])>,
+        Filter,
+    >
     where
         Item: std::fmt::Display,
     {
@@ -361,7 +374,15 @@ where
     pub fn to_vecs(
         self,
         vecs: [&mut Vec<Item>; M],
-    ) -> Event<N, MUT, Subdivision, Callback, [Item; M], <Stream as Append>::Output<impl FnMut([Item; M])>, Filter>
+    ) -> Event<
+        N,
+        MUT,
+        Subdivision,
+        Callback,
+        [Item; M],
+        <Stream as Append>::Output<impl FnMut([Item; M])>,
+        Filter,
+    >
     where
         Item: Copy,
     {
@@ -376,7 +397,15 @@ where
     pub fn to_float_ranges(
         self,
         mut ranges: [&mut std::ops::Range<Item>; M],
-    ) -> Event<N, MUT, Subdivision, Callback, [Item; M], <Stream as Append>::Output<impl FnMut([Item; M])>, Filter>
+    ) -> Event<
+        N,
+        MUT,
+        Subdivision,
+        Callback,
+        [Item; M],
+        <Stream as Append>::Output<impl FnMut([Item; M])>,
+        Filter,
+    >
     where
         Item: num_traits::Float,
     {
@@ -395,6 +424,15 @@ pub trait EventCall<const N: usize> {
     fn call(&mut self, state: &mut impl IsState<N>);
 }
 
+pub trait EventCallConcrete<const N: usize, S: IsState<N>> {
+    fn call(&mut self, state: &mut S);
+}
+impl<const N: usize, S: IsState<N>, EC: EventCall<N>> EventCallConcrete<N, S> for EC {
+    fn call(&mut self, state: &mut S) {
+        self.call(state);
+    }
+}
+
 pub trait EventHList<const N: usize>: ToRef {
     fn call_each(&mut self, state: &mut impl IsState<N>);
 }
@@ -410,6 +448,54 @@ where
         let Cons(head, tail) = self;
         head.call(state);
         tail.call_each(state);
+    }
+}
+
+pub trait LocEventHList<const N: usize>: ToRef {
+    fn locate_first<S: IsState<N>>(
+        &mut self,
+        state: &mut S,
+    ) -> Option<(f64, &mut dyn EventCallConcrete<N, S>)>;
+}
+impl<const N: usize> LocEventHList<N> for Nil {
+    fn locate_first<S: IsState<N>>(
+        &mut self,
+        _: &mut S,
+    ) -> Option<(f64, &mut dyn EventCallConcrete<N, S>)> {
+        None
+    }
+}
+impl<const N: usize, L, E, T> LocEventHList<N> for Cons<(L, E), T>
+where
+    L: Locate<N>,
+    E: EventCall<N>,
+    T: LocEventHList<N>,
+{
+    fn locate_first<S: IsState<N>>(
+        &mut self,
+        state: &mut S,
+    ) -> Option<(f64, &mut dyn EventCallConcrete<N, S>)> {
+        let Cons((loc, event), tail) = self;
+
+        let head = loc.locate(state).and_then(|t| {
+            let event: &mut dyn EventCallConcrete<N, S> = event;
+            Some((t, event))
+        });
+        let tail = tail.locate_first(state);
+
+        match head {
+            None => tail,
+            Some(head) => match tail {
+                None => Some(head),
+                Some(tail) => {
+                    if head.0 < tail.0 {
+                        Some(head)
+                    } else {
+                        Some(tail)
+                    }
+                }
+            },
+        }
     }
 }
 

@@ -1,3 +1,6 @@
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
+
 use diffurch::*;
 
 fn main() {
@@ -5,21 +8,22 @@ fn main() {
     let eq = equation!(|[_x, _y, dx, dy]| [dx, dy, 0., 0.]);
 
     let ic = [0., 0.1, 0.3, 0.4];
-    let range = 0. ..; // infinite range, stop integration from event
+    let range = 0. .. 1000.; // infinite range, stop integration from event
 
     let mut points = Vec::new();
 
     let mut counter = 0;
 
-    Solver::rk(&rk::RK98)
+    Solver::new().rk(&rk::RK98)
         .stepsize(0.5)
         // .on_step(Event::ode(|[x, y, _dx, _dy]| (x, y)).to_vec(&mut points))
         // .on_step(Event::ode2_state().to_std())
         .on_loc(
-            Loc::to_pos(StateFn::ode(|[x, y, _dx, _dy]| {
+            Loc::pos(ODEStateFnMut(|[x, y, _dx, _dy]| {
                 x.powi(2) + y.powi(2) - y.powi(3) / 3. - 1. // zero set is the boundary
             })),
             event_mut!(|t, [x, y, dx, dy]| {
+                // println!("event_mut! start counter : {counter}");
                 // gradient of the boundary function
                 let x_normal = 2. * *x;
                 let y_normal = 2. * *y - y.powi(2);
@@ -37,9 +41,10 @@ fn main() {
                     // stop integration after 1000th bounce
                     *t = f64::INFINITY;
                 }
+                // println!("event_mut! ended counter : {counter}");
                 (*x, *y)
             })
-            .to_vec(&mut points),
+            .to_vec(&mut points).to_std(),
         )
         .run(eq, ic, range);
 

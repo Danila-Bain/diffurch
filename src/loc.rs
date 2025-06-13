@@ -6,6 +6,8 @@ use std::ops::{Deref, DerefMut};
 
 use crate::state::*;
 
+// TODO SignDerivative location
+
 macro_rules! impl_deref {
     ($name:ident) => {
         impl_deref!($name, f64);
@@ -33,111 +35,170 @@ pub trait Locate<const N: usize> {
     fn locate(&mut self, state: &impl IsState<N>) -> Option<f64>;
 }
 
-pub mod detection {
-    use super::*;
-
-    pub struct Sign<const N: usize, F: StateFnMut<N, f64>>(pub F);
-    impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for Sign<N, F> {
-        fn detect(&mut self, state: &impl IsState<N>) -> bool {
-            let curr = self.0.eval(state);
-            let prev = self.0.eval_prev(state);
-            curr > 0. && prev <= 0. || curr < 0. && prev >= 0.
-        }
+pub struct Sign<const N: usize, F: StateFnMut<N, f64>>(pub F);
+impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for Sign<N, F> {
+    fn detect(&mut self, state: &impl IsState<N>) -> bool {
+        let curr = self.0.eval(state);
+        let prev = self.0.eval_prev(state);
+        curr > 0. && prev <= 0. || curr < 0. && prev >= 0.
     }
-    impl_deref!(Sign);
+}
+impl_deref!(Sign);
 
-    pub struct Pos<const N: usize, F: StateFnMut<N, f64>>(pub F);
-    impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for Pos<N, F> {
-        fn detect(&mut self, state: &impl IsState<N>) -> bool {
-            let curr = self.0.eval(state);
-            let prev = self.0.eval_prev(state);
-            curr > 0. && prev <= 0.
-        }
+pub struct Pos<const N: usize, F: StateFnMut<N, f64>>(pub F);
+impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for Pos<N, F> {
+    fn detect(&mut self, state: &impl IsState<N>) -> bool {
+        let curr = self.0.eval(state);
+        let prev = self.0.eval_prev(state);
+        curr > 0. && prev <= 0.
     }
-    impl_deref!(Pos);
+}
+impl_deref!(Pos);
 
-    pub struct Neg<const N: usize, F: StateFnMut<N, f64>>(pub F);
-    impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for Neg<N, F> {
-        fn detect(&mut self, state: &impl IsState<N>) -> bool {
-            let curr = self.0.eval(state);
-            let prev = self.0.eval_prev(state);
-            curr < 0. && prev >= 0.
-        }
+pub struct Neg<const N: usize, F: StateFnMut<N, f64>>(pub F);
+impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for Neg<N, F> {
+    fn detect(&mut self, state: &impl IsState<N>) -> bool {
+        let curr = self.0.eval(state);
+        let prev = self.0.eval_prev(state);
+        curr < 0. && prev >= 0.
     }
-    impl_deref!(Neg);
+}
+impl_deref!(Neg);
 
-    pub struct WhilePos<const N: usize, F: StateFnMut<N, f64>>(pub F);
-    impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for WhilePos<N, F> {
-        fn detect(&mut self, state: &impl IsState<N>) -> bool {
-            self.0.eval(state) >= 0.
-        }
+pub struct WhilePos<const N: usize, F: StateFnMut<N, f64>>(pub F);
+impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for WhilePos<N, F> {
+    fn detect(&mut self, state: &impl IsState<N>) -> bool {
+        self.0.eval(state) >= 0.
     }
-    impl_deref!(WhilePos);
+}
+impl_deref!(WhilePos);
 
-    pub struct WhileNeg<const N: usize, F: StateFnMut<N, f64>>(pub F);
-    impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for WhileNeg<N, F> {
-        fn detect(&mut self, state: &impl IsState<N>) -> bool {
-            self.0.eval(state) <= 0.
-        }
+pub struct WhileNeg<const N: usize, F: StateFnMut<N, f64>>(pub F);
+impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for WhileNeg<N, F> {
+    fn detect(&mut self, state: &impl IsState<N>) -> bool {
+        self.0.eval(state) <= 0.
     }
-    impl_deref!(WhileNeg);
+}
+impl_deref!(WhileNeg);
 
-    pub struct Bool<const N: usize, F: StateFnMut<N, bool>>(pub F);
-    impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for Bool<N, F> {
-        fn detect(&mut self, state: &impl IsState<N>) -> bool {
-            self.0.eval(state) != self.0.eval_prev(state)
-        }
+pub struct Bool<const N: usize, F: StateFnMut<N, bool>>(pub F);
+impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for Bool<N, F> {
+    fn detect(&mut self, state: &impl IsState<N>) -> bool {
+        self.0.eval(state) != self.0.eval_prev(state)
     }
-    impl_deref!(Bool, bool);
+}
+impl_deref!(Bool, bool);
 
-    pub struct True<const N: usize, F: StateFnMut<N, bool>>(pub F);
-    impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for True<N, F> {
-        fn detect(&mut self, state: &impl IsState<N>) -> bool {
-            self.0.eval(state) && !self.0.eval_prev(state)
-        }
+pub struct True<const N: usize, F: StateFnMut<N, bool>>(pub F);
+impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for True<N, F> {
+    fn detect(&mut self, state: &impl IsState<N>) -> bool {
+        self.0.eval(state) && !self.0.eval_prev(state)
     }
-    impl_deref!(True, bool);
+}
+impl_deref!(True, bool);
 
-    pub struct False<const N: usize, F: StateFnMut<N, bool>>(pub F);
-    impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for False<N, F> {
-        fn detect(&mut self, state: &impl IsState<N>) -> bool {
-            !self.0.eval(state) && self.0.eval_prev(state)
-        }
+pub struct False<const N: usize, F: StateFnMut<N, bool>>(pub F);
+impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for False<N, F> {
+    fn detect(&mut self, state: &impl IsState<N>) -> bool {
+        !self.0.eval(state) && self.0.eval_prev(state)
     }
-    impl_deref!(False, bool);
+}
+impl_deref!(False, bool);
 
-    pub struct WhileTrue<const N: usize, F: StateFnMut<N, bool>>(pub F);
-    impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for WhileTrue<N, F> {
-        fn detect(&mut self, state: &impl IsState<N>) -> bool {
-            self.0.eval(state)
-        }
+pub struct WhileTrue<const N: usize, F: StateFnMut<N, bool>>(pub F);
+impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for WhileTrue<N, F> {
+    fn detect(&mut self, state: &impl IsState<N>) -> bool {
+        self.0.eval(state)
     }
-    impl_deref!(WhileTrue, bool);
+}
+impl_deref!(WhileTrue, bool);
 
-    pub struct WhileFalse<const N: usize, F: StateFnMut<N, bool>>(pub F);
-    impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for WhileFalse<N, F> {
-        fn detect(&mut self, state: &impl IsState<N>) -> bool {
-            !self.0.eval(state)
-        }
+pub struct WhileFalse<const N: usize, F: StateFnMut<N, bool>>(pub F);
+impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for WhileFalse<N, F> {
+    fn detect(&mut self, state: &impl IsState<N>) -> bool {
+        !self.0.eval(state)
     }
-    impl_deref!(WhileFalse, bool);
+}
+impl_deref!(WhileFalse, bool);
+
+pub struct StepBegin;
+pub struct StepEnd;
+pub struct StepHalf;
+pub struct Lerp;
+
+pub struct Bisection;
+pub struct BisectionBool;
+pub struct RegulaFalsi;
+
+
+pub struct Loc<D = (), L = ()>(pub D, pub L);
+
+impl Loc {
+    pub fn sign<const N: usize, F: StateFnMut<N, f64>>(f: F) -> Loc<Sign<N, F>, RegulaFalsi> {
+        Loc(Sign(f), RegulaFalsi)
+    }
+    pub fn pos<const N: usize, F: StateFnMut<N, f64>>(f: F) -> Loc<Pos<N, F>, RegulaFalsi> {
+        Loc(Pos(f), RegulaFalsi)
+    }
+    pub fn neg<const N: usize, F: StateFnMut<N, f64>>(f: F) -> Loc<Neg<N, F>, RegulaFalsi> {
+        Loc(Neg(f), RegulaFalsi)
+    }
+    pub fn while_pos<const N: usize, F: StateFnMut<N, f64>>(
+        f: F,
+    ) -> Loc<WhilePos<N, F>, Bisection> {
+        Loc(WhilePos(f), Bisection)
+    }
+    pub fn while_neg<const N: usize, F: StateFnMut<N, f64>>(
+        f: F,
+    ) -> Loc<WhileNeg<N, F>, Bisection> {
+        Loc(WhileNeg(f), Bisection)
+    }
+
+    pub fn bool<const N: usize, F: StateFnMut<N, bool>>(f: F) -> Loc<Bool<N, F>, BisectionBool> {
+        Loc(Bool(f), BisectionBool)
+    }
+    pub fn true_<const N: usize, F: StateFnMut<N, bool>>(f: F) -> Loc<True<N, F>, BisectionBool> {
+        Loc(True(f), BisectionBool)
+    }
+    pub fn false_<const N: usize, F: StateFnMut<N, bool>>(f: F) -> Loc<False<N, F>, BisectionBool> {
+        Loc(False(f), BisectionBool)
+    }
+    pub fn while_true<const N: usize, F: StateFnMut<N, bool>>(
+        f: F,
+    ) -> Loc<WhileTrue<N, F>, BisectionBool> {
+        Loc(WhileTrue(f), BisectionBool)
+    }
+    pub fn while_false<const N: usize, F: StateFnMut<N, bool>>(
+        f: F,
+    ) -> Loc<WhileFalse<N, F>, BisectionBool> {
+        Loc(WhileFalse(f), BisectionBool)
+    }
 }
 
-pub mod location {
-    pub struct StepBegin;
-    pub struct StepEnd;
-    pub struct HalfStep;
 
-    pub struct Bisection;
-    pub struct BisectionBool;
-    pub struct RegulaFalsi;
-
-    pub struct Lerp;
-    pub struct Brent;
+impl<D, L> Loc<D, L> {
+    pub fn step_begin(self) -> Loc<D, StepBegin> {
+        Loc(self.0, StepBegin)
+    }
+    pub fn step_end(self) -> Loc<D, StepEnd> {
+        Loc(self.0, StepEnd)
+    }
+    pub fn step_half(self) -> Loc<D, StepHalf> {
+        Loc(self.0, StepHalf)
+    }
+    pub fn lerp(self) -> Loc<D, Lerp> {
+        Loc(self.0, Lerp)
+    }
+    pub fn bisection(self) -> Loc<D, Bisection> {
+        Loc(self.0, Bisection)
+    }
+    pub fn bisection_bool(self) -> Loc<D, BisectionBool> {
+        Loc(self.0, BisectionBool)
+    }
+    pub fn regula_falsi(self) -> Loc<D, RegulaFalsi> {
+        Loc(self.0, RegulaFalsi)
+    }
 }
-pub use location::*;
-
-pub struct Loc<D, L>(pub D, pub L);
 
 impl<const N: usize, D: Detect<N>> Locate<N> for Loc<D, StepBegin> {
     fn locate(&mut self, state: &impl IsState<N>) -> Option<f64> {
@@ -149,9 +210,11 @@ impl<const N: usize, D: Detect<N>> Locate<N> for Loc<D, StepEnd> {
         self.0.detect(state).then_some(state.t())
     }
 }
-impl<const N: usize, D: Detect<N>> Locate<N> for Loc<D, HalfStep> {
+impl<const N: usize, D: Detect<N>> Locate<N> for Loc<D, StepHalf> {
     fn locate(&mut self, state: &impl IsState<N>) -> Option<f64> {
-        self.0.detect(state).then(|| 0.5 * (state.t_prev() + state.t()))
+        self.0
+            .detect(state)
+            .then(|| 0.5 * (state.t_prev() + state.t()))
     }
 }
 impl<const N: usize, D> Locate<N> for Loc<D, Lerp>
@@ -207,16 +270,23 @@ where
                 swap(&mut l, &mut r);
             }
 
+            let mut m = 0.;
             for _ in 0..f64::MANTISSA_DIGITS {
                 let f_l = self.0.eval_at(state, l);
                 let f_r = self.0.eval_at(state, r);
-                let m = (f_r * l - f_l * r) / (f_r - f_l);
-                match self.0.eval_at(state, m) < 0. {
-                    true => l = m,
-                    false => r = m,
+                m = (f_r * l - f_l * r) / (f_r - f_l);
+                let f_m = self.0.eval_at(state, m);
+                match f_m < 0. {
+                    true => {
+                            l = m;
+                    }
+                    false => {
+                            r = m;
+                    }
                 }
+                if f_m.abs() < f64::EPSILON {break;}
             }
-            f64::max(l, r)
+            m
         })
     }
 }

@@ -1,3 +1,5 @@
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
 use diffurch::*;
 
 fn main() {
@@ -27,8 +29,8 @@ fn main() {
                 .to_vecs([&mut t, &mut x])
                 .to_std(),
         )
-        .on_loc(Loc::zero(StateFn::dde(|t, _, [x, _]| x(t-T) - 1.)), event!()) // discontinuity
-        .on_loc(Loc::zero(StateFn::dde(|t, _, [x, _]| x(t-T) + 1.)), event!()) // discontinuity
+        .on_loc(Loc::sign(DDEStateFnMut(|t, _, [x, _]| x(t-T) - 1.)), event!()) // discontinuity
+        .on_loc(Loc::sign(DDEStateFnMut(|t, _, [x, _]| x(t-T) + 1.)), event!()) // discontinuity
         .run(eq, ic, interval);
 
     let mut plot = pgfplots::axis::plot::Plot2D::new();
