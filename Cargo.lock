@@ -49,7 +49,7 @@ dependencies = [
 
 [[package]]
 name = "diffurch"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "hlist2",
  "num-traits",
