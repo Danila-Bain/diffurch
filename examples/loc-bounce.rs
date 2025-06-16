@@ -1,7 +1,7 @@
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]
 
-use diffurch::{equation, event, event_mut, rk, Filter, Loc, ODEStateFnMut, Solver};
+use diffurch::{equation, event, state_fn, event_mut, rk, Filter, Loc, Solver};
 
 fn main() {
     let k = 0.90;
@@ -24,7 +24,7 @@ fn main() {
                 .subdivide(21),
         )
         .on_loc(
-            Loc::while_neg(ODEStateFnMut(|[x, _dx]| x)),
+            Loc::while_neg(state_fn!(|[x, _dx]| x)).bisection(),
             event_mut!(|t, [x, dx]| {
                 *x = 0.;
                 *dx = k * dx.abs();

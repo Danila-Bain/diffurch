@@ -19,7 +19,8 @@ fn main() {
     let mut t = Vec::new();
     let mut x = Vec::new();
 
-    Solver::new().rk(&rk::RK98)
+    Solver::new()
+        .rk(&rk::RK98)
         .stepsize(0.1)
         .on_step(
             event!(|t, [x]| [t, x])

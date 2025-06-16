@@ -1,3 +1,8 @@
+# Version 0.0.3
+
+- Add `event_fn!` and `mut_event_fn!` convenience macros.
+- Make other convenience macros accept `_` for argument names in closures.
+
 # Version 0.0.2
 
 - Major internal change: `Vec<dyn ...>` containers are replaced with static `hlist2::HList`. 

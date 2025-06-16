@@ -709,3 +709,81 @@ where
         self.state.eval_derivative(t, self.coord)
     }
 }
+//
+// /// Creates a [crate::Event] from a closure.
+// ///
+// /// `event!` allows `Event` to be defined with closures of different calling signatures,
+// /// being a replacement of some constructors of [crate::Event]:
+// ///
+// /// ```rust
+// /// #![feature(generic_const_exprs)]
+// /// #![allow(incomplete_features)]
+// ///
+// /// use diffurch::event;
+// ///
+// /// // use in solver for generic parameters inference
+// /// let solver = diffurch::Solver::new()
+// ///     .on_step(event!(|| 1.)) // equivalent to .on_step(Event::constant(...))
+// ///     .on_step(event!(|t| t + t.cos())) // equivalent to .on_step(Event::time(...))
+// ///     .on_step(event!(|[x, y]| [x, y, x+y])) // equivalent to .on_step(Event::ode(...))
+// ///     .on_step(event!(|t, [x, y]| [t, x, y])) // equivalent to .on_step(Event::ode2(...))
+// ///     .on_step(event!(|t, [x, y], [x_, y_]| [t, x, x_(t - 1.)])) // equivalent to .on_step(Event::dde(...))
+// ///     .on_step(event!(|t, [x, y], [x_, y_]| [t, x, x_(t - 1.), x_.d(t - 1.)])); // equivalent to .on_step(Event::dde(...))
+// /// ```
+// ///
+// /// For state mutating events, use [event_mut!].
+#[macro_export]
+macro_rules! state_fn {
+    () => {
+        $crate::state::ConstantStateFnMut(|| {})
+    };
+    (|| $expr:expr) => {
+        $crate::state::ConstantStateFnMut(|| {$expr})
+    };
+    (|$t:ident| $expr:expr) => {
+        $crate::state::TimeStateFnMut(|$t| $expr)
+    };
+    (|[$($x:pat),+]| $expr:expr) => {
+        $crate::state::ODEStateFnMut(|[$($x),+]| $expr)
+    };
+    (|$t:pat, [$($x:pat),+]| $expr:expr) => {
+        $crate::state::ODE2StateFnMut(|$t, [$($x),+]| $expr)
+    };
+    (|$t:pat, [$($x:pat),+], [$($x_:pat),+]| $expr:expr) => {
+        $crate::state::DDEStateFnMut(|$t, [$($x),+], [$($x_),+]| $expr)
+    };
+}
+//
+// /// State-mutating counter-part of [event!].
+// ///
+// /// `event_mut!` allows `Event` to be defined with closures of different calling signatures,
+// /// being a replacement of some constructors of [crate::Event]:
+// ///
+// /// ```rust
+// /// #![feature(generic_const_exprs)]
+// /// #![allow(incomplete_features)]
+// ///
+// /// use diffurch::event_mut;
+// ///
+// /// // use in solver for generic parameters inference
+// /// let solver = diffurch::Solver::new()
+// ///     .on_step(event_mut!(|t| *t = f64::INFINITY))
+// ///     .on_step(event_mut!(|[x, y]| {*x = -*x; [*x, *y, *x + *y]}))
+// ///     .on_step(event_mut!(|t, [x, y]| {*x = -*y; *t = f64::INFINITY;}));
+// /// ```
+// ///
+#[macro_export]
+macro_rules! mut_state_fn {
+    (|$t:ident| $expr:expr) => {
+        $crate::state::TimeMutStateFnMut(|$t| $expr)
+    };
+    (|[$($x:pat),+]| $expr:expr) => {
+        $crate::state::ODEMutStateFnMut(|[$($x),+]| $expr)
+    };
+    (|$t:pat, [$($x:pat),+]| $expr:expr) => {
+        $crate::state::ODE2MutStateFnMut(|$t, [$($x),+]| $expr)
+    };
+    // (|$t:ident, [$($x:ident),+], [$($x_:ident),+]| $expr:expr) => {
+    //     $crate::Event::dde_mut(|$t, [$($x),+], [$($x_),+]| $expr)
+    // };
+}

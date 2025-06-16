@@ -1,7 +1,6 @@
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]
 
-
 use core::f64::consts::PI;
 
 use diffurch::*;

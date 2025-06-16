@@ -8,18 +8,19 @@ fn main() {
     let eq = equation!(|[_x, _y, dx, dy]| [dx, dy, 0., 0.]);
 
     let ic = [0., 0.1, 0.3, 0.4];
-    let range = 0. .. 1000.; // infinite range, stop integration from event
+    let range = 0. ..1000.; // infinite range, stop integration from event
 
     let mut points = Vec::new();
 
     let mut counter = 0;
 
-    Solver::new().rk(&rk::RK98)
+    Solver::new()
+        .rk(&rk::RK98)
         .stepsize(0.5)
         // .on_step(Event::ode(|[x, y, _dx, _dy]| (x, y)).to_vec(&mut points))
         // .on_step(Event::ode2_state().to_std())
         .on_loc(
-            Loc::pos(ODEStateFnMut(|[x, y, _dx, _dy]| {
+            Loc::pos(state_fn!(|[x, y, _dx, _dy]| {
                 x.powi(2) + y.powi(2) - y.powi(3) / 3. - 1. // zero set is the boundary
             })),
             event_mut!(|t, [x, y, dx, dy]| {
@@ -44,7 +45,8 @@ fn main() {
                 // println!("event_mut! ended counter : {counter}");
                 (*x, *y)
             })
-            .to_vec(&mut points).to_std(),
+            .to_vec(&mut points)
+            .to_std(),
         )
         .run(eq, ic, range);
 

@@ -80,13 +80,13 @@ macro_rules! equation {
     (|$t:ident| $expr:expr) => {
         $crate::Equation::new_with_delay($crate::state::TimeStateFnMut(|$t| $expr), 0.)
     };
-    (|[$($x:ident),+]| $expr:expr) => {
+    (|[$($x:pat),+]| $expr:expr) => {
         $crate::Equation::new_with_delay($crate::state::ODEStateFnMut(|[$($x),+]| $expr), 0.)
     };
-    (|$t:ident, [$($x:ident),+]| $expr:expr) => {
+    (|$t:pat, [$($x:pat),+]| $expr:expr) => {
         $crate::Equation::new_with_delay($crate::state::ODE2StateFnMut(|$t, [$($x),+]| $expr), 0.)
     };
-    (|$t:ident, [$($x:ident),+], [$($x_:ident),+]| $expr:expr) => {
+    (|$t:pat, [$($x:pat),+], [$($x_:pat),+]| $expr:expr) => {
         $crate::Equation::new_with_delay($crate::state::DDEStateFnMut(|$t, [$($x),+], [$($x_),+]| $expr), f64::MAX)
     };
 }

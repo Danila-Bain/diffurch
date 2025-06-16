@@ -660,13 +660,13 @@ macro_rules! event {
     (|$t:ident| $expr:expr) => {
         $crate::Event::time(|$t| $expr)
     };
-    (|[$($x:ident),+]| $expr:expr) => {
+    (|[$($x:pat),+]| $expr:expr) => {
         $crate::Event::ode(|[$($x),+]| $expr)
     };
-    (|$t:ident, [$($x:ident),+]| $expr:expr) => {
+    (|$t:pat, [$($x:pat),+]| $expr:expr) => {
         $crate::Event::ode2(|$t, [$($x),+]| $expr)
     };
-    (|$t:ident, [$($x:ident),+], [$($x_:ident),+]| $expr:expr) => {
+    (|$t:pat, [$($x:pat),+], [$($x_:pat),+]| $expr:expr) => {
         $crate::Event::dde(|$t, [$($x),+], [$($x_),+]| $expr)
     };
 }
@@ -694,10 +694,10 @@ macro_rules! event_mut {
     (|$t:ident| $expr:expr) => {
         $crate::Event::time_mut(|$t| $expr)
     };
-    (|[$($x:ident),+]| $expr:expr) => {
+    (|[$($x:pat),+]| $expr:expr) => {
         $crate::Event::ode_mut(|[$($x),+]| $expr)
     };
-    (|$t:ident, [$($x:ident),+]| $expr:expr) => {
+    (|$t:pat, [$($x:pat),+]| $expr:expr) => {
         $crate::Event::ode2_mut(|$t, [$($x),+]| $expr)
     };
     // (|$t:ident, [$($x:ident),+], [$($x_:ident),+]| $expr:expr) => {

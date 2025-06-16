@@ -15,7 +15,7 @@ fn main() {
     assert!(v0 >= 0.);
 
     let eq =
-        equation!(|t, [x, dx], [x_, __]| [dx, -sigma * dx - x - alpha * x_(t - T).clamp(-1., 1.)]);
+        equation!(|t, [x, dx], [x_, _]| [dx, -sigma * dx - x - alpha * x_(t - T).clamp(-1., 1.)]);
     let ic = [1., -alpha * v0];
     let interval = 0. ..100. * T;
 
@@ -29,8 +29,8 @@ fn main() {
                 .to_vecs([&mut t, &mut x])
                 .to_std(),
         )
-        .on_loc(Loc::sign(DDEStateFnMut(|t, _, [x, _]| x(t-T) - 1.)), event!()) // discontinuity
-        .on_loc(Loc::sign(DDEStateFnMut(|t, _, [x, _]| x(t-T) + 1.)), event!()) // discontinuity
+        .on_loc(Loc::sign(state_fn!(|t, [_, _], [x, _]| x(t-T) - 1.)), event!()) // discontinuity
+        .on_loc(Loc::sign(state_fn!(|t, [_, _], [x, _]| x(t-T) + 1.)), event!()) // discontinuity
         .run(eq, ic, interval);
 
     let mut plot = pgfplots::axis::plot::Plot2D::new();
