@@ -1,5 +1,9 @@
 # Version 0.0.2
 
+- Major internal change: `Vec<dyn ...>` containers are replaced with static `hlist2::HList`. 
+- Major internal change: for `rk::RungeKuttaTable::a`, type is changed from `[&[f64]; S]` to a flat array `[f64; S*(S-1)/2]`.
+- When using library, `#![feature(generic_const_exprs)]` is a requirement on the user side (bummer).
+- Bug fixes
 
 # Version 0.0.1
 
