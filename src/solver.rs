@@ -2,9 +2,8 @@
 
 use crate::rk::{RK98, RungeKuttaTable};
 use crate::*;
-
-use hlist2::ops::{Append, Map, Mapper, ToRef};
-use hlist2::*;
+use hlist2::ops::Append;
+use hlist2::{HList, Nil};
 
 /// Implements the integration of differential equation, containing the implementation specific (not
 /// equation specific) data, including particular Runge-Kutta scheme, stepsize, and events.
@@ -270,7 +269,7 @@ where
         };
 
         let mut rhs = eq.rhs;
-        let mut state = State::new(t_init, ic, eq.max_delay, &self.rk);
+        let mut state = RKState::new(t_init, ic, eq.max_delay, &self.rk);
         let mut stepsize = self.stepsize;
 
         self.start_events.call_each(&mut state);
@@ -279,9 +278,9 @@ where
         while state.t() < t_end {
             state.make_step(&mut rhs, stepsize);
 
-            println!("Pre-Locate: {}, {:?}", state.t(), state.x());
+            // println!("Pre-Locate: {}, {:?}", state.t(), state.x());
             if let Some((t_loc, event)) = self.loc_events.locate_first(&mut state) && t_loc > state.t_prev() {
-                println!("Event located at t = {t_loc}");
+                // println!("Event located at t = {t_loc}");
                 state.undo_step();
                 state.make_step(&mut rhs, t_loc - state.t);
                 state.push_current();
@@ -290,7 +289,7 @@ where
                 if state.t_prev() == state.t() { // zero step occured due to event
                     self.step_events.call_each(&mut state);
                 }
-                println!("Event located end");
+                // println!("Event located end");
             } else {
                 state.push_current();
                 self.step_events.call_each(&mut state);

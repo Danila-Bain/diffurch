@@ -110,6 +110,14 @@ impl<const N: usize> Event<N> {
     ) -> Event<N, false, (), DDEStateFnMut<N, F, Output>, Output> {
         Event::new(DDEStateFnMut(callback))
     }
+    // pub fn dde_mut<
+    //     F: for<'a> FnMut(&mut f64, &mut [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]) -> Output,
+    //     Output,
+    // >(
+    //     callback: F,
+    // ) -> Event<N, true, (), DDEStateFnMut<N, F, Output>, Output> {
+    //     Event::new(DDEMutStateFnMut(callback))
+    // }
 
     /// Creates an event, that sets the time of the state to `f64::INFINITY`, effectively stopping the integration.
     ///
@@ -421,30 +429,30 @@ where
 }
 
 pub trait EventCall<const N: usize> {
-    fn call(&mut self, state: &mut impl IsState<N>);
+    fn call(&mut self, state: &mut impl State<N>);
 }
 
-pub trait EventCallConcrete<const N: usize, S: IsState<N>> {
+pub trait EventCallConcrete<const N: usize, S: State<N>> {
     fn call(&mut self, state: &mut S);
 }
-impl<const N: usize, S: IsState<N>, EC: EventCall<N>> EventCallConcrete<N, S> for EC {
+impl<const N: usize, S: State<N>, EC: EventCall<N>> EventCallConcrete<N, S> for EC {
     fn call(&mut self, state: &mut S) {
         self.call(state);
     }
 }
 
 pub trait EventHList<const N: usize>: ToRef {
-    fn call_each(&mut self, state: &mut impl IsState<N>);
+    fn call_each(&mut self, state: &mut impl State<N>);
 }
 impl<const N: usize> EventHList<N> for Nil {
-    fn call_each(&mut self, _: &mut impl IsState<N>) {}
+    fn call_each(&mut self, _: &mut impl State<N>) {}
 }
 impl<const N: usize, H, T> EventHList<N> for Cons<H, T>
 where
     H: EventCall<N>,
     T: EventHList<N>,
 {
-    fn call_each(&mut self, state: &mut impl IsState<N>) {
+    fn call_each(&mut self, state: &mut impl State<N>) {
         let Cons(head, tail) = self;
         head.call(state);
         tail.call_each(state);
@@ -452,13 +460,13 @@ where
 }
 
 pub trait LocEventHList<const N: usize>: ToRef {
-    fn locate_first<S: IsState<N>>(
+    fn locate_first<S: State<N>>(
         &mut self,
         state: &mut S,
     ) -> Option<(f64, &mut dyn EventCallConcrete<N, S>)>;
 }
 impl<const N: usize> LocEventHList<N> for Nil {
-    fn locate_first<S: IsState<N>>(
+    fn locate_first<S: State<N>>(
         &mut self,
         _: &mut S,
     ) -> Option<(f64, &mut dyn EventCallConcrete<N, S>)> {
@@ -471,7 +479,7 @@ where
     E: EventCall<N>,
     T: LocEventHList<N>,
 {
-    fn locate_first<S: IsState<N>>(
+    fn locate_first<S: State<N>>(
         &mut self,
         state: &mut S,
     ) -> Option<(f64, &mut dyn EventCallConcrete<N, S>)> {
@@ -519,14 +527,14 @@ where
 }
 
 pub trait FilterHList<const N: usize>: ToRef {
-    fn all(&mut self, state: &impl IsState<N>) -> bool;
-    fn all_at(&mut self, state: &impl IsState<N>, t: f64) -> bool;
+    fn all(&mut self, state: &impl State<N>) -> bool;
+    fn all_at(&mut self, state: &impl State<N>, t: f64) -> bool;
 }
 impl<const N: usize> FilterHList<N> for Nil {
-    fn all(&mut self, _: &impl IsState<N>) -> bool {
+    fn all(&mut self, _: &impl State<N>) -> bool {
         true
     }
-    fn all_at(&mut self, _: &impl IsState<N>, _: f64) -> bool {
+    fn all_at(&mut self, _: &impl State<N>, _: f64) -> bool {
         true
     }
 }
@@ -535,11 +543,11 @@ where
     H: StateFnMut<N, bool>,
     T: FilterHList<N>,
 {
-    fn all(&mut self, state: &impl IsState<N>) -> bool {
+    fn all(&mut self, state: &impl State<N>) -> bool {
         let Cons(head, tail) = self;
         head.eval(state) && tail.all(state)
     }
-    fn all_at(&mut self, state: &impl IsState<N>, t: f64) -> bool {
+    fn all_at(&mut self, state: &impl State<N>, t: f64) -> bool {
         let Cons(head, tail) = self;
         head.eval_at(state, t) && tail.all_at(state, t)
     }
@@ -553,7 +561,7 @@ where
     Stream: StreamHList<Output>,
     Filter: FilterHList<N>,
 {
-    fn call(&mut self, state: &mut impl IsState<N>) {
+    fn call(&mut self, state: &mut impl State<N>) {
         if self.filter.all(state) {
             let output = self.callback.eval(state);
             self.stream.call_each(output);
@@ -569,7 +577,7 @@ where
     Stream: StreamHList<Output>,
     Filter: FilterHList<N>,
 {
-    fn call(&mut self, state: &mut impl IsState<N>) {
+    fn call(&mut self, state: &mut impl State<N>) {
         for i in 1..self.subdivision {
             let t = state.t_prev()
                 + (state.t() - state.t_prev()) * (i as f64) / (self.subdivision as f64);
@@ -594,7 +602,7 @@ where
     Stream: StreamHList<Output>,
     Filter: FilterHList<N>,
 {
-    fn call(&mut self, state: &mut impl IsState<N>) {
+    fn call(&mut self, state: &mut impl State<N>) {
         if self.filter.all(state) {
             state.make_zero_step();
             let output = self.callback.eval_mut(state);
@@ -677,4 +685,7 @@ macro_rules! event_mut {
     (|$t:ident, [$($x:ident),+]| $expr:expr) => {
         $crate::Event::ode2_mut(|$t, [$($x),+]| $expr)
     };
+    // (|$t:ident, [$($x:ident),+], [$($x_:ident),+]| $expr:expr) => {
+    //     $crate::Event::dde_mut(|$t, [$($x),+], [$($x_),+]| $expr)
+    // };
 }
