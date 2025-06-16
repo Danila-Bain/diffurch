@@ -1,6 +1,6 @@
 //! Defines [Event]
 
-use crate::{Locate, state::*};
+use crate::{Locate, mut_state_fn, state::*};
 use hlist2::{Cons, ops::*};
 use hlist2::{HList, Nil, ops::Append};
 // pub trait EventStream: HList + Append {}
@@ -61,75 +61,17 @@ impl<const N: usize> Event<N> {
         }
     }
 
-    /// Constructor that initializes [Event::callback] using [ConstantStateFnMut].
-    pub fn constant<F: FnMut() -> Output, Output>(
-        callback: F,
-    ) -> Event<N, false, (), ConstantStateFnMut<F, Output>, Output> {
-        Event::new(ConstantStateFnMut(callback))
-    }
-    /// Constructor that initializes [Event::callback] using [TimeStateFnMut].
-    pub fn time<F: FnMut(f64) -> Output, Output>(
-        callback: F,
-    ) -> Event<N, false, (), TimeStateFnMut<F, Output>, Output> {
-        Event::new(TimeStateFnMut(callback))
-    }
-    /// Constructor that initializes [Event::callback] using [TimeMutStateFnMut].
-    pub fn time_mut<F: FnMut(&mut f64) -> Output, Output>(
-        callback: F,
-    ) -> Event<N, true, (), TimeMutStateFnMut<F, Output>, Output> {
-        Event::new_mut(TimeMutStateFnMut(callback))
-    }
-    /// Constructor that initializes [Event::callback] using [ODEStateFnMut].
-    pub fn ode<F: FnMut([f64; N]) -> Output, Output>(
-        callback: F,
-    ) -> Event<N, false, (), ODEStateFnMut<N, F, Output>, Output> {
-        Event::new(ODEStateFnMut(callback))
-    }
-    /// Constructor that initializes [Event::callback] using [ODEMutStateFnMut].
-    pub fn ode_mut<F: FnMut(&mut [f64; N]) -> Output, Output>(
-        callback: F,
-    ) -> Event<N, true, (), ODEMutStateFnMut<N, F, Output>, Output> {
-        Event::new_mut(ODEMutStateFnMut(callback))
-    }
-    /// Constructor that initializes [Event::callback] using [ODE2StateFnMut].
-    pub fn ode2<F: FnMut(f64, [f64; N]) -> Output, Output>(
-        callback: F,
-    ) -> Event<N, false, (), ODE2StateFnMut<N, F, Output>, Output> {
-        Event::new(ODE2StateFnMut(callback))
-    }
-    /// Constructor that initializes [Event::callback] using [ODE2MutStateFnMut].
-    pub fn ode2_mut<F: FnMut(&mut f64, &mut [f64; N]) -> Output, Output>(
-        callback: F,
-    ) -> Event<N, true, (), ODE2MutStateFnMut<N, F, Output>, Output> {
-        Event::new_mut(ODE2MutStateFnMut(callback))
-    }
-    /// Constructor that initializes [Event::callback] using [DDEStateFnMut].
-    pub fn dde<
-        F: for<'a> FnMut(f64, [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]) -> Output,
-        Output,
-    >(
-        callback: F,
-    ) -> Event<N, false, (), DDEStateFnMut<N, F, Output>, Output> {
-        Event::new(DDEStateFnMut(callback))
-    }
-    // pub fn dde_mut<
-    //     F: for<'a> FnMut(&mut f64, &mut [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]) -> Output,
-    //     Output,
-    // >(
-    //     callback: F,
-    // ) -> Event<N, true, (), DDEStateFnMut<N, F, Output>, Output> {
-    //     Event::new(DDEMutStateFnMut(callback))
-    // }
-
     /// Creates an event, that sets the time of the state to `f64::INFINITY`, effectively stopping the integration.
     ///
     /// A short-hand for `Event::time_mut(|t| *t = f64::INFINITY))`.
     pub fn stop_integration() -> Event<N, true, (), impl MutStateFnMut<N, f64>, f64> {
-        Event::time_mut(|t: &mut f64| -> f64 {
-            let tt = *t;
-            *t = f64::INFINITY;
-            tt
-        })
+        Event::new_mut(mut_state_fn!(
+                |t| {
+                    let tt = *t;
+                    *t = f64::INFINITY;
+                    tt
+                }
+        ))
     }
     /// Creates an event, the callback of which returns the coordinate vector of the state.
     ///
@@ -651,23 +593,8 @@ where
 /// For state mutating events, use [event_mut!].
 #[macro_export]
 macro_rules! event {
-    () => {
-        $crate::Event::constant(|| {})
-    };
-    (|| $expr:expr) => {
-        $crate::Event::constant(|| $expr)
-    };
-    (|$t:ident| $expr:expr) => {
-        $crate::Event::time(|$t| $expr)
-    };
-    (|[$($x:pat),+]| $expr:expr) => {
-        $crate::Event::ode(|[$($x),+]| $expr)
-    };
-    (|$t:pat, [$($x:pat),+]| $expr:expr) => {
-        $crate::Event::ode2(|$t, [$($x),+]| $expr)
-    };
-    (|$t:pat, [$($x:pat),+], [$($x_:pat),+]| $expr:expr) => {
-        $crate::Event::dde(|$t, [$($x),+], [$($x_),+]| $expr)
+    ($($expr:tt)*) => {
+        $crate::Event::new($crate::state_fn!($($expr)*))
     };
 }
 
@@ -691,16 +618,7 @@ macro_rules! event {
 ///
 #[macro_export]
 macro_rules! event_mut {
-    (|$t:ident| $expr:expr) => {
-        $crate::Event::time_mut(|$t| $expr)
+    ($($expr:tt)*) => {
+        $crate::Event::new_mut($crate::mut_state_fn!($($expr)*))
     };
-    (|[$($x:pat),+]| $expr:expr) => {
-        $crate::Event::ode_mut(|[$($x),+]| $expr)
-    };
-    (|$t:pat, [$($x:pat),+]| $expr:expr) => {
-        $crate::Event::ode2_mut(|$t, [$($x),+]| $expr)
-    };
-    // (|$t:ident, [$($x:ident),+], [$($x_:ident),+]| $expr:expr) => {
-    //     $crate::Event::dde_mut(|$t, [$($x),+], [$($x_),+]| $expr)
-    // };
 }

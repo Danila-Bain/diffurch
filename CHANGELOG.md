@@ -2,6 +2,7 @@
 
 - Add `event_fn!` and `mut_event_fn!` convenience macros.
 - Make other convenience macros accept `_` for argument names in closures.
+- Remove equation-type specific methods in `Event` and `Filter`
 
 # Version 0.0.2
 

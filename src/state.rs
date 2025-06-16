@@ -401,6 +401,7 @@ pub trait MutStateFnMut<const N: usize, Ret> {
     fn eval_mut(&mut self, state: &mut impl State<N>) -> Ret;
 }
 /// Constant function of the state
+#[derive(Clone,Copy)]
 pub struct ConstantStateFnMut<F: FnMut<(), Output = Ret>, Ret>(pub F);
 impl<F: FnMut<(), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
     for ConstantStateFnMut<F, Ret>
@@ -428,6 +429,7 @@ impl<F: FnMut<(), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
 }
 
 /// Time-dependent function of the state
+#[derive(Clone,Copy)]
 pub struct TimeStateFnMut<F: FnMut<(f64,), Output = Ret>, Ret>(pub F);
 impl<F: FnMut<(f64,), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
     for TimeStateFnMut<F, Ret>
@@ -453,6 +455,7 @@ impl<F: FnMut<(f64,), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
     }
 }
 /// Time-mutating function of the state
+#[derive(Clone,Copy)]
 pub struct TimeMutStateFnMut<F: for<'a> FnMut<(&'a mut f64,), Output = Ret>, Ret>(pub F);
 impl<F: for<'a> FnMut<(&'a mut f64,), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
     for TimeMutStateFnMut<F, Ret>
@@ -463,6 +466,7 @@ impl<F: for<'a> FnMut<(&'a mut f64,), Output = Ret>, Ret, const N: usize> MutSta
 }
 
 /// Position-dependent function of the state
+#[derive(Clone,Copy)]
 pub struct ODEStateFnMut<const N: usize, F: FnMut<([f64; N],), Output = Ret>, Ret>(pub F);
 impl<F: FnMut<([f64; N],), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
     for ODEStateFnMut<N, F, Ret>
@@ -488,6 +492,7 @@ impl<F: for<'a> FnMut<([f64; N],), Output = Ret>, Ret, const N: usize> MutStateF
 }
 
 /// Position-mutating function of the state
+#[derive(Clone,Copy)]
 pub struct ODEMutStateFnMut<
     const N: usize,
     F: for<'a> FnMut<(&'a mut [f64; N],), Output = Ret>,
@@ -502,6 +507,7 @@ impl<F: for<'a> FnMut<(&'a mut [f64; N],), Output = Ret>, Ret, const N: usize> M
 }
 
 /// Time- and position-depending function of the state
+#[derive(Clone,Copy)]
 pub struct ODE2StateFnMut<const N: usize, F: FnMut<(f64, [f64; N]), Output = Ret>, Ret>(pub F);
 impl<F: FnMut<(f64, [f64; N]), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
     for ODE2StateFnMut<N, F, Ret>
@@ -528,6 +534,7 @@ impl<F: for<'a> FnMut<(f64, [f64; N]), Output = Ret>, Ret, const N: usize> MutSt
 }
 
 /// Time- and position-mutating function of the state
+#[derive(Clone,Copy)]
 pub struct ODE2MutStateFnMut<
     const N: usize,
     F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N]), Output = Ret>,
@@ -564,6 +571,7 @@ impl<F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N]), Output = Ret>, Ret, const
 // }
 
 /// Time-, position-, and past state-dependent function of the state
+#[derive(Clone,Copy)]
 pub struct DDEStateFnMut<
     const N: usize,
     F: for<'a> FnMut<(f64, [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]), Output = Ret>,
@@ -737,20 +745,20 @@ macro_rules! state_fn {
     () => {
         $crate::state::ConstantStateFnMut(|| {})
     };
-    (|| $expr:expr) => {
-        $crate::state::ConstantStateFnMut(|| {$expr})
+    ($($move:ident)? || $expr:expr) => {
+        $crate::state::ConstantStateFnMut($($move)? || {$expr})
     };
-    (|$t:ident| $expr:expr) => {
-        $crate::state::TimeStateFnMut(|$t| $expr)
+    ($($move:ident)? |$t:ident| $expr:expr) => {
+        $crate::state::TimeStateFnMut($($move)? |$t| $expr)
     };
-    (|[$($x:pat),+]| $expr:expr) => {
-        $crate::state::ODEStateFnMut(|[$($x),+]| $expr)
+    ($($move:ident)? |[$($x:pat),+]| $expr:expr) => {
+        $crate::state::ODEStateFnMut($($move)? |[$($x),+]| $expr)
     };
-    (|$t:pat, [$($x:pat),+]| $expr:expr) => {
-        $crate::state::ODE2StateFnMut(|$t, [$($x),+]| $expr)
+    ($($move:ident)? |$t:pat, [$($x:pat),+]| $expr:expr) => {
+        $crate::state::ODE2StateFnMut($($move)? |$t, [$($x),+]| $expr)
     };
-    (|$t:pat, [$($x:pat),+], [$($x_:pat),+]| $expr:expr) => {
-        $crate::state::DDEStateFnMut(|$t, [$($x),+], [$($x_),+]| $expr)
+    ($($move:ident)? |$t:pat, [$($x:pat),+], [$($x_:pat),+]| $expr:expr) => {
+        $crate::state::DDEStateFnMut($($move)? |$t, [$($x),+], [$($x_),+]| $expr)
     };
 }
 //
@@ -774,14 +782,14 @@ macro_rules! state_fn {
 // ///
 #[macro_export]
 macro_rules! mut_state_fn {
-    (|$t:ident| $expr:expr) => {
-        $crate::state::TimeMutStateFnMut(|$t| $expr)
+    ($($move:ident)? |$t:ident| $expr:expr) => {
+        $crate::state::TimeMutStateFnMut($($move)? |$t| $expr)
     };
-    (|[$($x:pat),+]| $expr:expr) => {
-        $crate::state::ODEMutStateFnMut(|[$($x),+]| $expr)
+    ($($move:ident)? |[$($x:pat),+]| $expr:expr) => {
+        $crate::state::ODEMutStateFnMut($($move)? |[$($x),+]| $expr)
     };
-    (|$t:pat, [$($x:pat),+]| $expr:expr) => {
-        $crate::state::ODE2MutStateFnMut(|$t, [$($x),+]| $expr)
+    ($($move:ident)? |$t:pat, [$($x:pat),+]| $expr:expr) => {
+        $crate::state::ODE2MutStateFnMut($($move)? |$t, [$($x),+]| $expr)
     };
     // (|$t:ident, [$($x:ident),+], [$($x_:ident),+]| $expr:expr) => {
     //     $crate::Event::dde_mut(|$t, [$($x),+], [$($x_),+]| $expr)

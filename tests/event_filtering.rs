@@ -10,68 +10,68 @@ fn main() {
     let ic = |t: f64| [polynomial![t => 0.,1.,-1.,1.]];
     let interval = 0. ..50.;
 
-    let f = |t: f64, [x]: [f64; 1]| (t, x);
+    let f = state_fn!(|t, [x]| (t, x));
 
     let mut p = Vec::new();
-    let event = Event::ode2(f).to_vec(&mut p);
+    let event = Event::new(f).to_vec(&mut p);
 
     let mut p_e2 = Vec::new();
-    let event_e2 = Event::ode2(f).to_vec(&mut p_e2).every(2);
+    let event_e2 = Event::new(f).to_vec(&mut p_e2).every(2);
 
     let mut p_e2_e2 = Vec::new();
-    let event_e2_e2 = Event::ode2(f).to_vec(&mut p_e2_e2).every(2).every(2);
+    let event_e2_e2 = Event::new(f).to_vec(&mut p_e2_e2).every(2).every(2);
 
     let mut p_s4 = Vec::new();
-    let event_s4 = Event::ode2(f).to_vec(&mut p_s4).separated_by(4.);
+    let event_s4 = Event::new(f).to_vec(&mut p_s4).separated_by(4.);
 
     let mut p_r = Vec::new();
-    let event_r = Event::ode2(f).to_vec(&mut p_r).in_range(10. ..20.);
+    let event_r = Event::new(f).to_vec(&mut p_r).in_range(10. ..20.);
 
     let mut p_r_e3 = Vec::new();
-    let event_r_e3 = Event::ode2(f)
+    let event_r_e3 = Event::new(f)
         .to_vec(&mut p_r_e3)
         .in_range(10. ..20.)
         .every(3);
 
     let mut p_e3_r = Vec::new();
-    let event_e3_r = Event::ode2(f)
+    let event_e3_r = Event::new(f)
         .to_vec(&mut p_e3_r)
         .every(3)
         .in_range(10. ..20.);
 
     let mut p_t_5_10 = Vec::new();
-    let event_t_5_10 = Event::ode2(f).to_vec(&mut p_t_5_10).times(5..10);
+    let event_t_5_10 = Event::new(f).to_vec(&mut p_t_5_10).times(5..10);
 
     let mut p_t_0_oo = Vec::new();
-    let event_t_0_oo = Event::ode2(f).to_vec(&mut p_t_0_oo).times(0..usize::MAX);
+    let event_t_0_oo = Event::new(f).to_vec(&mut p_t_0_oo).times(0..usize::MAX);
 
     let mut p_t_0_5 = Vec::new();
-    let event_t_0_5 = Event::ode2(f).to_vec(&mut p_t_0_5).times(0..5);
+    let event_t_0_5 = Event::new(f).to_vec(&mut p_t_0_5).times(0..5);
 
     let mut p_take_5 = Vec::new();
-    let event_take_5 = Event::ode2(f).to_vec(&mut p_take_5).take(5);
+    let event_take_5 = Event::new(f).to_vec(&mut p_take_5).take(5);
 
     let mut p_g_100 = Vec::new();
-    let event_g_100 = Event::ode2(f)
+    let event_g_100 = Event::new(f)
         .to_vec(&mut p_g_100)
-        .filter_ode(|[x]| x > 100.);
+        .filter(state_fn!(|[x]| x > 100.));
 
     let mut p_g_100_last = (0., 0.);
-    let event_g_100_last = Event::ode2(f)
+    let event_g_100_last = Event::new(f)
         .to_var(&mut p_g_100_last)
-        .filter_ode(|[x]| x > 100.);
+        .filter(state_fn!(|[x]| x > 100.));
 
     let mut p_g_100_first = (0., 0.);
-    let event_g_100_first = Event::ode2(f)
+    let event_g_100_first = Event::new(f)
         .to_var(&mut p_g_100_first)
-        .filter_ode(|[x]| x > 100.)
+        .filter(state_fn!(|[x]| x > 100.))
         .once();
 
     let mut p_sub2 = Vec::new();
-    let event_sub2 = Event::ode2(f).to_vec(&mut p_sub2).subdivide(2);
+    let event_sub2 = Event::new(f).to_vec(&mut p_sub2).subdivide(2);
 
     let mut p_sub4 = Vec::new();
-    let event_sub4 = Event::ode2(f).to_vec(&mut p_sub4).subdivide(4);
+    let event_sub4 = Event::new(f).to_vec(&mut p_sub4).subdivide(4);
 
     Solver::new()
         .rk(&rk::RK98) // it is exact for polynomials up to 8th or 9th order
