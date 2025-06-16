@@ -73,6 +73,7 @@ impl<
 where
     [(); S * (S - 1) / 2]:,
 {
+    /// Self-consuming setter for [Self::rk] field
     pub fn rk<const S_: usize>(
         self,
         rk: &'a RungeKuttaTable<S_>,

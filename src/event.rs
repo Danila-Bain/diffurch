@@ -38,6 +38,7 @@ pub struct Event<
 
 // Constructors
 impl<const N: usize> Event<N> {
+    /// Generic constructor for events that do not mutate state.
     pub fn new<F: StateFnMut<N, Output>, Output>(callback: F) -> Event<N, false, (), F, Output> {
         Event {
             callback,
@@ -47,6 +48,7 @@ impl<const N: usize> Event<N> {
             output_marker: Default::default(),
         }
     }
+    /// Generic constructor for events that mutate state.
     pub fn new_mut<F: MutStateFnMut<N, Output>, Output>(
         callback: F,
     ) -> Event<N, true, (), F, Output> {
@@ -59,49 +61,49 @@ impl<const N: usize> Event<N> {
         }
     }
 
-    /// Constructor that initializes [Event::callback] using [MutStateFn::constant].
+    /// Constructor that initializes [Event::callback] using [ConstantStateFnMut].
     pub fn constant<F: FnMut() -> Output, Output>(
         callback: F,
     ) -> Event<N, false, (), ConstantStateFnMut<F, Output>, Output> {
         Event::new(ConstantStateFnMut(callback))
     }
-    /// Constructor that initializes [Event::callback] using [MutStateFn::time].
+    /// Constructor that initializes [Event::callback] using [TimeStateFnMut].
     pub fn time<F: FnMut(f64) -> Output, Output>(
         callback: F,
     ) -> Event<N, false, (), TimeStateFnMut<F, Output>, Output> {
         Event::new(TimeStateFnMut(callback))
     }
-    /// Constructor that initializes [Event::callback] using [MutStateFn::time_mut].
+    /// Constructor that initializes [Event::callback] using [TimeMutStateFnMut].
     pub fn time_mut<F: FnMut(&mut f64) -> Output, Output>(
         callback: F,
     ) -> Event<N, true, (), TimeMutStateFnMut<F, Output>, Output> {
         Event::new_mut(TimeMutStateFnMut(callback))
     }
-    /// Constructor that initializes [Event::callback] using [MutStateFn::ode].
+    /// Constructor that initializes [Event::callback] using [ODEStateFnMut].
     pub fn ode<F: FnMut([f64; N]) -> Output, Output>(
         callback: F,
     ) -> Event<N, false, (), ODEStateFnMut<N, F, Output>, Output> {
         Event::new(ODEStateFnMut(callback))
     }
-    /// Constructor that initializes [Event::callback] using [MutStateFn::ode_mut].
+    /// Constructor that initializes [Event::callback] using [ODEMutStateFnMut].
     pub fn ode_mut<F: FnMut(&mut [f64; N]) -> Output, Output>(
         callback: F,
     ) -> Event<N, true, (), ODEMutStateFnMut<N, F, Output>, Output> {
         Event::new_mut(ODEMutStateFnMut(callback))
     }
-    /// Constructor that initializes [Event::callback] using [MutStateFn::ode2].
+    /// Constructor that initializes [Event::callback] using [ODE2StateFnMut].
     pub fn ode2<F: FnMut(f64, [f64; N]) -> Output, Output>(
         callback: F,
     ) -> Event<N, false, (), ODE2StateFnMut<N, F, Output>, Output> {
         Event::new(ODE2StateFnMut(callback))
     }
-    // /// Constructor that initializes [Event::callback] using [MutStateFn::ode2_mut].
+    /// Constructor that initializes [Event::callback] using [ODE2MutStateFnMut].
     pub fn ode2_mut<F: FnMut(&mut f64, &mut [f64; N]) -> Output, Output>(
         callback: F,
     ) -> Event<N, true, (), ODE2MutStateFnMut<N, F, Output>, Output> {
         Event::new_mut(ODE2MutStateFnMut(callback))
     }
-    // /// Constructor that initializes [Event::callback] using [MutStateFn::dde].
+    /// Constructor that initializes [Event::callback] using [DDEStateFnMut].
     pub fn dde<
         F: for<'a> FnMut(f64, [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]) -> Output,
         Output,
@@ -428,11 +430,15 @@ where
     }
 }
 
+/// Trait that abstracts over struct [Event]
 pub trait EventCall<const N: usize> {
+    /// Initiate event callback
     fn call(&mut self, state: &mut impl State<N>);
 }
 
+/// Like [EventCall], but generic state is attached to a trait instead of the method.
 pub trait EventCallConcrete<const N: usize, S: State<N>> {
+    /// Initiate event callback
     fn call(&mut self, state: &mut S);
 }
 impl<const N: usize, S: State<N>, EC: EventCall<N>> EventCallConcrete<N, S> for EC {
@@ -441,7 +447,9 @@ impl<const N: usize, S: State<N>, EC: EventCall<N>> EventCallConcrete<N, S> for 
     }
 }
 
+/// The trait for [HList]'s of [EventCall]'s
 pub trait EventHList<const N: usize>: ToRef {
+    /// call [EventCall::call] for each element of the [HList].
     fn call_each(&mut self, state: &mut impl State<N>);
 }
 impl<const N: usize> EventHList<N> for Nil {
@@ -459,7 +467,9 @@ where
     }
 }
 
+/// The trait for [HList]'s of ([Loc], [EventCall]) pairs.
 pub trait LocEventHList<const N: usize>: ToRef {
+    /// If any even is located, return location and callback handler for the earlyiest one.
     fn locate_first<S: State<N>>(
         &mut self,
         state: &mut S,
@@ -507,7 +517,9 @@ where
     }
 }
 
+/// [HList] of Streams in [Event]
 pub trait StreamHList<Arg>: ToRef {
+    /// Call each element of the list with `arg`
     fn call_each(&mut self, arg: Arg);
 }
 impl<Arg> StreamHList<Arg> for Nil {
@@ -526,8 +538,11 @@ where
     }
 }
 
+/// [Hlist] of filters in [Event]
 pub trait FilterHList<const N: usize>: ToRef {
+    /// Short-circit evaluation of elements of the list
     fn all(&mut self, state: &impl State<N>) -> bool;
+    /// Short-circit evaluation of elements of the list at the point `t`  
     fn all_at(&mut self, state: &impl State<N>, t: f64) -> bool;
 }
 impl<const N: usize> FilterHList<N> for Nil {

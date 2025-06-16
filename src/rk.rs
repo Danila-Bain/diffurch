@@ -2,10 +2,12 @@
 
 use crate::polynomial;
 
-/// Container for the Butcher's table and other relevant information about a Runge-Kutta method.
+/// Container for the Butcher's tables and other relevant information about an explicit Runge-Kutta method.
 ///
 /// Generic parameter `S: usize` represents the number of stages of the method, and affects the
 /// sizes (hence data layout) of the coefficient tables.
+///
+/// The values of `a`, which is usually a lower-triangluar 2d-matrix with zero diagonal, are flattened, skipping diagonal and upper-triangle elements.
 #[derive(Clone)]
 pub struct RungeKuttaTable<const S: usize>
 where
@@ -18,7 +20,7 @@ where
     pub order_embedded: usize,
     /// Order of the dense output scheme
     pub order_interpolant: usize,
-    /// a-coefficients of the internal stages
+    /// a-coefficients of the internal stages, as flat array
     pub a: [f64; S * (S - 1) / 2],
     /// b-coefficients of the final stage
     pub b: [f64; S],
@@ -34,6 +36,7 @@ impl<const S: usize> RungeKuttaTable<S>
 where
     [(); S * (S - 1) / 2]:,
 {
+    /// [Self::a] values using two dimensional
     pub fn a_indexed(&self, i: usize, j: usize) -> f64 {
         self.a[i * (i - 1) / 2 + j]
     }
@@ -49,17 +52,6 @@ pub static EULER: RungeKuttaTable<1> = RungeKuttaTable {
     b2: [0.],
     c: [0.],
     bi: [polynomial![0., 1.]],
-};
-
-pub static EULER2: RungeKuttaTable<2> = RungeKuttaTable {
-    order: 0,
-    order_embedded: 0,
-    order_interpolant: 0,
-    a: [0.],
-    b: [0., 0.],
-    b2: [0., 0.],
-    c: [0., 0.],
-    bi: [polynomial![0., 1.], polynomial![0., 1.]],
 };
 
 /// Macro declares a static RungeKuttaTable<2> of order 2 with linear interpolantion, and Euler method as an

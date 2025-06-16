@@ -5,7 +5,9 @@ use crate::state::*;
 /// Trait manages adding filtering functions to a vector field of a class, such as
 /// [crate::Event] and [crate::Loc].
 pub trait Filter<const N: usize>: Sized {
+    /// the type of self after application of filter method
     type Output<T>;
+
     /// push a new [StateFn] which returns `bool` to `self` and return `self` for chained syntax.
     fn filter<S: StateFnMut<N, bool>>(self, f: S) -> Self::Output<S>;
 

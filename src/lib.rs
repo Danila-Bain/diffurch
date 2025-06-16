@@ -6,7 +6,7 @@
 #![feature(file_buffered)]
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
-// #![warn(missing_docs)]
+#![warn(missing_docs)]
 
 pub mod equation;
 pub mod event;

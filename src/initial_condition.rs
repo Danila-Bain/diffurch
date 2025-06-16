@@ -1,9 +1,13 @@
 //! Defines [InitialCondition].
 
+/// Trait for objects that can be interpreted as valid initial conditions for a differential
+/// equation (ODE or DDE). 
 pub trait InitialCondition<const N: usize> {
+    /// evaluate a derivative of order `D`
     fn eval<const D: usize>(&self, t: f64) -> [f64; N];
 }
 
+/// For this type, the value is interpreted as a constant function. All its derivatives are zero
 impl<const N: usize> InitialCondition<N> for [f64; N] {
     fn eval<const D: usize>(&self, _t: f64) -> [f64; N] {
         match D {
@@ -13,6 +17,8 @@ impl<const N: usize> InitialCondition<N> for [f64; N] {
     }
 }
 
+/// For this type, the value is interpreted as an initial function. Calling [Self::eval] for `D >=
+/// 1` will panic.
 impl<const N: usize, F> InitialCondition<N> for F
 where
     F: Fn(f64) -> [f64; N],
@@ -25,6 +31,8 @@ where
     }
 }
 
+/// For this type, the value is interpreted as an initial function and its derivative. Calling [Self::eval] for `D >=
+/// 2` will panic.
 impl<const N: usize, F, DF> InitialCondition<N> for (F, DF)
 where
     F: Fn(f64) -> [f64; N],

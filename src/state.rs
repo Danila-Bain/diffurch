@@ -2,23 +2,52 @@
 
 use crate::InitialCondition;
 
+/// Trait that abstracts [RKState], hiding memory layout and rk scheme specifications
 pub trait State<const N: usize> {
+    /// get current time of the state
     fn t(&self) -> f64;
+    /// get previous step time of the state
     fn t_prev(&self) -> f64;
+    /// get mutable reference to a current time of the state.
+    ///
+    /// Can be used to set the time of state to [f64::INFINITY], effectively stopping integration
     fn t_mut(&mut self) -> &mut f64;
+    /// get current position of the state
     fn x(&self) -> [f64; N];
+    /// get previous step position of the state
     fn x_prev(&self) -> [f64; N];
+    /// get mutable reference to a current position of the state.
+    ///
+    /// Can be used to implement impacts in the systems due to some events.
     fn x_mut(&mut self) -> &mut [f64; N];
+    /// getter, that combines [State::t_mut] and [State::x_mut]
     fn tx_mut(&mut self) -> (&mut f64, &mut [f64; N]);
 
+    /// Make zero step by setting previous values to current ones.
+    ///
+    /// This is used internally before applying external changes to a state, such that state
+    /// history is not lost.
     fn make_zero_step(&mut self);
+    /// Make a step of numerical method of the size `t_step`, using `rhs` as the right hand side of
+    /// the differential equation.
     fn make_step(&mut self, rhs: &mut impl StateFnMut<N, [f64; N]>, t_step: f64);
+    /// Undo last step. (Repeated use does not have an effect)
+    ///
+    /// This is used to redo last step, because it was rejected due to event location or (not yet
+    /// implemented) step size controller.
     fn undo_step(&mut self);
+    /// Save last computed step to history
     fn push_current(&mut self);
 
+    /// Evaluate the postion of the state at the time `t` in the past.
     fn eval_all(&self, t: f64) -> [f64; N];
+    /// Evaluate the coordinate `coordinate` of the postion of the state at the time `t` in the past.
     fn eval(&self, t: f64, coordinate: usize) -> f64;
+    /// Evaluate the derivative of the coordinate `coordinate` of the postion of the state at the time `t` in the past.
     fn eval_derivative(&self, t: f64, coordinate: usize) -> f64;
+    /// Return coordinate functions, that can be used to evaluate state at the past times.
+    ///
+    /// This is the thing passed to the right hand side functions for delay differential equations.
     fn coord_fns<'a>(&'a self) -> [Box<dyn 'a + StateCoordFnTrait>; N];
 }
 
@@ -133,7 +162,7 @@ where
         &mut self.x
     }
 
-    fn tx_mut(&mut self) -> (&mut f64, &mut [f64; N])  {
+    fn tx_mut(&mut self) -> (&mut f64, &mut [f64; N]) {
         (&mut self.t, &mut self.x)
     }
 
@@ -357,14 +386,21 @@ where
     }
 }
 
+/// Trait, that defines how a function is evaluated at the state.
 pub trait StateFnMut<const N: usize, Ret> {
+    /// evaluate self at the current state
     fn eval(&mut self, state: &impl State<N>) -> Ret;
+    /// evaluate self at the previous step state
     fn eval_prev(&mut self, state: &impl State<N>) -> Ret;
+    /// evaluate self at the state at  the time t
     fn eval_at(&mut self, state: &impl State<N>, t: f64) -> Ret;
 }
+/// Trait, that defines how a function is evaluated at the state, which can also mutate the state.
 pub trait MutStateFnMut<const N: usize, Ret> {
+    /// evaluate self at the mutable state
     fn eval_mut(&mut self, state: &mut impl State<N>) -> Ret;
 }
+/// Constant function of the state
 pub struct ConstantStateFnMut<F: FnMut<(), Output = Ret>, Ret>(pub F);
 impl<F: FnMut<(), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
     for ConstantStateFnMut<F, Ret>
@@ -382,6 +418,7 @@ impl<F: FnMut<(), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
     }
 }
 
+/// Constant function of the mut state
 impl<F: FnMut<(), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
     for ConstantStateFnMut<F, Ret>
 {
@@ -390,6 +427,7 @@ impl<F: FnMut<(), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
     }
 }
 
+/// Time-dependent function of the state
 pub struct TimeStateFnMut<F: FnMut<(f64,), Output = Ret>, Ret>(pub F);
 impl<F: FnMut<(f64,), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
     for TimeStateFnMut<F, Ret>
@@ -414,6 +452,7 @@ impl<F: FnMut<(f64,), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
         (self.0)(state.t())
     }
 }
+/// Time-mutating function of the state
 pub struct TimeMutStateFnMut<F: for<'a> FnMut<(&'a mut f64,), Output = Ret>, Ret>(pub F);
 impl<F: for<'a> FnMut<(&'a mut f64,), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
     for TimeMutStateFnMut<F, Ret>
@@ -423,6 +462,7 @@ impl<F: for<'a> FnMut<(&'a mut f64,), Output = Ret>, Ret, const N: usize> MutSta
     }
 }
 
+/// Position-dependent function of the state
 pub struct ODEStateFnMut<const N: usize, F: FnMut<([f64; N],), Output = Ret>, Ret>(pub F);
 impl<F: FnMut<([f64; N],), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
     for ODEStateFnMut<N, F, Ret>
@@ -447,6 +487,7 @@ impl<F: for<'a> FnMut<([f64; N],), Output = Ret>, Ret, const N: usize> MutStateF
     }
 }
 
+/// Position-mutating function of the state
 pub struct ODEMutStateFnMut<
     const N: usize,
     F: for<'a> FnMut<(&'a mut [f64; N],), Output = Ret>,
@@ -460,6 +501,7 @@ impl<F: for<'a> FnMut<(&'a mut [f64; N],), Output = Ret>, Ret, const N: usize> M
     }
 }
 
+/// Time- and position-depending function of the state
 pub struct ODE2StateFnMut<const N: usize, F: FnMut<(f64, [f64; N]), Output = Ret>, Ret>(pub F);
 impl<F: FnMut<(f64, [f64; N]), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
     for ODE2StateFnMut<N, F, Ret>
@@ -485,6 +527,7 @@ impl<F: for<'a> FnMut<(f64, [f64; N]), Output = Ret>, Ret, const N: usize> MutSt
     }
 }
 
+/// Time- and position-mutating function of the state
 pub struct ODE2MutStateFnMut<
     const N: usize,
     F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N]), Output = Ret>,
@@ -520,6 +563,7 @@ impl<F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N]), Output = Ret>, Ret, const
 //     }
 // }
 
+/// Time-, position-, and past state-dependent function of the state
 pub struct DDEStateFnMut<
     const N: usize,
     F: for<'a> FnMut<(f64, [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]), Output = Ret>,
@@ -569,8 +613,6 @@ impl<
 //     }
 // }
 
-
-
 /// Struct that holds a reference to the state, and the coordinate index.
 ///
 /// It implements Fn() -> f64 and Fn(f64) -> f64 traits, as evaluation of current and past state
@@ -584,9 +626,6 @@ where
     /// Coordinate index
     pub coord: usize,
 }
-
-
-
 
 /// Trait to erase generic parameter S from StateCoordFn
 pub trait StateCoordFnTrait: Fn() -> f64 + Fn(f64) -> f64 {

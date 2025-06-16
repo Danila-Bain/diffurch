@@ -21,10 +21,8 @@ use crate::*;
 // ///
 // /// Equivalent code using [crate::equation!] macro:
 
-/// The struct that is used to hold the right hand side of the function.
-///
-/// [Equation] provides convenience constructor which accept closure
-/// representations of the equation, with the types of arguments deduced.
+/// The struct that is used to hold the right hand side of the function, and max delay that the
+/// equation can use.
 ///
 /// # Examples
 /// ```rust
@@ -119,6 +117,14 @@ impl<const N: usize, RHS: StateFnMut<N, [f64; N]>> Equation<N, RHS> {
         }
     }
 
+    /// like [Equation::new] but also sets max_delay field
+    ///
+    /// # Examples:
+    ///
+    /// ```rust
+    /// use diffurch::{Equation, state::*};
+    /// let eq = Equation::new_with_delay(DDEStateFnMut(|t, [x, y], [x_, y_]| [-y_(t-1.) / t, x]), 1.);
+    /// ```
     pub fn new_with_delay(rhs: RHS, max_delay: f64) -> Self {
         Equation { rhs, max_delay }
     }
