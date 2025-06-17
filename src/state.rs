@@ -377,7 +377,7 @@ where
     fn coord_fns<'b>(&'b self) -> [Box<dyn 'b + StateCoordFnTrait>; N] {
         std::array::from_fn(|i| {
             let coord_fn: Box<dyn 'b + StateCoordFnTrait> =
-                Box::new(StateCoordFn::<'b, N, S, IC> {
+                Box::new(StateCoordFn::<'b, N, Self> {
                     state: self,
                     coord: i,
                 });
@@ -401,7 +401,7 @@ pub trait MutStateFnMut<const N: usize, Ret> {
     fn eval_mut(&mut self, state: &mut impl State<N>) -> Ret;
 }
 /// Constant function of the state
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub struct ConstantStateFnMut<F: FnMut<(), Output = Ret>, Ret>(pub F);
 impl<F: FnMut<(), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
     for ConstantStateFnMut<F, Ret>
@@ -429,7 +429,7 @@ impl<F: FnMut<(), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
 }
 
 /// Time-dependent function of the state
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub struct TimeStateFnMut<F: FnMut<(f64,), Output = Ret>, Ret>(pub F);
 impl<F: FnMut<(f64,), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
     for TimeStateFnMut<F, Ret>
@@ -455,7 +455,7 @@ impl<F: FnMut<(f64,), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
     }
 }
 /// Time-mutating function of the state
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub struct TimeMutStateFnMut<F: for<'a> FnMut<(&'a mut f64,), Output = Ret>, Ret>(pub F);
 impl<F: for<'a> FnMut<(&'a mut f64,), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
     for TimeMutStateFnMut<F, Ret>
@@ -466,7 +466,7 @@ impl<F: for<'a> FnMut<(&'a mut f64,), Output = Ret>, Ret, const N: usize> MutSta
 }
 
 /// Position-dependent function of the state
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub struct ODEStateFnMut<const N: usize, F: FnMut<([f64; N],), Output = Ret>, Ret>(pub F);
 impl<F: FnMut<([f64; N],), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
     for ODEStateFnMut<N, F, Ret>
@@ -492,7 +492,7 @@ impl<F: for<'a> FnMut<([f64; N],), Output = Ret>, Ret, const N: usize> MutStateF
 }
 
 /// Position-mutating function of the state
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub struct ODEMutStateFnMut<
     const N: usize,
     F: for<'a> FnMut<(&'a mut [f64; N],), Output = Ret>,
@@ -507,7 +507,7 @@ impl<F: for<'a> FnMut<(&'a mut [f64; N],), Output = Ret>, Ret, const N: usize> M
 }
 
 /// Time- and position-depending function of the state
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub struct ODE2StateFnMut<const N: usize, F: FnMut<(f64, [f64; N]), Output = Ret>, Ret>(pub F);
 impl<F: FnMut<(f64, [f64; N]), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
     for ODE2StateFnMut<N, F, Ret>
@@ -534,7 +534,7 @@ impl<F: for<'a> FnMut<(f64, [f64; N]), Output = Ret>, Ret, const N: usize> MutSt
 }
 
 /// Time- and position-mutating function of the state
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub struct ODE2MutStateFnMut<
     const N: usize,
     F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N]), Output = Ret>,
@@ -571,7 +571,7 @@ impl<F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N]), Output = Ret>, Ret, const
 // }
 
 /// Time-, position-, and past state-dependent function of the state
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub struct DDEStateFnMut<
     const N: usize,
     F: for<'a> FnMut<(f64, [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]), Output = Ret>,
@@ -625,61 +625,54 @@ impl<
 ///
 /// It implements Fn() -> f64 and Fn(f64) -> f64 traits, as evaluation of current and past state
 /// respectively.
-pub struct StateCoordFn<'a, const N: usize, const S: usize, IC: InitialCondition<N>>
-where
-    [(); S * (S - 1) / 2]:,
-{
+pub struct StateCoordFn<'a, const N: usize, S: State<N>> {
     /// Reference to the state
-    pub state: &'a RKState<'a, N, S, IC>,
+    pub state: &'a S,
     /// Coordinate index
     pub coord: usize,
 }
 
 /// Trait to erase generic parameter S from StateCoordFn
-pub trait StateCoordFnTrait: Fn() -> f64 + Fn(f64) -> f64 {
+pub trait StateCoordFnTrait: Fn(f64) -> f64 {
     /// evaluate the derivative
     fn d(&self, t: f64) -> f64;
 }
 
-impl<'a, const N: usize, const S: usize, IC: InitialCondition<N>> FnOnce<()>
-    for StateCoordFn<'a, N, S, IC>
-where
-    [(); S * (S - 1) / 2]:,
-{
-    type Output = f64;
-    #[inline]
-    extern "rust-call" fn call_once(self, _: ()) -> Self::Output {
-        self.state.x[self.coord]
-    }
-}
+// impl<'a, const N: usize, const S: usize, IC: InitialCondition<N>> FnOnce<()>
+//     for StateCoordFn<'a, N, S, IC>
+// where
+//     [(); S * (S - 1) / 2]:,
+// {
+//     type Output = f64;
+//     #[inline]
+//     extern "rust-call" fn call_once(self, _: ()) -> Self::Output {
+//         self.state.x[self.coord]
+//     }
+// }
+//
+// impl<'a, const N: usize, const S: usize, IC: InitialCondition<N>> FnMut<()>
+//     for StateCoordFn<'a, N, S, IC>
+// where
+//     [(); S * (S - 1) / 2]:,
+// {
+//     #[inline]
+//     extern "rust-call" fn call_mut(&mut self, _: ()) -> Self::Output {
+//         self.state.x[self.coord]
+//     }
+// }
+//
+// impl<'a, const N: usize, const S: usize, IC: InitialCondition<N>> Fn<()>
+//     for StateCoordFn<'a, N, S, IC>
+// where
+//     [(); S * (S - 1) / 2]:,
+// {
+//     #[inline]
+//     extern "rust-call" fn call(&self, _: ()) -> Self::Output {
+//         self.state.x[self.coord]
+//     }
+// }
 
-impl<'a, const N: usize, const S: usize, IC: InitialCondition<N>> FnMut<()>
-    for StateCoordFn<'a, N, S, IC>
-where
-    [(); S * (S - 1) / 2]:,
-{
-    #[inline]
-    extern "rust-call" fn call_mut(&mut self, _: ()) -> Self::Output {
-        self.state.x[self.coord]
-    }
-}
-
-impl<'a, const N: usize, const S: usize, IC: InitialCondition<N>> Fn<()>
-    for StateCoordFn<'a, N, S, IC>
-where
-    [(); S * (S - 1) / 2]:,
-{
-    #[inline]
-    extern "rust-call" fn call(&self, _: ()) -> Self::Output {
-        self.state.x[self.coord]
-    }
-}
-
-impl<'a, const N: usize, const S: usize, IC: InitialCondition<N>> FnOnce<(f64,)>
-    for StateCoordFn<'a, N, S, IC>
-where
-    [(); S * (S - 1) / 2]:,
-{
+impl<'a, const N: usize, S: State<N>> FnOnce<(f64,)> for StateCoordFn<'a, N, S> {
     type Output = f64;
     #[inline]
     extern "rust-call" fn call_once(self, arg: (f64,)) -> Self::Output {
@@ -687,31 +680,20 @@ where
     }
 }
 
-impl<'a, const N: usize, const S: usize, IC: InitialCondition<N>> FnMut<(f64,)>
-    for StateCoordFn<'a, N, S, IC>
-where
-    [(); S * (S - 1) / 2]:,
-{
+impl<'a, const N: usize, S: State<N>> FnMut<(f64,)> for StateCoordFn<'a, N, S> {
     #[inline]
     extern "rust-call" fn call_mut(&mut self, arg: (f64,)) -> Self::Output {
         self.state.eval(arg.0, self.coord)
     }
 }
 
-impl<'a, const N: usize, const S: usize, IC: InitialCondition<N>> Fn<(f64,)>
-    for StateCoordFn<'a, N, S, IC>
-where
-    [(); S * (S - 1) / 2]:,
-{
+impl<'a, const N: usize, S: State<N>> Fn<(f64,)> for StateCoordFn<'a, N, S> {
     extern "rust-call" fn call(&self, arg: (f64,)) -> Self::Output {
         self.state.eval(arg.0, self.coord)
     }
 }
 
-impl<'a, const N: usize, const S: usize, IC: InitialCondition<N>> StateCoordFnTrait
-    for StateCoordFn<'a, N, S, IC>
-where
-    [(); S * (S - 1) / 2]:,
+impl<'a, const N: usize, S: State<N>> StateCoordFnTrait for StateCoordFn<'a, N, S>
 {
     fn d(&self, t: f64) -> f64 {
         self.state.eval_derivative(t, self.coord)
