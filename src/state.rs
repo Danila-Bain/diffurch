@@ -584,15 +584,41 @@ impl<
 > StateFnMut<N, Ret> for DDEStateFnMut<N, F, Ret>
 {
     fn eval(&mut self, state: &impl State<N>) -> Ret {
-        (self.0)(state.t(), state.x(), state.coord_fns())
+
+        let coord_fns : [Box<dyn StateCoordFnTrait>; N] = std::array::from_fn(|i| {
+            let coord_fn: Box<dyn StateCoordFnTrait> =
+                Box::new(StateCoordFn {
+                    state,
+                    coord: i,
+                });
+            coord_fn
+        });
+        (self.0)(state.t(), state.x(), coord_fns)
+        // (self.0)(state.t(), state.x(), state.coord_fns())
     }
 
     fn eval_prev(&mut self, state: &impl State<N>) -> Ret {
-        (self.0)(state.t_prev(), state.x_prev(), state.coord_fns())
+        let coord_fns : [Box<dyn StateCoordFnTrait>; N] = std::array::from_fn(|i| {
+            let coord_fn: Box<dyn StateCoordFnTrait> =
+                Box::new(StateCoordFn {
+                    state,
+                    coord: i,
+                });
+            coord_fn
+        });
+        (self.0)(state.t_prev(), state.x_prev(), coord_fns)
     }
 
     fn eval_at(&mut self, state: &impl State<N>, t: f64) -> Ret {
-        (self.0)(t, state.eval_all(t), state.coord_fns())
+        let coord_fns : [Box<dyn StateCoordFnTrait>; N] = std::array::from_fn(|i| {
+            let coord_fn: Box<dyn StateCoordFnTrait> =
+                Box::new(StateCoordFn {
+                    state,
+                    coord: i,
+                });
+            coord_fn
+        });
+        (self.0)(t, state.eval_all(t), coord_fns)
     }
 }
 impl<
@@ -602,7 +628,15 @@ impl<
 > MutStateFnMut<N, Ret> for DDEStateFnMut<N, F, Ret>
 {
     fn eval_mut(&mut self, state: &mut impl State<N>) -> Ret {
-        (self.0)(state.t(), state.x(), state.coord_fns())
+        let coord_fns : [Box<dyn StateCoordFnTrait>; N] = std::array::from_fn(|i| {
+            let coord_fn: Box<dyn StateCoordFnTrait> =
+                Box::new(StateCoordFn {
+                    state,
+                    coord: i,
+                });
+            coord_fn
+        });
+        (self.0)(state.t(), state.x(), coord_fns)
     }
 }
 
