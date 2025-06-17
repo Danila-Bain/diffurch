@@ -376,11 +376,10 @@ where
     /// variants.
     fn coord_fns<'b>(&'b self) -> [Box<dyn 'b + StateCoordFnTrait>; N] {
         std::array::from_fn(|i| {
-            let coord_fn: Box<dyn 'b + StateCoordFnTrait> =
-                Box::new(StateCoordFn::<'b, N, Self> {
-                    state: self,
-                    coord: i,
-                });
+            let coord_fn: Box<dyn 'b + StateCoordFnTrait> = Box::new(StateCoordFn::<'b, N, Self> {
+                state: self,
+                coord: i,
+            });
             coord_fn
         })
     }
@@ -574,84 +573,83 @@ impl<F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N]), Output = Ret>, Ret, const
 #[derive(Clone, Copy)]
 pub struct DDEStateFnMut<
     const N: usize,
-    F: for<'a> FnMut<(f64, [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]), Output = Ret>,
+    F: for<'a> FnMut<(f64, [f64; N], [&'a dyn StateCoordFnTrait; N]), Output = Ret>,
     Ret,
 >(pub F);
 impl<
-    F: for<'a> FnMut<(f64, [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]), Output = Ret>,
+    F: for<'a> FnMut<(f64, [f64; N], [&'a dyn StateCoordFnTrait; N]), Output = Ret>,
     Ret,
     const N: usize,
 > StateFnMut<N, Ret> for DDEStateFnMut<N, F, Ret>
 {
     fn eval(&mut self, state: &impl State<N>) -> Ret {
-
-        let coord_fns : [Box<dyn StateCoordFnTrait>; N] = std::array::from_fn(|i| {
-            let coord_fn: Box<dyn StateCoordFnTrait> =
-                Box::new(StateCoordFn {
-                    state,
-                    coord: i,
-                });
-            coord_fn
+        let coord_fns: [StateCoordFn<'_, N, _>; N] =
+            std::array::from_fn(|i| StateCoordFn { state, coord: i });
+        let coord_fns: [&dyn StateCoordFnTrait; N] = std::array::from_fn(|i| {
+            let f: &dyn StateCoordFnTrait = &coord_fns[i];
+            f
         });
         (self.0)(state.t(), state.x(), coord_fns)
         // (self.0)(state.t(), state.x(), state.coord_fns())
     }
 
     fn eval_prev(&mut self, state: &impl State<N>) -> Ret {
-        let coord_fns : [Box<dyn StateCoordFnTrait>; N] = std::array::from_fn(|i| {
-            let coord_fn: Box<dyn StateCoordFnTrait> =
-                Box::new(StateCoordFn {
-                    state,
-                    coord: i,
-                });
-            coord_fn
+        let coord_fns: [StateCoordFn<'_, N, _>; N] =
+            std::array::from_fn(|i| StateCoordFn { state, coord: i });
+        let coord_fns: [&dyn StateCoordFnTrait; N] = std::array::from_fn(|i| {
+            let f: &dyn StateCoordFnTrait = &coord_fns[i];
+            f
         });
         (self.0)(state.t_prev(), state.x_prev(), coord_fns)
     }
 
     fn eval_at(&mut self, state: &impl State<N>, t: f64) -> Ret {
-        let coord_fns : [Box<dyn StateCoordFnTrait>; N] = std::array::from_fn(|i| {
-            let coord_fn: Box<dyn StateCoordFnTrait> =
-                Box::new(StateCoordFn {
-                    state,
-                    coord: i,
-                });
-            coord_fn
+        let coord_fns: [StateCoordFn<'_, N, _>; N] =
+            std::array::from_fn(|i| StateCoordFn { state, coord: i });
+        let coord_fns: [&dyn StateCoordFnTrait; N] = std::array::from_fn(|i| {
+            let f: &dyn StateCoordFnTrait = &coord_fns[i];
+            f
         });
         (self.0)(t, state.eval_all(t), coord_fns)
     }
 }
 impl<
-    F: for<'a> FnMut<(f64, [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]), Output = Ret>,
+    F: for<'a> FnMut<(f64, [f64; N], [&'a dyn StateCoordFnTrait; N]), Output = Ret>,
     Ret,
     const N: usize,
 > MutStateFnMut<N, Ret> for DDEStateFnMut<N, F, Ret>
 {
     fn eval_mut(&mut self, state: &mut impl State<N>) -> Ret {
-        let coord_fns : [Box<dyn StateCoordFnTrait>; N] = std::array::from_fn(|i| {
-            let coord_fn: Box<dyn StateCoordFnTrait> =
-                Box::new(StateCoordFn {
-                    state,
-                    coord: i,
-                });
-            coord_fn
+        let coord_fns: [StateCoordFn<'_, N, _>; N] =
+            std::array::from_fn(|i| StateCoordFn { state, coord: i });
+        let coord_fns: [&dyn StateCoordFnTrait; N] = std::array::from_fn(|i| {
+            let f: &dyn StateCoordFnTrait = &coord_fns[i];
+            f
         });
         (self.0)(state.t(), state.x(), coord_fns)
     }
 }
 
+// // Borrowing rules violation
 // pub struct DDEMutStateFnMut<
 //     const N: usize,
-//     F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]), Output = Ret>,
+//     F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N], [&'a dyn StateCoordFnTrait; N]), Output = Ret>,
 //     Ret,
 // >(pub F);
-// impl<F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N], [Box<dyn 'a + StateCoordFnTrait>; N]), Output = Ret>, Ret, const N: usize>
-//     MutStateFnMut<N, Ret> for DDEMutStateFnMut<N, F, Ret>
+// impl<
+//     F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N], [&'a dyn StateCoordFnTrait; N]), Output = Ret>,
+//     Ret,
+//     const N: usize,
+// > MutStateFnMut<N, Ret> for DDEMutStateFnMut<N, F, Ret>
 // {
-//     fn eval_mut(&mut self, state: &mut impl IsState<N>) -> Ret {
-//         let coords = state.coord_fns();
-//         let (t, x) = state.tx_mut();
-//         (self.0)(t, x, coords)
+//     fn eval_mut(&mut self, state: &mut impl State<N>) -> Ret {
+//         let coord_fns: [StateCoordFn<'_, N, _>; N] =
+//             std::array::from_fn(|i| StateCoordFn { state, coord: i });
+//         let coord_fns: [&dyn StateCoordFnTrait; N] = std::array::from_fn(|i| {
+//             let f: &dyn StateCoordFnTrait = &coord_fns[i];
+//             f
+//         });
+//         (self.0)(state.t_mut(), state.x_mut(), coord_fns)
 //     }
 // }
 
@@ -727,8 +725,7 @@ impl<'a, const N: usize, S: State<N>> Fn<(f64,)> for StateCoordFn<'a, N, S> {
     }
 }
 
-impl<'a, const N: usize, S: State<N>> StateCoordFnTrait for StateCoordFn<'a, N, S>
-{
+impl<'a, const N: usize, S: State<N>> StateCoordFnTrait for StateCoordFn<'a, N, S> {
     fn d(&self, t: f64) -> f64 {
         self.state.eval_derivative(t, self.coord)
     }
