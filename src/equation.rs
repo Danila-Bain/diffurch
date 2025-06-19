@@ -41,7 +41,7 @@ pub struct Equation<
     const N: usize,
     RHS: StateFnMut<N, [f64; N]>,
     Delays: HList = Nil,
-    Disco: HList = Nil,
+    Events: HList = Nil,
 > {
     /// The right-hand-side of the function, a function that acts on
     /// [crate::State].
@@ -50,7 +50,7 @@ pub struct Equation<
     /// discontinuities to preserve the order of underlying continous integration method.
     pub delays: Delays,
     /// Locators for discontinuities in equation
-    pub disco: Disco,
+    pub events: Events,
     /// The maximal delay, that is present in the equation.
     ///
     /// By default, it is zero for ordinary differential equations, and  `f64::INFINITY` for delay
@@ -110,7 +110,7 @@ macro_rules! equation {
 ///     rhs: ODE2StateFnMut(|t, [x, y]| [-y / t, x]),
 ///     max_delay: f64::NAN,
 ///     delays: hlist2::Nil,
-///     disco: hlist2::Nil,
+///     events: hlist2::Nil,
 /// };
 /// ```
 impl<const N: usize, RHS: StateFnMut<N, [f64; N]>> Equation<N, RHS> {
@@ -129,7 +129,7 @@ impl<const N: usize, RHS: StateFnMut<N, [f64; N]>> Equation<N, RHS> {
             rhs,
             max_delay: f64::NAN,
             delays: Nil,
-            disco: Nil,
+            events: Nil,
         }
     }
 
@@ -146,7 +146,7 @@ impl<const N: usize, RHS: StateFnMut<N, [f64; N]>> Equation<N, RHS> {
             rhs,
             max_delay,
             delays: Nil,
-            disco: Nil,
+            events: Nil,
         }
     }
 
@@ -156,32 +156,55 @@ impl<const N: usize, RHS: StateFnMut<N, [f64; N]>> Equation<N, RHS> {
             rhs: self.rhs,
             max_delay: value,
             delays: Nil,
-            disco: Nil,
+            events: Nil,
         }
     }
 }
 
-impl<const N: usize, RHS: StateFnMut<N, [f64; N]>, Delays: HList, Disco: HList>
-    Equation<N, RHS, Delays, Disco>
+impl<const N: usize, RHS: StateFnMut<N, [f64; N]>, Delays: HList, Events: HList>
+    Equation<N, RHS, Delays, Events>
 {
-    pub fn disco<L: Locate<N>>(
+    pub fn loc<L: Locate<N>>(
         self,
-        loc: L,
-    ) -> Equation<N, RHS, Delays, <Disco as Append>::Output<L>>
+        locate: L,
+    ) -> Equation<N, RHS, Delays, <Events as Append>::Output<(L, impl EventCall<N>)>>
     where
-        Disco: Append,
+        Events: Append,
     {
         let Equation {
             rhs,
             delays,
-            disco,
+            events,
             max_delay,
         } = self;
 
         Equation {
             rhs,
             delays,
-            disco: disco.append(loc),
+            events: events.append((locate, event!())),
+            max_delay,
+        }
+    }
+
+    pub fn on_loc<L: Locate<N>, E: EventCall<N>>(
+        self,
+        locate: L,
+        event: E,
+    ) -> Equation<N, RHS, Delays, <Events as Append>::Output<(L, E)>>
+    where
+        Events: Append,
+    {
+        let Equation {
+            rhs,
+            delays,
+            events,
+            max_delay,
+        } = self;
+
+        Equation {
+            rhs,
+            delays,
+            events: events.append((locate, event)),
             max_delay,
         }
     }
@@ -189,18 +212,18 @@ impl<const N: usize, RHS: StateFnMut<N, [f64; N]>, Delays: HList, Disco: HList>
     pub fn delays<NewDelays: IntoHList>(
         self,
         new_delays: NewDelays,
-    ) -> Equation<N, RHS, <NewDelays as IntoHList>::HList, Disco> {
+    ) -> Equation<N, RHS, <NewDelays as IntoHList>::HList, Events> {
         let Equation {
             rhs,
             delays: _,
-            disco,
+            events,
             max_delay,
         } = self;
 
         Equation {
             rhs,
             delays: new_delays.into_hlist(),
-            disco,
+            events,
             max_delay,
         }
     }

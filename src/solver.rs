@@ -2,7 +2,7 @@
 
 use crate::rk::{RK98, RungeKuttaTable};
 use crate::*;
-use hlist2::ops::Append;
+use hlist2::ops::{Append, Extend};
 use hlist2::{HList, Nil};
 
 /// Implements the integration of differential equation, containing the implementation specific (not
@@ -248,16 +248,18 @@ where
     }
 
     /// Run solver.
-    pub fn run<RHS: StateFnMut<N, [f64; N]>, Delays: HList, Disco: LocHList<N>>(
+    pub fn run<RHS: StateFnMut<N, [f64; N]>, Delays: HList, EventsEquation>(
         mut self,
-        mut eq: Equation<N, RHS, Delays, Disco>,
+        mut eq: Equation<N, RHS, Delays, EventsEquation>,
         ic: impl InitialCondition<N>,
         interval: impl std::ops::RangeBounds<f64>,
     ) where
         EventsOnStep: EventHList<N>,
         EventsOnStart: EventHList<N>,
         EventsOnStop: EventHList<N>,
-        EventsOnLoc: LocEventHList<N>,
+        EventsOnLoc: LocEventHList<N> + Extend,
+        EventsEquation: LocEventHList<N>,
+        <EventsOnLoc as Extend>::Output<EventsEquation>: LocEventHList<N>,
     {
         use std::ops::Bound::*;
         let t_init = match interval.start_bound() {
@@ -273,37 +275,20 @@ where
         let mut state = RKState::new(t_init, ic, eq.max_delay, &self.rk);
         let mut stepsize = self.stepsize;
 
+        let mut loc_events = self.loc_events.extend(eq.events);
+
         self.start_events.call_each(&mut state);
         self.step_events.call_each(&mut state);
 
         while state.t() < t_end {
             state.make_step(&mut rhs, stepsize);
 
-            let disco = eq.disco.locate_first(&mut state);
-            let loc = self.loc_events.locate_first(&mut state);
-
-            let (t, event) = match disco {
-                None => loc.unzip(),
-                Some(t_disco) => match loc {
-                    None => (Some(t_disco), None),
-                    Some((t_loc, event)) => {
-                        if t_disco < t_loc {
-                            (Some(t_disco), None)
-                        } else {
-                            (Some(t_loc), Some(event))
-                        }
-                    }
-                },
-            };
-
-            if let Some(t) = t && t > state.t_prev() {
+            if let Some((t, event)) = loc_events.locate_first(&mut state) && t > state.t_prev() {
                 state.undo_step();
                 state.make_step(&mut rhs, t - state.t);
                 state.push_current();
                 self.step_events.call_each(&mut state);
-                if let Some(event) = event {
-                    event.call(&mut state); 
-                }
+                event.call(&mut state); 
                 if state.t_prev() == state.t() { // zero step occured due to event
                     self.step_events.call_each(&mut state);
                 }

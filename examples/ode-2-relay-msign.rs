@@ -8,7 +8,7 @@ fn main() {
     let mut points2 = vec![];
 
     let eq =
-        equation!(|_, [_, dx], [x, _]| [dx, -2. * x.prev().signum()]).disco(Loc::sign(state_fn!(|t, [x, _]| {
+        equation!(|_, [_, dx], [x, _]| [dx, -2. * x.prev().signum()]).loc(Loc::sign(state_fn!(|t, [x, _]| {
             println!("try: {x} at {t}");
             x
         })));
