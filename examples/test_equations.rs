@@ -2,7 +2,7 @@
 #![feature(generic_const_exprs)]
 #![allow(dead_code)]
 
-use std::{f64::consts::PI, fs::File, io::BufReader};
+use std::{f64::consts::PI, fs::File, io::BufReader, os::unix::process};
 
 use diffurch::rk::*;
 use diffurch::*;
@@ -276,23 +276,88 @@ fn ode3_tori() -> (
     (eq, ic, interval, solution)
 }
 
-fn ode2_relay_msign_naive() -> (
-    Equation<2, ODEStateFnMut<2, impl FnMut([f64; 2]) -> [f64; 2], [f64; 2]>>,
-    [f64; 2],
-    std::ops::Range<f64>,
-    impl Fn(f64) -> [f64; 2],
-) {
-    let eq = equation!(|[x, dx]| [dx, -2. * x.signum()]);
-    let ic = [0.25, 0.];
-    let interval = 0.5 ..20.5;
-    let solution = |t: f64| {
-        let t = t;
-        [
-            (t - t.floor()) * (t - t.ceil()) * ((t * 0.5).fract() - 0.5).signum(),
-            ((t * 0.5).fract() - 0.5).signum() * (t - t.ceil() + t - t.floor()),
-        ]
-    };
+// fn ode2_relay_msign_naive() -> (
+//     Equation<2, ODEStateFnMut<2, impl FnMut([f64; 2]) -> [f64; 2], [f64; 2]>>,
+//     [f64; 2],
+//     std::ops::Range<f64>,
+//     impl Fn(f64) -> [f64; 2],
+// ) {
+//     let eq = equation!(|[x, dx]| [dx, -2. * x.signum()]);
+//     let ic = [0.25, 0.];
+//     let interval = 0.5 ..20.5;
+//     let solution = |t: f64| {
+//         let t = t;
+//         [
+//             (t - t.floor()) * (t - t.ceil()) * ((t * 0.5).fract() - 0.5).signum(),
+//             ((t * 0.5).fract() - 0.5).signum() * (t - t.ceil() + t - t.floor()),
+//         ]
+//     };
+//
+//     (eq, ic, interval, solution)
+// }
 
+fn dde1_lin_i() -> (
+    Equation<1, impl StateFnMut<1, [f64; 1]>>,
+    impl Fn(f64) -> [f64; 1],
+    std::ops::Range<f64>,
+    impl Fn(f64) -> [f64; 1],
+) {
+    let eq = equation!(|t, [x], [x_]| [x / 1f64.tan() - x_(t - 1.) / 1f64.sin()]);
+    let ic = |t: f64| [t.sin()];
+    let interval = 0. ..20.;
+    let solution = ic.clone();
+
+    (eq, ic, interval, solution)
+}
+
+fn ndde1_lin_i_u() -> (
+    Equation<1, impl StateFnMut<1, [f64; 1]>>,
+    (impl Fn(f64) -> [f64; 1], impl Fn(f64) -> [f64; 1]),
+    std::ops::Range<f64>,
+    impl Fn(f64) -> [f64; 1],
+) {
+    let eq = equation!(|t, [x], [x_]| [x / 1f64.tan() - x_.d(t - 1.) / 1f64.sin()]);
+    let ic = (|t: f64| [t.sin()], |t: f64| [t.cos()]);
+    let interval = 0. ..10.;
+    let solution = ic.0.clone();
+    (eq, ic, interval, solution)
+}
+
+fn ndde1_lin_i_s() -> (
+    Equation<1, impl StateFnMut<1, [f64; 1]>>,
+    (impl Fn(f64) -> [f64; 1], impl Fn(f64) -> [f64; 1]),
+    std::ops::Range<f64>,
+    impl Fn(f64) -> [f64; 1],
+) {
+    let eq = equation!(|t, [_], [x_]| [-x_(t - 1.) * 1f64.sin() + x_.d(t - 1.) * 1f64.cos()]);
+    let ic = (|t: f64| [t.sin()], |t: f64| [t.cos()]);
+    let interval = 0. ..20.;
+    let solution = ic.0.clone();
+    (eq, ic, interval, solution)
+}
+
+fn ndde1_lin_copy_sin() -> (
+    Equation<1, impl StateFnMut<1, [f64; 1]>>,
+    (impl Fn(f64) -> [f64; 1], impl Fn(f64) -> [f64; 1]),
+    std::ops::Range<f64>,
+    impl Fn(f64) -> [f64; 1],
+) {
+    let eq = equation!(|t, [_], [x_]| [x_.d(t - 2.*PI)]);
+    let ic = (|t: f64| [t.sin()], |t: f64| [t.cos()]);
+    let interval = 0. ..20.;
+    let solution = ic.0.clone();
+    (eq, ic, interval, solution)
+}
+fn ndde1_lin_copy_triangle() -> (
+    Equation<1, impl StateFnMut<1, [f64; 1]>>,
+    (impl Fn(f64) -> [f64; 1], impl Fn(f64) -> [f64; 1]),
+    std::ops::Range<f64>,
+    impl Fn(f64) -> [f64; 1],
+) {
+    let eq = equation!(|t, [_], [x_]| [x_.d(t - 2.*PI)]);
+    let ic = (|t: f64| [t.sin().asin()], |t: f64| [t.cos().signum()]);
+    let interval = 0. ..20.;
+    let solution = ic.0.clone();
     (eq, ic, interval, solution)
 }
 
@@ -454,7 +519,13 @@ fn main() {
     // process!(my_json, ode2_center_r_2);
     // process!(my_json, ode2_stable_cycle);
     // process!(my_json, ode3_tori);
-    // process!(my_json, ode2_relay_msign_naive);
+    //
+    // process!(my_json, dde1_lin_i);
+    // process!(my_json, ndde1_lin_i_u);
+    // process!(my_json, ndde1_lin_i_s);
+    // process!(my_json, ndde1_lin_copy_sin);
+    // process!(my_json, ndde1_lin_copy_triangle);
 
     std::fs::write("data_ode.json", to_string_pretty(&my_json).unwrap()).unwrap();
 }
+// process!(my_json, ode2_relay_msign_naive);
