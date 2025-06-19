@@ -26,6 +26,7 @@ term_size = "0.3.2"
 ndarray = "0.16.1"
 serde_json = "1.0.140"
 rayon = "1.10.0"
+ndarray-linalg = "0.17.0"
 
 [dependencies]
 hlist2 = "0.0.15"
