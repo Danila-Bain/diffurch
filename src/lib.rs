@@ -6,7 +6,7 @@
 #![feature(file_buffered)]
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
-#![warn(missing_docs)]
+// #![warn(missing_docs)]
 
 pub mod equation;
 pub mod event;
@@ -17,6 +17,7 @@ pub mod polynomial;
 pub mod rk;
 pub mod solver;
 pub mod state;
+pub mod hlists;
 //
 pub use equation::*;
 pub use event::*;
@@ -25,3 +26,4 @@ pub use initial_condition::*;
 pub use loc::*;
 pub use solver::*;
 pub use state::*;
+pub use hlists::*;

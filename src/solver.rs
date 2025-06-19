@@ -248,9 +248,9 @@ where
     }
 
     /// Run solver.
-    pub fn run<RHS: StateFnMut<N, [f64; N]>>(
+    pub fn run<RHS: StateFnMut<N, [f64; N]>, Delays: HList, Disco: LocHList<N>>(
         mut self,
-        eq: Equation<N, RHS>,
+        mut eq: Equation<N, RHS, Delays, Disco>,
         ic: impl InitialCondition<N>,
         interval: impl std::ops::RangeBounds<f64>,
     ) where
@@ -279,18 +279,34 @@ where
         while state.t() < t_end {
             state.make_step(&mut rhs, stepsize);
 
-            // println!("Pre-Locate: {}, {:?}", state.t(), state.x());
-            if let Some((t_loc, event)) = self.loc_events.locate_first(&mut state) && t_loc > state.t_prev() {
-                // println!("Event located at t = {t_loc}");
+            let disco = eq.disco.locate_first(&mut state);
+            let loc = self.loc_events.locate_first(&mut state);
+
+            let (t, event) = match disco {
+                None => loc.unzip(),
+                Some(t_disco) => match loc {
+                    None => (Some(t_disco), None),
+                    Some((t_loc, event)) => {
+                        if t_disco < t_loc {
+                            (Some(t_disco), None)
+                        } else {
+                            (Some(t_loc), Some(event))
+                        }
+                    }
+                },
+            };
+
+            if let Some(t) = t && t > state.t_prev() {
                 state.undo_step();
-                state.make_step(&mut rhs, t_loc - state.t);
+                state.make_step(&mut rhs, t - state.t);
                 state.push_current();
                 self.step_events.call_each(&mut state);
-                event.call(&mut state);
+                if let Some(event) = event {
+                    event.call(&mut state); 
+                }
                 if state.t_prev() == state.t() { // zero step occured due to event
                     self.step_events.call_each(&mut state);
                 }
-                // println!("Event located end");
             } else {
                 state.push_current();
                 self.step_events.call_each(&mut state);

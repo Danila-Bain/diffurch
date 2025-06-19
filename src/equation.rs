@@ -1,5 +1,7 @@
 //! Defines [Equation], which holds the right hand side of the equation.
 
+use hlist2::{HList, Nil, convert::IntoHList, ops::Append};
+
 use crate::*;
 
 // /// Constructing equations from closures with different signatures:
@@ -35,10 +37,20 @@ use crate::*;
 /// let ndde = equation!(|t, [x], [x_]| [4. * x * (1. - x_.d(t - 1.))]);
 /// ```
 ///
-pub struct Equation<const N: usize, RHS: StateFnMut<N, [f64; N]>> {
+pub struct Equation<
+    const N: usize,
+    RHS: StateFnMut<N, [f64; N]>,
+    Delays: HList = Nil,
+    Disco: HList = Nil,
+> {
     /// The right-hand-side of the function, a function that acts on
     /// [crate::State].
     pub rhs: RHS,
+    /// Delays present in equation. Mentioned delays are used to manage propagating
+    /// discontinuities to preserve the order of underlying continous integration method.
+    pub delays: Delays,
+    /// Locators for discontinuities in equation
+    pub disco: Disco,
     /// The maximal delay, that is present in the equation.
     ///
     /// By default, it is zero for ordinary differential equations, and  `f64::INFINITY` for delay
@@ -97,6 +109,8 @@ macro_rules! equation {
 /// let eq = Equation {
 ///     rhs: ODE2StateFnMut(|t, [x, y]| [-y / t, x]),
 ///     max_delay: f64::NAN,
+///     delays: hlist2::Nil,
+///     disco: hlist2::Nil,
 /// };
 /// ```
 impl<const N: usize, RHS: StateFnMut<N, [f64; N]>> Equation<N, RHS> {
@@ -114,6 +128,8 @@ impl<const N: usize, RHS: StateFnMut<N, [f64; N]>> Equation<N, RHS> {
         Equation {
             rhs,
             max_delay: f64::NAN,
+            delays: Nil,
+            disco: Nil,
         }
     }
 
@@ -126,7 +142,12 @@ impl<const N: usize, RHS: StateFnMut<N, [f64; N]>> Equation<N, RHS> {
     /// let eq = Equation::new_with_delay(DDEStateFnMut(|t, [x, y], [x_, y_]| [-y_(t-1.) / t, x]), 1.);
     /// ```
     pub fn new_with_delay(rhs: RHS, max_delay: f64) -> Self {
-        Equation { rhs, max_delay }
+        Equation {
+            rhs,
+            max_delay,
+            delays: Nil,
+            disco: Nil,
+        }
     }
 
     /// Sets [Equation::max_delay] and returns Self
@@ -134,7 +155,53 @@ impl<const N: usize, RHS: StateFnMut<N, [f64; N]>> Equation<N, RHS> {
         Self {
             rhs: self.rhs,
             max_delay: value,
+            delays: Nil,
+            disco: Nil,
         }
     }
 }
 
+impl<const N: usize, RHS: StateFnMut<N, [f64; N]>, Delays: HList, Disco: HList>
+    Equation<N, RHS, Delays, Disco>
+{
+    pub fn disco<L: Locate<N>>(
+        self,
+        loc: L,
+    ) -> Equation<N, RHS, Delays, <Disco as Append>::Output<L>>
+    where
+        Disco: Append,
+    {
+        let Equation {
+            rhs,
+            delays,
+            disco,
+            max_delay,
+        } = self;
+
+        Equation {
+            rhs,
+            delays,
+            disco: disco.append(loc),
+            max_delay,
+        }
+    }
+
+    pub fn delays<NewDelays: IntoHList>(
+        self,
+        new_delays: NewDelays,
+    ) -> Equation<N, RHS, <NewDelays as IntoHList>::HList, Disco> {
+        let Equation {
+            rhs,
+            delays: _,
+            disco,
+            max_delay,
+        } = self;
+
+        Equation {
+            rhs,
+            delays: new_delays.into_hlist(),
+            disco,
+            max_delay,
+        }
+    }
+}
