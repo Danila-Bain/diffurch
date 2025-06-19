@@ -668,6 +668,8 @@ pub struct StateCoordFn<'a, const N: usize, S: State<N>> {
 pub trait StateCoordFnTrait: Fn(f64) -> f64 {
     /// evaluate the derivative
     fn d(&self, t: f64) -> f64;
+    fn prev(&self) -> f64;
+    fn prev_d(&self) -> f64;
 }
 
 // impl<'a, const N: usize, const S: usize, IC: InitialCondition<N>> FnOnce<()>
@@ -728,6 +730,14 @@ impl<'a, const N: usize, S: State<N>> Fn<(f64,)> for StateCoordFn<'a, N, S> {
 impl<'a, const N: usize, S: State<N>> StateCoordFnTrait for StateCoordFn<'a, N, S> {
     fn d(&self, t: f64) -> f64 {
         self.state.eval_derivative(t, self.coord)
+    }
+
+    fn prev(&self) -> f64 {
+        self.state.x_prev()[self.coord]
+    }
+
+    fn prev_d(&self) -> f64 {
+        self.state.eval_derivative(self.state.t_prev(), self.coord)
     }
 }
 //

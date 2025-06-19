@@ -1,13 +1,3 @@
-// fn ode2_relay_msign_naive() -> (
-//     Equation<2, ODEStateFnMut<2, impl FnMut([f64; 2]) -> [f64; 2], [f64; 2]>>,
-//     [f64; 2],
-//     std::ops::Range<f64>,
-//     impl Fn(f64) -> [f64; 2],
-// ) {
-//
-//     (eq, ic, interval, solution)
-// }
-//
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]
 
@@ -17,7 +7,11 @@ fn main() {
     let mut points1 = vec![];
     let mut points2 = vec![];
 
-    let eq = equation!(|[x, dx]| [dx, -2. * x.signum()]).disco(Loc::sign(state_fn!(|[x, _]| {println!("try: {x}"); x})));
+    let eq =
+        equation!(|_, [_, dx], [x, _]| [dx, -2. * x.prev().signum()]).disco(Loc::sign(state_fn!(|t, [x, _]| {
+            println!("try: {x} at {t}");
+            x
+        })));
     let ic = [0.25, 0.];
     let interval = 0.5..20.5;
     let solution = |t: f64| {
@@ -30,7 +24,7 @@ fn main() {
 
     Solver::new()
         .rk(&rk::RK98)
-        .stepsize(0.05)
+        .stepsize(0.3)
         .on_step(event!(|t, [x, _dx]| points1.push((t as f32, x as f32))).subdivide(10))
         .on_step(event!(|t, [x, _dx]| points2.push((t, x).into())).subdivide(10))
         .on_step(event!(|t, [x, dx]| {
