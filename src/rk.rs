@@ -117,7 +117,7 @@ macro_rules! generic_rk_order3 {
             a: [
                 $alpha,
                 ($beta / $alpha) * ($beta - 3. * $alpha * (1. - $alpha)) / (3. * $alpha - 2.),
-                -($beta / $alpha) * ($beta - $alpha) / (3. * $alpha - 2.),
+                ($beta / $alpha) * ($alpha - $beta) / (3. * $alpha - 2.),
             ],
             b: [
                 1. - (3. * $alpha + 3. * $beta - 2.) / (6. * $alpha * $beta),
