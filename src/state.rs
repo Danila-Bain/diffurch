@@ -292,9 +292,13 @@ where
     /// Since the past history may be cleared according to the [State::t_span], this function may
     /// panic, if the evaluation of deleted section of history is attempted.
     fn eval(&self, t: f64, coordinate: usize) -> f64 {
+        // Initial history
         if t <= self.t_init {
             self.x_init.eval::<0>(t)[coordinate]
-        } else if self.t_prev <= t && t <= self.t {
+        } 
+        // Last step (may be accessed frequently for .subdivide option in Events).
+        // So using this, we skip search.
+        else if self.t_prev <= t && t <= self.t {
             let x_prev = self.x_prev[coordinate];
             let k = self.k;
             let t_prev = self.t_prev;
@@ -346,9 +350,14 @@ where
     /// variants instead, which are convertable from [f64; N] or tuple of two closures
     /// respectively (see [crate::InitialCondition::into]).
     fn eval_derivative(&self, t: f64, coordinate: usize) -> f64 {
+        // Initial history
         if t <= self.t_init {
             self.x_init.eval::<1>(t)[coordinate]
-        } else if self.t_prev <= t && t <= self.t {
+        } 
+        // Last step (may be accessed frequently for .subdivide option in Events).
+        // So using this, we skip search.
+        // If last step has zero length, the previous step is used.
+        else if self.t_prev <= t && t <= self.t && self.t != self.t_prev {
             let k = self.k;
             let t_prev = self.t_prev;
             let t_next = self.t;
