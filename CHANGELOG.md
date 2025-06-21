@@ -1,9 +1,13 @@
 # Version 0.0.3
 
-- Add `event_fn!` and `mut_event_fn!` convenience macros.
+- Add `state_fn!` and `mut_state_fn!` convenience macros.
 - Make other convenience macros accept `_` for argument names in closures.
 - Remove equation-type specific methods in `Event` and `Filter`
 - In `StateCoordFn` class, replace use of `RKState` with `impl State`
+- Add `prev` and `prev_d` methods for `StateCoordFn`s
+- Add events to `Equation` struct, which are merged with `loc_events` in `Solver`. Add method `loc` to add located event without a callback (primary use: discontinuity handling), and `on_loc` which is similar to `Solver::on_loc`.
+- Remove `Box` usage from `State::coord_fns`.
+- Add `DDEMutStateFnMut`, which allows state-mutating events which have (non-mutating) access to history.
 
 # Version 0.0.2
 
