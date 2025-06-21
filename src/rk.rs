@@ -1096,6 +1096,7 @@ mod tests {
         let mut max = 0f64;
         for i in 0..S {
             max = max.max((rk.b[i] - rk.bi[i](1.)).abs());
+            max = max.max(rk.bi[i](0.).abs());
         }
         max
     }
@@ -1124,7 +1125,7 @@ mod tests {
         // E. Hairer, G. Wanner, and S. P. Nørsett, Solving ordinary differential equations I, vol. 8. in Springer Series in Computational Mathematics, vol. 8. Berlin, Heidelberg: Springer Berlin Heidelberg, 1993. doi: 10.1007/978-3-540-78862-1.
         let mut max_error = 0.;
 
-        // order is q in the text
+        // order is q in the mentioned text
         for order in 1..=ORDER {
             let advance_tree = |tree: &mut [usize]| -> bool {
                 let mut i_of_increased = order - 1;
