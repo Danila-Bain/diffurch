@@ -4,4 +4,4 @@ The library, that implements numerical methods for solving ordinary and delay di
 
 # Documention
 
-For documentation, please refer to [dics.rs/diffurch](https://docs.rs/diffurch/latest/diffurch/).
+For documentation, refer to [docs.rs/diffurch](https://docs.rs/diffurch/latest/diffurch/).
