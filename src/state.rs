@@ -16,6 +16,8 @@ pub trait State<const N: usize> {
     fn x(&self) -> [f64; N];
     /// get previous step position of the state
     fn x_prev(&self) -> [f64; N];
+    /// get previous step derivative of the state
+    fn d_prev(&self) -> [f64; N];
     /// get mutable reference to a current position of the state.
     ///
     /// Can be used to implement impacts in the systems due to some events.
@@ -156,6 +158,10 @@ where
 
     fn x_prev(&self) -> [f64; N] {
         self.x_prev
+    }
+
+    fn d_prev(&self) -> [f64; N] {
+        self.k[0]
     }
 
     fn x_mut(&mut self) -> &mut [f64; N] {
@@ -667,7 +673,7 @@ pub trait StateCoordFnTrait: Fn(f64) -> f64 {
     /// evaluate the derivative
     fn d(&self, t: f64) -> f64;
     fn prev(&self) -> f64;
-    fn prev_d(&self) -> f64;
+    fn d_prev(&self) -> f64;
 }
 
 impl<'a, const N: usize, S: State<N>> FnOnce<(f64,)> for StateCoordFn<'a, N, S> {
@@ -700,8 +706,8 @@ impl<'a, const N: usize, S: State<N>> StateCoordFnTrait for StateCoordFn<'a, N, 
         self.state.x_prev()[self.coord]
     }
 
-    fn prev_d(&self) -> f64 {
-        self.state.eval_derivative(self.state.t_prev(), self.coord)
+    fn d_prev(&self) -> f64 {
+        self.state.d_prev()[self.coord]
     }
 }
 //

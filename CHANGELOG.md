@@ -8,6 +8,7 @@
 - Add events to `Equation` struct, which are merged with `loc_events` in `Solver`. Add method `loc` to add located event without a callback (primary use: discontinuity handling), and `on_loc` which is similar to `Solver::on_loc`.
 - Remove `Box` usage from `State::coord_fns`.
 - Add `DDEMutStateFnMut`, which allows state-mutating events which have (non-mutating) access to history.
+- Add `d_prev` method for a `State` for free evaluation of derivative of the state at the beginning of the last computed step.
 
 # Version 0.0.2
 
