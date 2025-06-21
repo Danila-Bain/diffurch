@@ -250,7 +250,7 @@ where
     /// Run solver.
     pub fn run<RHS: StateFnMut<N, [f64; N]>, Delays: HList, EventsEquation>(
         mut self,
-        mut eq: Equation<N, RHS, Delays, EventsEquation>,
+        eq: Equation<N, RHS, Delays, EventsEquation>,
         ic: impl InitialCondition<N>,
         interval: impl std::ops::RangeBounds<f64>,
     ) where

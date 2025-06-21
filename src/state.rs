@@ -48,7 +48,7 @@ pub trait State<const N: usize> {
     /// Return coordinate functions, that can be used to evaluate state at the past times.
     ///
     /// This is the thing passed to the right hand side functions for delay differential equations.
-    fn coord_fns<'a>(&'a self) -> [Box<dyn 'a + StateCoordFnTrait>; N];
+    fn coord_fns<'b>(&'b self) -> [StateCoordFn<'b, N, Self>; N];
 }
 
 /// [State] is an object that represents the state of the equation during solving.
@@ -374,13 +374,10 @@ where
 
     /// Get a vector of [StateCoordFn]s for evaluation of [StateFn::DDE] and [MutStateFn::DDE]
     /// variants.
-    fn coord_fns<'b>(&'b self) -> [Box<dyn 'b + StateCoordFnTrait>; N] {
-        std::array::from_fn(|i| {
-            let coord_fn: Box<dyn 'b + StateCoordFnTrait> = Box::new(StateCoordFn::<'b, N, Self> {
-                state: self,
-                coord: i,
-            });
-            coord_fn
+    fn coord_fns<'b>(&'b self) -> [StateCoordFn<'b, N, Self>; N] {
+        std::array::from_fn(|i| StateCoordFn::<'b, N, Self> {
+            state: self,
+            coord: i,
         })
     }
 }
@@ -583,33 +580,20 @@ impl<
 > StateFnMut<N, Ret> for DDEStateFnMut<N, F, Ret>
 {
     fn eval(&mut self, state: &impl State<N>) -> Ret {
-        let coord_fns: [StateCoordFn<'_, N, _>; N] =
-            std::array::from_fn(|i| StateCoordFn { state, coord: i });
-        let coord_fns: [&dyn StateCoordFnTrait; N] = std::array::from_fn(|i| {
-            let f: &dyn StateCoordFnTrait = &coord_fns[i];
-            f
-        });
+        let coord_fns: [StateCoordFn<'_, N, _>; N] = state.coord_fns();
+        let coord_fns = std::array::from_fn(|i| &coord_fns[i] as &dyn StateCoordFnTrait);
         (self.0)(state.t(), state.x(), coord_fns)
-        // (self.0)(state.t(), state.x(), state.coord_fns())
     }
 
     fn eval_prev(&mut self, state: &impl State<N>) -> Ret {
-        let coord_fns: [StateCoordFn<'_, N, _>; N] =
-            std::array::from_fn(|i| StateCoordFn { state, coord: i });
-        let coord_fns: [&dyn StateCoordFnTrait; N] = std::array::from_fn(|i| {
-            let f: &dyn StateCoordFnTrait = &coord_fns[i];
-            f
-        });
+        let coord_fns: [StateCoordFn<'_, N, _>; N] = state.coord_fns();
+        let coord_fns = std::array::from_fn(|i| &coord_fns[i] as &dyn StateCoordFnTrait);
         (self.0)(state.t_prev(), state.x_prev(), coord_fns)
     }
 
     fn eval_at(&mut self, state: &impl State<N>, t: f64) -> Ret {
-        let coord_fns: [StateCoordFn<'_, N, _>; N] =
-            std::array::from_fn(|i| StateCoordFn { state, coord: i });
-        let coord_fns: [&dyn StateCoordFnTrait; N] = std::array::from_fn(|i| {
-            let f: &dyn StateCoordFnTrait = &coord_fns[i];
-            f
-        });
+        let coord_fns: [StateCoordFn<'_, N, _>; N] = state.coord_fns();
+        let coord_fns = std::array::from_fn(|i| &coord_fns[i] as &dyn StateCoordFnTrait);
         (self.0)(t, state.eval_all(t), coord_fns)
     }
 }
@@ -620,44 +604,58 @@ impl<
 > MutStateFnMut<N, Ret> for DDEStateFnMut<N, F, Ret>
 {
     fn eval_mut(&mut self, state: &mut impl State<N>) -> Ret {
-        let coord_fns: [StateCoordFn<'_, N, _>; N] =
-            std::array::from_fn(|i| StateCoordFn { state, coord: i });
-        let coord_fns: [&dyn StateCoordFnTrait; N] = std::array::from_fn(|i| {
-            let f: &dyn StateCoordFnTrait = &coord_fns[i];
-            f
-        });
+        let coord_fns: [StateCoordFn<'_, N, _>; N] = state.coord_fns();
+        let coord_fns = std::array::from_fn(|i| &coord_fns[i] as &dyn StateCoordFnTrait);
         (self.0)(state.t(), state.x(), coord_fns)
     }
 }
 
-// // Borrowing rules violation
-// pub struct DDEMutStateFnMut<
-//     const N: usize,
-//     F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N], [&'a dyn StateCoordFnTrait; N]), Output = Ret>,
-//     Ret,
-// >(pub F);
-// impl<
-//     F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N], [&'a dyn StateCoordFnTrait; N]), Output = Ret>,
-//     Ret,
-//     const N: usize,
-// > MutStateFnMut<N, Ret> for DDEMutStateFnMut<N, F, Ret>
-// {
-//     fn eval_mut(&mut self, state: &mut impl State<N>) -> Ret {
-//         let coord_fns: [StateCoordFn<'_, N, _>; N] =
-//             std::array::from_fn(|i| StateCoordFn { state, coord: i });
-//         let coord_fns: [&dyn StateCoordFnTrait; N] = std::array::from_fn(|i| {
-//             let f: &dyn StateCoordFnTrait = &coord_fns[i];
-//             f
-//         });
-//         (self.0)(state.t_mut(), state.x_mut(), coord_fns)
-//     }
-// }
+// Borrowing rules violation
+pub struct DDEMutStateFnMut<
+    const N: usize,
+    F: for<'a> FnMut<
+            (
+                &'a mut f64,
+                &'a mut [f64; N],
+                [&'a dyn StateCoordFnTrait; N],
+            ),
+            Output = Ret,
+        >,
+    Ret,
+>(pub F);
+impl<
+    F: for<'a> FnMut<
+            (
+                &'a mut f64,
+                &'a mut [f64; N],
+                [&'a dyn StateCoordFnTrait; N],
+            ),
+            Output = Ret,
+        >,
+    Ret,
+    const N: usize,
+> MutStateFnMut<N, Ret> for DDEMutStateFnMut<N, F, Ret>
+{
+    fn eval_mut(&mut self, state: &mut impl State<N>) -> Ret {
+        let coord_fns: [StateCoordFn<'_, N, _>; N] = state.coord_fns();
+        let coord_fns = std::array::from_fn(|i| &coord_fns[i] as &dyn StateCoordFnTrait);
+
+        let mut t = state.t();
+        let mut x = state.x();
+        let ret = (self.0)(&mut t, &mut x, coord_fns);
+
+        *state.t_mut() = t;
+        *state.x_mut() = x;
+
+        ret
+    }
+}
 
 /// Struct that holds a reference to the state, and the coordinate index.
 ///
 /// It implements Fn() -> f64 and Fn(f64) -> f64 traits, as evaluation of current and past state
 /// respectively.
-pub struct StateCoordFn<'a, const N: usize, S: State<N>> {
+pub struct StateCoordFn<'a, const N: usize, S: State<N> + ?Sized> {
     /// Reference to the state
     pub state: &'a S,
     /// Coordinate index
@@ -671,40 +669,6 @@ pub trait StateCoordFnTrait: Fn(f64) -> f64 {
     fn prev(&self) -> f64;
     fn prev_d(&self) -> f64;
 }
-
-// impl<'a, const N: usize, const S: usize, IC: InitialCondition<N>> FnOnce<()>
-//     for StateCoordFn<'a, N, S, IC>
-// where
-//     [(); S * (S - 1) / 2]:,
-// {
-//     type Output = f64;
-//     #[inline]
-//     extern "rust-call" fn call_once(self, _: ()) -> Self::Output {
-//         self.state.x[self.coord]
-//     }
-// }
-//
-// impl<'a, const N: usize, const S: usize, IC: InitialCondition<N>> FnMut<()>
-//     for StateCoordFn<'a, N, S, IC>
-// where
-//     [(); S * (S - 1) / 2]:,
-// {
-//     #[inline]
-//     extern "rust-call" fn call_mut(&mut self, _: ()) -> Self::Output {
-//         self.state.x[self.coord]
-//     }
-// }
-//
-// impl<'a, const N: usize, const S: usize, IC: InitialCondition<N>> Fn<()>
-//     for StateCoordFn<'a, N, S, IC>
-// where
-//     [(); S * (S - 1) / 2]:,
-// {
-//     #[inline]
-//     extern "rust-call" fn call(&self, _: ()) -> Self::Output {
-//         self.state.x[self.coord]
-//     }
-// }
 
 impl<'a, const N: usize, S: State<N>> FnOnce<(f64,)> for StateCoordFn<'a, N, S> {
     type Output = f64;
@@ -814,7 +778,7 @@ macro_rules! mut_state_fn {
     ($($move:ident)? |$t:pat, [$($x:pat),+]| $expr:expr) => {
         $crate::state::ODE2MutStateFnMut($($move)? |$t, [$($x),+]| $expr)
     };
-    // (|$t:ident, [$($x:ident),+], [$($x_:ident),+]| $expr:expr) => {
-    //     $crate::Event::dde_mut(|$t, [$($x),+], [$($x_),+]| $expr)
-    // };
+    (|$t:ident, [$($x:ident),+], [$($x_:ident),+]| $expr:expr) => {
+        $crate::state::DDEMutStateFnMut(|$t, [$($x),+], [$($x_),+]| $expr)
+    };
 }
