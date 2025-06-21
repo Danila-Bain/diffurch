@@ -21,7 +21,7 @@ pub struct Event<
     pub callback: Callback,
     /// Function (or rather a collection of functions), which handles the output destination and
     /// formatting provided by `callback`. It takes a single argument: the return type of `callback`.
-    pub stream: Stream, // Vec<Box<dyn 'a + FnMut(Output)>>,
+    pub stream: Stream, 
     /// Function, that filters invocations of `callback` and `stream`. Can be used to produce a
     /// more sparse output (such that there are not too many output points), or limit outputing
     /// values to a certain range, etc. It is a function, that is invoked on a state and returns
