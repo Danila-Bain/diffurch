@@ -1,4 +1,4 @@
-//! D1efines [Loc] struct, which is an event locator
+//! Defines [Loc] struct, which is an event locator
 
 use std::collections::VecDeque;
 use std::mem::swap;
@@ -165,7 +165,9 @@ pub struct Loc<D = (), L = ()>(pub D, pub L);
 
 impl Loc {
     /// Constructor for detection method [Sign] and location method [Bisection]
-    pub fn sign<const N: usize, F: StateFnMut<N, Output = f64>>(f: F) -> Loc<Sign<N, F>, Bisection> {
+    pub fn sign<const N: usize, F: StateFnMut<N, Output = f64>>(
+        f: F,
+    ) -> Loc<Sign<N, F>, Bisection> {
         Loc(Sign(f), Bisection)
     }
     /// Constructor for detection method [Pos] and location method [Bisection]
@@ -177,11 +179,15 @@ impl Loc {
         Loc(Neg(f), Bisection)
     }
     /// Constructor for detection method [WhilePos] and location method [StepEnd]
-    pub fn while_pos<const N: usize, F: StateFnMut<N, Output = f64>>(f: F) -> Loc<WhilePos<N, F>, StepEnd> {
+    pub fn while_pos<const N: usize, F: StateFnMut<N, Output = f64>>(
+        f: F,
+    ) -> Loc<WhilePos<N, F>, StepEnd> {
         Loc(WhilePos(f), StepEnd)
     }
     /// Constructor for detection method [WhileNeg] and location method [StepEnd]
-    pub fn while_neg<const N: usize, F: StateFnMut<N, Output = f64>>(f: F) -> Loc<WhileNeg<N, F>, StepEnd> {
+    pub fn while_neg<const N: usize, F: StateFnMut<N, Output = f64>>(
+        f: F,
+    ) -> Loc<WhileNeg<N, F>, StepEnd> {
         Loc(WhileNeg(f), StepEnd)
     }
 
@@ -375,71 +381,37 @@ where
 // }
 
 //
-// pub struct Propagated<Delayed> {
-//     pub order: usize,
-//     pub queue: Vec<(f64, usize)>,
-//     pub delayed: Delayed,
-// }
-//
-// impl<const N: usize, Alpha: StateFnMut<N, f64>> Locate<N> for Propagated<Alpha> {
-//     fn locate(&mut self, state: &impl State<N>) -> Option<f64> {
-//
-//
-//         let alpha = self.delayed.eval(state);
-//         let alpha_prev = self.delayed.eval_prev(state);
-//
-//         let i = self.queue.partition_point(|t_i| t_i.0 <= alpha);
-//         if self.queue[i].0 >= alpha_prev && self.queue[i].0 < alpha {
-//             // Loc::sign(state_fn!(|t| self.delayed.eval_at(t) - self.queue[i].0)).locate()
-//             // self.queue.push((1., self.queue[i].1 + 1))
-//         //     Some(self.queue[i].0)
-//         } else {
-//             None
-//         }
-//         // detect
-//         // if state.t() - self.delayed
-//     }
-//
-//     // fn locate(&mut self, state: &impl State<N>) -> Option<f64> {
-//     //     let mut min_idx = 0;
-//     //     let mut min = state.t();
-//     //     for (i, q) in self.queues.iter().enumerate() {
-//     //         if let Some(t) = q.front()
-//     //             && *t < min
-//     //         {
-//     //             min = *t;
-//     //             min_idx = i;
-//     //         }
-//     //     }
-//     //
-//     //     // unwrap_unchecked is safe here because:
-//     //     // min != state.t() <=> min is updated in the loop <=> min_idx updated in the loop <=>
-//     //     // self.queues[min_idx] were not empty.
-//     //     (min < state.t()).then(|| unsafe { self.queues[min_idx].pop_front().unwrap_unchecked() })
-//     // }
-// }
+pub struct Propagated<Delayed> {
+    pub order: usize,
+    pub queue: Vec<(f64, usize)>,
+    pub delayed: Delayed,
+}
 
-//
-//
-// delays: 1, 2.5
-//
-// initial discontinuity: 0
-//
-// propagations:
-// time(order)
-// 1(1)
-// 2(2)
-// 2.5(1)
-// 3(3)
-// 3.5(2) x2
-// 4(4)
-// 4.5(3) x2
-// 5(min 5 2) x2
-//
-//
-// 0 (0)
-//
-// Okay, events are comming in sorted sequence. At each step, we have to check for each delay
-// whether a propagated time occured. For each delayed argument, we can track the previous
-// closest element in sequence, because we can assume that it is continuous for most cases and
-// linear search will actually be made in one step.
+impl<const N: usize, Alpha: Clone + StateFnMut<N, Output = f64>> Locate<N> for Propagated<Alpha> {
+    fn locate(&mut self, state: &impl State<N>) -> Option<f64> {
+        let alpha = self.delayed.eval(state);
+        let alpha_prev = self.delayed.eval_prev(state);
+
+        let i = self.queue.partition_point(|t_i| t_i.0 <= alpha); // unoptimal
+        let (t, order) = self.queue[i];
+
+        if t >= alpha_prev && t < alpha {
+            let located_t = Loc(
+                Sign(StateFnMutComposition(
+                    |alpha_| alpha_ - t,
+                    self.delayed.clone(),
+                )),
+                Bisection,
+            )
+            .locate(state);
+            located_t.and_then(|located_t| {
+                if order <= 4 {
+                    self.queue.push((located_t, order + 1))
+                };
+                Some(located_t)
+            })
+        } else {
+            None
+        }
+    }
+}
