@@ -1,4 +1,4 @@
-use hlist2::{ops::ToRef, Cons, HList, Nil};
+use hlist2::{Cons, HList, Nil, ops::ToRef};
 
 use crate::{EventCall, EventCallConcrete, Locate, State, StateFnMut};
 
@@ -147,7 +147,7 @@ impl<const N: usize> FilterHList<N> for Nil {
 }
 impl<const N: usize, H, T> FilterHList<N> for Cons<H, T>
 where
-    H: StateFnMut<N, bool>,
+    H: StateFnMut<N, Output = bool>,
     T: FilterHList<N>,
 {
     fn all(&mut self, state: &impl State<N>) -> bool {

@@ -1,26 +1,25 @@
 //! D1efines [Loc] struct, which is an event locator
 
+use std::collections::VecDeque;
 use std::mem::swap;
 
 use std::ops::{Deref, DerefMut};
 
 use crate::state::*;
 
-// TODO SignDerivative location
-
 macro_rules! impl_deref {
     ($name:ident) => {
         impl_deref!($name, f64);
     };
     ($name:ident, $type:ident) => {
-        impl<const N: usize, F: StateFnMut<N, $type>> Deref for $name<N, F> {
+        impl<const N: usize, F: StateFnMut<N, Output = $type>> Deref for $name<N, F> {
             type Target = F;
 
             fn deref(&self) -> &Self::Target {
                 &self.0
             }
         }
-        impl<const N: usize, F: StateFnMut<N, $type>> DerefMut for $name<N, F> {
+        impl<const N: usize, F: StateFnMut<N, Output = $type>> DerefMut for $name<N, F> {
             fn deref_mut(&mut self) -> &mut Self::Target {
                 &mut self.0
             }
@@ -47,8 +46,8 @@ pub trait Locate<const N: usize> {
 ///
 /// Event is always detected if previous value is zero.
 ///
-pub struct Sign<const N: usize, F: StateFnMut<N, f64>>(pub F);
-impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for Sign<N, F> {
+pub struct Sign<const N: usize, F: StateFnMut<N, Output = f64>>(pub F);
+impl<const N: usize, F: StateFnMut<N, Output = f64>> Detect<N> for Sign<N, F> {
     fn detect(&mut self, state: &impl State<N>) -> bool {
         let curr = self.0.eval(state);
         let prev = self.0.eval_prev(state);
@@ -58,8 +57,8 @@ impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for Sign<N, F> {
 impl_deref!(Sign);
 
 /// Detect event if the value of a function turns positive from non-positive.
-pub struct Pos<const N: usize, F: StateFnMut<N, f64>>(pub F);
-impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for Pos<N, F> {
+pub struct Pos<const N: usize, F: StateFnMut<N, Output = f64>>(pub F);
+impl<const N: usize, F: StateFnMut<N, Output = f64>> Detect<N> for Pos<N, F> {
     fn detect(&mut self, state: &impl State<N>) -> bool {
         let curr = self.0.eval(state);
         let prev = self.0.eval_prev(state);
@@ -69,8 +68,8 @@ impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for Pos<N, F> {
 impl_deref!(Pos);
 
 /// Detect event if the value of a function turns negative from non-negative.
-pub struct Neg<const N: usize, F: StateFnMut<N, f64>>(pub F);
-impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for Neg<N, F> {
+pub struct Neg<const N: usize, F: StateFnMut<N, Output = f64>>(pub F);
+impl<const N: usize, F: StateFnMut<N, Output = f64>> Detect<N> for Neg<N, F> {
     fn detect(&mut self, state: &impl State<N>) -> bool {
         let curr = self.0.eval(state);
         let prev = self.0.eval_prev(state);
@@ -81,8 +80,8 @@ impl_deref!(Neg);
 
 /// Detect event if the value of a function is positive. Contrary to [Pos], it retriggers if value
 /// stays positive in next steps.
-pub struct WhilePos<const N: usize, F: StateFnMut<N, f64>>(pub F);
-impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for WhilePos<N, F> {
+pub struct WhilePos<const N: usize, F: StateFnMut<N, Output = f64>>(pub F);
+impl<const N: usize, F: StateFnMut<N, Output = f64>> Detect<N> for WhilePos<N, F> {
     fn detect(&mut self, state: &impl State<N>) -> bool {
         self.0.eval(state) >= 0.
     }
@@ -91,8 +90,8 @@ impl_deref!(WhilePos);
 
 /// Detect event if the value of a function is negative. Contrary to [Neg], it retriggers if value
 /// stays negative in next steps.
-pub struct WhileNeg<const N: usize, F: StateFnMut<N, f64>>(pub F);
-impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for WhileNeg<N, F> {
+pub struct WhileNeg<const N: usize, F: StateFnMut<N, Output = f64>>(pub F);
+impl<const N: usize, F: StateFnMut<N, Output = f64>> Detect<N> for WhileNeg<N, F> {
     fn detect(&mut self, state: &impl State<N>) -> bool {
         self.0.eval(state) <= 0.
     }
@@ -100,8 +99,8 @@ impl<const N: usize, F: StateFnMut<N, f64>> Detect<N> for WhileNeg<N, F> {
 impl_deref!(WhileNeg);
 
 /// Detect event if bool value changes between current and previous steps.
-pub struct Bool<const N: usize, F: StateFnMut<N, bool>>(pub F);
-impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for Bool<N, F> {
+pub struct Bool<const N: usize, F: StateFnMut<N, Output = bool>>(pub F);
+impl<const N: usize, F: StateFnMut<N, Output = bool>> Detect<N> for Bool<N, F> {
     fn detect(&mut self, state: &impl State<N>) -> bool {
         self.0.eval(state) != self.0.eval_prev(state)
     }
@@ -109,8 +108,8 @@ impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for Bool<N, F> {
 impl_deref!(Bool, bool);
 
 /// Detect event if bool value changes from false to true between previous and current steps.
-pub struct True<const N: usize, F: StateFnMut<N, bool>>(pub F);
-impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for True<N, F> {
+pub struct True<const N: usize, F: StateFnMut<N, Output = bool>>(pub F);
+impl<const N: usize, F: StateFnMut<N, Output = bool>> Detect<N> for True<N, F> {
     fn detect(&mut self, state: &impl State<N>) -> bool {
         self.0.eval(state) && !self.0.eval_prev(state)
     }
@@ -118,8 +117,8 @@ impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for True<N, F> {
 impl_deref!(True, bool);
 
 /// Detect event if bool value changes from true to false between previous and current steps.
-pub struct False<const N: usize, F: StateFnMut<N, bool>>(pub F);
-impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for False<N, F> {
+pub struct False<const N: usize, F: StateFnMut<N, Output = bool>>(pub F);
+impl<const N: usize, F: StateFnMut<N, Output = bool>> Detect<N> for False<N, F> {
     fn detect(&mut self, state: &impl State<N>) -> bool {
         !self.0.eval(state) && self.0.eval_prev(state)
     }
@@ -127,8 +126,8 @@ impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for False<N, F> {
 impl_deref!(False, bool);
 
 /// Detect event if the bool value is true on the current state.
-pub struct WhileTrue<const N: usize, F: StateFnMut<N, bool>>(pub F);
-impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for WhileTrue<N, F> {
+pub struct WhileTrue<const N: usize, F: StateFnMut<N, Output = bool>>(pub F);
+impl<const N: usize, F: StateFnMut<N, Output = bool>> Detect<N> for WhileTrue<N, F> {
     fn detect(&mut self, state: &impl State<N>) -> bool {
         self.0.eval(state)
     }
@@ -136,8 +135,8 @@ impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for WhileTrue<N, F> {
 impl_deref!(WhileTrue, bool);
 
 /// Detect event if the bool value is false on the current state.
-pub struct WhileFalse<const N: usize, F: StateFnMut<N, bool>>(pub F);
-impl<const N: usize, F: StateFnMut<N, bool>> Detect<N> for WhileFalse<N, F> {
+pub struct WhileFalse<const N: usize, F: StateFnMut<N, Output = bool>>(pub F);
+impl<const N: usize, F: StateFnMut<N, Output = bool>> Detect<N> for WhileFalse<N, F> {
     fn detect(&mut self, state: &impl State<N>) -> bool {
         !self.0.eval(state)
     }
@@ -166,46 +165,52 @@ pub struct Loc<D = (), L = ()>(pub D, pub L);
 
 impl Loc {
     /// Constructor for detection method [Sign] and location method [Bisection]
-    pub fn sign<const N: usize, F: StateFnMut<N, f64>>(f: F) -> Loc<Sign<N, F>, Bisection> {
+    pub fn sign<const N: usize, F: StateFnMut<N, Output = f64>>(f: F) -> Loc<Sign<N, F>, Bisection> {
         Loc(Sign(f), Bisection)
     }
     /// Constructor for detection method [Pos] and location method [Bisection]
-    pub fn pos<const N: usize, F: StateFnMut<N, f64>>(f: F) -> Loc<Pos<N, F>, Bisection> {
+    pub fn pos<const N: usize, F: StateFnMut<N, Output = f64>>(f: F) -> Loc<Pos<N, F>, Bisection> {
         Loc(Pos(f), Bisection)
     }
     /// Constructor for detection method [Neg] and location method [Bisection]
-    pub fn neg<const N: usize, F: StateFnMut<N, f64>>(f: F) -> Loc<Neg<N, F>, Bisection> {
+    pub fn neg<const N: usize, F: StateFnMut<N, Output = f64>>(f: F) -> Loc<Neg<N, F>, Bisection> {
         Loc(Neg(f), Bisection)
     }
     /// Constructor for detection method [WhilePos] and location method [StepEnd]
-    pub fn while_pos<const N: usize, F: StateFnMut<N, f64>>(f: F) -> Loc<WhilePos<N, F>, StepEnd> {
+    pub fn while_pos<const N: usize, F: StateFnMut<N, Output = f64>>(f: F) -> Loc<WhilePos<N, F>, StepEnd> {
         Loc(WhilePos(f), StepEnd)
     }
     /// Constructor for detection method [WhileNeg] and location method [StepEnd]
-    pub fn while_neg<const N: usize, F: StateFnMut<N, f64>>(f: F) -> Loc<WhileNeg<N, F>, StepEnd> {
+    pub fn while_neg<const N: usize, F: StateFnMut<N, Output = f64>>(f: F) -> Loc<WhileNeg<N, F>, StepEnd> {
         Loc(WhileNeg(f), StepEnd)
     }
 
     /// Constructor for detection method [Bool] and location method [BisectionBool]
-    pub fn bool<const N: usize, F: StateFnMut<N, bool>>(f: F) -> Loc<Bool<N, F>, BisectionBool> {
+    pub fn bool<const N: usize, F: StateFnMut<N, Output = bool>>(
+        f: F,
+    ) -> Loc<Bool<N, F>, BisectionBool> {
         Loc(Bool(f), BisectionBool)
     }
     /// Constructor for detection method [True] and location method [BisectionBool]
-    pub fn true_<const N: usize, F: StateFnMut<N, bool>>(f: F) -> Loc<True<N, F>, BisectionBool> {
+    pub fn true_<const N: usize, F: StateFnMut<N, Output = bool>>(
+        f: F,
+    ) -> Loc<True<N, F>, BisectionBool> {
         Loc(True(f), BisectionBool)
     }
     /// Constructor for detection method [False] and location method [BisectionBool]
-    pub fn false_<const N: usize, F: StateFnMut<N, bool>>(f: F) -> Loc<False<N, F>, BisectionBool> {
+    pub fn false_<const N: usize, F: StateFnMut<N, Output = bool>>(
+        f: F,
+    ) -> Loc<False<N, F>, BisectionBool> {
         Loc(False(f), BisectionBool)
     }
     /// Constructor for detection method [WhileTrue] and location method [StepEnd]
-    pub fn while_true<const N: usize, F: StateFnMut<N, bool>>(
+    pub fn while_true<const N: usize, F: StateFnMut<N, Output = bool>>(
         f: F,
     ) -> Loc<WhileTrue<N, F>, StepEnd> {
         Loc(WhileTrue(f), StepEnd)
     }
     /// Constructor for detection method [WhileFalse] and location method [StepEnd]
-    pub fn while_false<const N: usize, F: StateFnMut<N, bool>>(
+    pub fn while_false<const N: usize, F: StateFnMut<N, Output = bool>>(
         f: F,
     ) -> Loc<WhileFalse<N, F>, StepEnd> {
         Loc(WhileFalse(f), StepEnd)
@@ -263,7 +268,7 @@ impl<const N: usize, D: Detect<N>> Locate<N> for Loc<D, StepHalf> {
 impl<const N: usize, D> Locate<N> for Loc<D, Lerp>
 where
     D: Detect<N> + DerefMut,
-    <D as Deref>::Target: StateFnMut<N, f64>,
+    <D as Deref>::Target: StateFnMut<N, Output = f64>,
 {
     fn locate(&mut self, state: &impl State<N>) -> Option<f64> {
         self.0.detect(state).then(|| {
@@ -277,7 +282,7 @@ where
 impl<const N: usize, D> Locate<N> for Loc<D, BisectionBool>
 where
     D: Detect<N> + DerefMut,
-    <D as Deref>::Target: StateFnMut<N, bool>,
+    <D as Deref>::Target: StateFnMut<N, Output = bool>,
 {
     fn locate(&mut self, state: &impl State<N>) -> Option<f64> {
         self.0.detect(state).then(|| {
@@ -303,7 +308,7 @@ where
 impl<const N: usize, D> Locate<N> for Loc<D, RegulaFalsi>
 where
     D: Detect<N> + DerefMut,
-    <D as Deref>::Target: StateFnMut<N, f64>,
+    <D as Deref>::Target: StateFnMut<N, Output = f64>,
 {
     fn locate(&mut self, state: &impl State<N>) -> Option<f64> {
         self.0.detect(state).then(|| {
@@ -339,7 +344,7 @@ where
 impl<const N: usize, D> Locate<N> for Loc<D, Bisection>
 where
     D: Detect<N> + DerefMut,
-    <D as Deref>::Target: StateFnMut<N, f64>,
+    <D as Deref>::Target: StateFnMut<N, Output = f64>,
 {
     fn locate(&mut self, state: &impl State<N>) -> Option<f64> {
         self.0.detect(state).then(|| {
@@ -360,3 +365,81 @@ where
         })
     }
 }
+
+// struct DelayedArgument<const N: usize, F: StateFnMut<N, f64>> {
+//     f: F
+// }
+
+// pub trait DelayedArgument<const N: usize>: StateFnMut<N, f64> {
+//
+// }
+
+//
+// pub struct Propagated<Delayed> {
+//     pub order: usize,
+//     pub queue: Vec<(f64, usize)>,
+//     pub delayed: Delayed,
+// }
+//
+// impl<const N: usize, Alpha: StateFnMut<N, f64>> Locate<N> for Propagated<Alpha> {
+//     fn locate(&mut self, state: &impl State<N>) -> Option<f64> {
+//
+//
+//         let alpha = self.delayed.eval(state);
+//         let alpha_prev = self.delayed.eval_prev(state);
+//
+//         let i = self.queue.partition_point(|t_i| t_i.0 <= alpha);
+//         if self.queue[i].0 >= alpha_prev && self.queue[i].0 < alpha {
+//             // Loc::sign(state_fn!(|t| self.delayed.eval_at(t) - self.queue[i].0)).locate()
+//             // self.queue.push((1., self.queue[i].1 + 1))
+//         //     Some(self.queue[i].0)
+//         } else {
+//             None
+//         }
+//         // detect
+//         // if state.t() - self.delayed
+//     }
+//
+//     // fn locate(&mut self, state: &impl State<N>) -> Option<f64> {
+//     //     let mut min_idx = 0;
+//     //     let mut min = state.t();
+//     //     for (i, q) in self.queues.iter().enumerate() {
+//     //         if let Some(t) = q.front()
+//     //             && *t < min
+//     //         {
+//     //             min = *t;
+//     //             min_idx = i;
+//     //         }
+//     //     }
+//     //
+//     //     // unwrap_unchecked is safe here because:
+//     //     // min != state.t() <=> min is updated in the loop <=> min_idx updated in the loop <=>
+//     //     // self.queues[min_idx] were not empty.
+//     //     (min < state.t()).then(|| unsafe { self.queues[min_idx].pop_front().unwrap_unchecked() })
+//     // }
+// }
+
+//
+//
+// delays: 1, 2.5
+//
+// initial discontinuity: 0
+//
+// propagations:
+// time(order)
+// 1(1)
+// 2(2)
+// 2.5(1)
+// 3(3)
+// 3.5(2) x2
+// 4(4)
+// 4.5(3) x2
+// 5(min 5 2) x2
+//
+//
+// 0 (0)
+//
+// Okay, events are comming in sorted sequence. At each step, we have to check for each delay
+// whether a propagated time occured. For each delayed argument, we can track the previous
+// closest element in sequence, because we can assume that it is continuous for most cases and
+// linear search will actually be made in one step.

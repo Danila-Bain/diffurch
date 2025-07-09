@@ -39,7 +39,7 @@ use crate::*;
 ///
 pub struct Equation<
     const N: usize,
-    RHS: StateFnMut<N, [f64; N]>,
+    RHS: StateFnMut<N, Output = [f64; N]>,
     Delays: HList = Nil,
     Events: HList = Nil,
 > {
@@ -113,7 +113,7 @@ macro_rules! equation {
 ///     events: hlist2::Nil,
 /// };
 /// ```
-impl<const N: usize, RHS: StateFnMut<N, [f64; N]>> Equation<N, RHS> {
+impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>> Equation<N, RHS> {
     /// Constructor with arbitrary [StateFnMut] function
     ///
     /// # Examples:
@@ -161,7 +161,7 @@ impl<const N: usize, RHS: StateFnMut<N, [f64; N]>> Equation<N, RHS> {
     }
 }
 
-impl<const N: usize, RHS: StateFnMut<N, [f64; N]>, Delays: HList, Events: HList>
+impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Delays: HList, Events: HList>
     Equation<N, RHS, Delays, Events>
 {
     pub fn loc<L: Locate<N>>(

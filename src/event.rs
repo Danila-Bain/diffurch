@@ -38,7 +38,7 @@ pub struct Event<
 // Constructors
 impl<const N: usize> Event<N> {
     /// Generic constructor for events that do not mutate state.
-    pub fn new<F: StateFnMut<N, Output>, Output>(callback: F) -> Event<N, false, (), F, Output> {
+    pub fn new<F: StateFnMut<N, Output = Output>, Output>(callback: F) -> Event<N, false, (), F, Output> {
         Event {
             callback,
             stream: Nil,
@@ -48,7 +48,7 @@ impl<const N: usize> Event<N> {
         }
     }
     /// Generic constructor for events that mutate state.
-    pub fn new_mut<F: MutStateFnMut<N, Output>, Output>(
+    pub fn new_mut<F: MutStateFnMut<N, Output = Output>, Output>(
         callback: F,
     ) -> Event<N, true, (), F, Output> {
         Event {
@@ -63,7 +63,7 @@ impl<const N: usize> Event<N> {
     /// Creates an event, that sets the time of the state to `f64::INFINITY`, effectively stopping the integration.
     ///
     /// A short-hand for `Event::time_mut(|t| *t = f64::INFINITY))`.
-    pub fn stop_integration() -> Event<N, true, (), impl MutStateFnMut<N, f64>, f64> {
+    pub fn stop_integration() -> Event<N, true, (), impl MutStateFnMut<N, Output = f64>, f64> {
         Event::new_mut(mut_state_fn!(
                 |t| {
                     let tt = *t;
@@ -75,14 +75,14 @@ impl<const N: usize> Event<N> {
     /// Creates an event, the callback of which returns the coordinate vector of the state.
     ///
     /// A short-hand for `Event::new(MutStateFn::ode(|x| x))`.
-    pub fn ode_state() -> Event<N, false, (), impl StateFnMut<N, [f64; N]>, [f64; N]> {
+    pub fn ode_state() -> Event<N, false, (), impl StateFnMut<N, Output= [f64; N]>, [f64; N]> {
         Event::new(ODEStateFnMut(|x| x))
     }
 
     /// Creates an event, the callback of which returns the time and coordinate vector of the state.
     ///
     /// A short-hand for `Event::new(MutStateFn::ode2(|t, x| (t, x)))`.
-    pub fn ode2_state() -> Event<N, false, (), impl StateFnMut<N, (f64, [f64; N])>, (f64, [f64; N])>
+    pub fn ode2_state() -> Event<N, false, (), impl StateFnMut<N, Output = (f64, [f64; N])>, (f64, [f64; N])>
     {
         Event::new(ODE2StateFnMut(|t, x| (t, x)))
     }
@@ -95,7 +95,7 @@ impl<const N: usize, const MUT: bool, Subdivision, Callback, Output, Stream, Fil
     type Output<T> =
         Event<N, MUT, Subdivision, Callback, Output, Stream, <Filter as Append>::Output<T>>;
 
-    fn filter<F: StateFnMut<N, bool>>(self, f: F) -> Self::Output<F> {
+    fn filter<F: StateFnMut<N, Output = bool>>(self, f: F) -> Self::Output<F> {
         let callback = self.callback;
         let stream = self.stream;
         let filter = self.filter.append(f);
@@ -392,7 +392,7 @@ impl<const N: usize, S: State<N>, EC: EventCall<N>> EventCallConcrete<N, S> for 
 impl<const N: usize, Callback, Output, Stream, Filter> EventCall<N>
     for Event<N, false, (), Callback, Output, Stream, Filter>
 where
-    Callback: StateFnMut<N, Output>,
+    Callback: StateFnMut<N, Output = Output>,
     Output: Copy,
     Stream: StreamHList<Output>,
     Filter: FilterHList<N>,
@@ -408,7 +408,7 @@ where
 impl<const N: usize, Callback, Output, Stream, Filter> EventCall<N>
     for Event<N, false, usize, Callback, Output, Stream, Filter>
 where
-    Callback: StateFnMut<N, Output>,
+    Callback: StateFnMut<N, Output = Output>,
     Output: Copy,
     Stream: StreamHList<Output>,
     Filter: FilterHList<N>,
@@ -432,7 +432,7 @@ where
 impl<const N: usize, Callback, Output, Stream, Filter> EventCall<N>
     for Event<N, true, (), Callback, Output, Stream, Filter>
 where
-    Callback: MutStateFnMut<N, Output>,
+    Callback: MutStateFnMut<N, Output=  Output>,
     Output: Copy,
     // Stream: FnMutHList<(Output,)>,
     Stream: StreamHList<Output>,

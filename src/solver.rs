@@ -248,7 +248,7 @@ where
     }
 
     /// Run solver.
-    pub fn run<RHS: StateFnMut<N, [f64; N]>, Delays: HList, EventsEquation>(
+    pub fn run<RHS: StateFnMut<N, Output = [f64; N]>, Delays: HList, EventsEquation>(
         mut self,
         eq: Equation<N, RHS, Delays, EventsEquation>,
         ic: impl InitialCondition<N>,

@@ -32,7 +32,7 @@ pub trait State<const N: usize> {
     fn make_zero_step(&mut self);
     /// Make a step of numerical method of the size `t_step`, using `rhs` as the right hand side of
     /// the differential equation.
-    fn make_step(&mut self, rhs: &mut impl StateFnMut<N, [f64; N]>, t_step: f64);
+    fn make_step(&mut self, rhs: &mut impl StateFnMut<N, Output = [f64; N]>, t_step: f64);
     /// Undo last step. (Repeated use does not have an effect)
     ///
     /// This is used to redo last step, because it was rejected due to event location or (not yet
@@ -192,7 +192,7 @@ where
     }
 
     /// Advance the state by `t_step`, using right-hand-side `rhs` of the equation.
-    fn make_step(&mut self, rhs: &mut impl StateFnMut<N, [f64; N]>, t_step: f64) {
+    fn make_step(&mut self, rhs: &mut impl StateFnMut<N, Output = [f64; N]>, t_step: f64) {
         self.t_prev = self.t;
         self.x_prev = self.x;
 
@@ -295,7 +295,7 @@ where
         // Initial history
         if t <= self.t_init {
             self.x_init.eval::<0>(t)[coordinate]
-        } 
+        }
         // Last step (may be accessed frequently for .subdivide option in Events).
         // So using this, we skip search.
         else if self.t_prev <= t && t <= self.t {
@@ -353,7 +353,7 @@ where
         // Initial history
         if t <= self.t_init {
             self.x_init.eval::<1>(t)[coordinate]
-        } 
+        }
         // Last step (may be accessed frequently for .subdivide option in Events).
         // So using this, we skip search.
         // If last step has zero length, the previous step is used.
@@ -398,25 +398,28 @@ where
 }
 
 /// Trait, that defines how a function is evaluated at the state.
-pub trait StateFnMut<const N: usize, Ret> {
+pub trait StateFnMut<const N: usize> {
+    type Output;
     /// evaluate self at the current state
-    fn eval(&mut self, state: &impl State<N>) -> Ret;
+    fn eval(&mut self, state: &impl State<N>) -> Self::Output;
     /// evaluate self at the previous step state
-    fn eval_prev(&mut self, state: &impl State<N>) -> Ret;
+    fn eval_prev(&mut self, state: &impl State<N>) -> Self::Output;
     /// evaluate self at the state at  the time t
-    fn eval_at(&mut self, state: &impl State<N>, t: f64) -> Ret;
+    fn eval_at(&mut self, state: &impl State<N>, t: f64) -> Self::Output;
 }
 /// Trait, that defines how a function is evaluated at the state, which can also mutate the state.
-pub trait MutStateFnMut<const N: usize, Ret> {
+pub trait MutStateFnMut<const N: usize> {
+    type Output;
+
     /// evaluate self at the mutable state
-    fn eval_mut(&mut self, state: &mut impl State<N>) -> Ret;
+    fn eval_mut(&mut self, state: &mut impl State<N>) -> Self::Output;
 }
 /// Constant function of the state
 #[derive(Clone, Copy)]
 pub struct ConstantStateFnMut<F: FnMut<(), Output = Ret>, Ret>(pub F);
-impl<F: FnMut<(), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
-    for ConstantStateFnMut<F, Ret>
-{
+impl<F: FnMut<(), Output = Ret>, Ret, const N: usize> StateFnMut<N> for ConstantStateFnMut<F, Ret> {
+    type Output = Ret;
+
     fn eval(&mut self, _: &impl State<N>) -> Ret {
         (self.0)()
     }
@@ -431,9 +434,11 @@ impl<F: FnMut<(), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
 }
 
 /// Constant function of the mut state
-impl<F: FnMut<(), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
+impl<F: FnMut<(), Output = Ret>, Ret, const N: usize> MutStateFnMut<N>
     for ConstantStateFnMut<F, Ret>
 {
+    type Output = Ret;
+
     fn eval_mut(&mut self, _: &mut impl State<N>) -> Ret {
         (self.0)()
     }
@@ -442,9 +447,9 @@ impl<F: FnMut<(), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
 /// Time-dependent function of the state
 #[derive(Clone, Copy)]
 pub struct TimeStateFnMut<F: FnMut<(f64,), Output = Ret>, Ret>(pub F);
-impl<F: FnMut<(f64,), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
-    for TimeStateFnMut<F, Ret>
-{
+impl<F: FnMut<(f64,), Output = Ret>, Ret, const N: usize> StateFnMut<N> for TimeStateFnMut<F, Ret> {
+    type Output = Ret;
+
     fn eval(&mut self, state: &impl State<N>) -> Ret {
         (self.0)(state.t())
     }
@@ -458,9 +463,10 @@ impl<F: FnMut<(f64,), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
     }
 }
 
-impl<F: FnMut<(f64,), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
+impl<F: FnMut<(f64,), Output = Ret>, Ret, const N: usize> MutStateFnMut<N>
     for TimeStateFnMut<F, Ret>
 {
+    type Output = Ret;
     fn eval_mut(&mut self, state: &mut impl State<N>) -> Ret {
         (self.0)(state.t())
     }
@@ -468,9 +474,10 @@ impl<F: FnMut<(f64,), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
 /// Time-mutating function of the state
 #[derive(Clone, Copy)]
 pub struct TimeMutStateFnMut<F: for<'a> FnMut<(&'a mut f64,), Output = Ret>, Ret>(pub F);
-impl<F: for<'a> FnMut<(&'a mut f64,), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
+impl<F: for<'a> FnMut<(&'a mut f64,), Output = Ret>, Ret, const N: usize> MutStateFnMut<N>
     for TimeMutStateFnMut<F, Ret>
 {
+    type Output = Ret;
     fn eval_mut(&mut self, state: &mut impl State<N>) -> Ret {
         (self.0)(state.t_mut())
     }
@@ -479,9 +486,10 @@ impl<F: for<'a> FnMut<(&'a mut f64,), Output = Ret>, Ret, const N: usize> MutSta
 /// Position-dependent function of the state
 #[derive(Clone, Copy)]
 pub struct ODEStateFnMut<const N: usize, F: FnMut<([f64; N],), Output = Ret>, Ret>(pub F);
-impl<F: FnMut<([f64; N],), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
+impl<F: FnMut<([f64; N],), Output = Ret>, Ret, const N: usize> StateFnMut<N>
     for ODEStateFnMut<N, F, Ret>
 {
+    type Output = Ret;
     fn eval(&mut self, state: &impl State<N>) -> Ret {
         (self.0)(state.x())
     }
@@ -494,9 +502,10 @@ impl<F: FnMut<([f64; N],), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret
         (self.0)(state.eval_all(t))
     }
 }
-impl<F: for<'a> FnMut<([f64; N],), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
+impl<F: for<'a> FnMut<([f64; N],), Output = Ret>, Ret, const N: usize> MutStateFnMut<N>
     for ODEStateFnMut<N, F, Ret>
 {
+    type Output = Ret;
     fn eval_mut(&mut self, state: &mut impl State<N>) -> Ret {
         (self.0)(state.x())
     }
@@ -509,9 +518,10 @@ pub struct ODEMutStateFnMut<
     F: for<'a> FnMut<(&'a mut [f64; N],), Output = Ret>,
     Ret,
 >(pub F);
-impl<F: for<'a> FnMut<(&'a mut [f64; N],), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
+impl<F: for<'a> FnMut<(&'a mut [f64; N],), Output = Ret>, Ret, const N: usize> MutStateFnMut<N>
     for ODEMutStateFnMut<N, F, Ret>
 {
+    type Output = Ret;
     fn eval_mut(&mut self, state: &mut impl State<N>) -> Ret {
         (self.0)(state.x_mut())
     }
@@ -520,9 +530,10 @@ impl<F: for<'a> FnMut<(&'a mut [f64; N],), Output = Ret>, Ret, const N: usize> M
 /// Time- and position-depending function of the state
 #[derive(Clone, Copy)]
 pub struct ODE2StateFnMut<const N: usize, F: FnMut<(f64, [f64; N]), Output = Ret>, Ret>(pub F);
-impl<F: FnMut<(f64, [f64; N]), Output = Ret>, Ret, const N: usize> StateFnMut<N, Ret>
+impl<F: FnMut<(f64, [f64; N]), Output = Ret>, Ret, const N: usize> StateFnMut<N>
     for ODE2StateFnMut<N, F, Ret>
 {
+    type Output = Ret;
     fn eval(&mut self, state: &impl State<N>) -> Ret {
         (self.0)(state.t(), state.x())
     }
@@ -536,9 +547,10 @@ impl<F: FnMut<(f64, [f64; N]), Output = Ret>, Ret, const N: usize> StateFnMut<N,
     }
 }
 
-impl<F: for<'a> FnMut<(f64, [f64; N]), Output = Ret>, Ret, const N: usize> MutStateFnMut<N, Ret>
+impl<F: for<'a> FnMut<(f64, [f64; N]), Output = Ret>, Ret, const N: usize> MutStateFnMut<N>
     for ODE2StateFnMut<N, F, Ret>
 {
+    type Output = Ret;
     fn eval_mut(&mut self, state: &mut impl State<N>) -> Ret {
         (self.0)(state.t(), state.x())
     }
@@ -552,8 +564,9 @@ pub struct ODE2MutStateFnMut<
     Ret,
 >(pub F);
 impl<F: for<'a> FnMut<(&'a mut f64, &'a mut [f64; N]), Output = Ret>, Ret, const N: usize>
-    MutStateFnMut<N, Ret> for ODE2MutStateFnMut<N, F, Ret>
+    MutStateFnMut<N> for ODE2MutStateFnMut<N, F, Ret>
 {
+    type Output = Ret;
     fn eval_mut(&mut self, state: &mut impl State<N>) -> Ret {
         let (t, x) = state.tx_mut();
         (self.0)(t, x)
@@ -592,8 +605,9 @@ impl<
     F: for<'a> FnMut<(f64, [f64; N], [&'a dyn StateCoordFnTrait; N]), Output = Ret>,
     Ret,
     const N: usize,
-> StateFnMut<N, Ret> for DDEStateFnMut<N, F, Ret>
+> StateFnMut<N> for DDEStateFnMut<N, F, Ret>
 {
+    type Output = Ret;
     fn eval(&mut self, state: &impl State<N>) -> Ret {
         let coord_fns: [StateCoordFn<'_, N, _>; N] = state.coord_fns();
         let coord_fns = std::array::from_fn(|i| &coord_fns[i] as &dyn StateCoordFnTrait);
@@ -616,8 +630,9 @@ impl<
     F: for<'a> FnMut<(f64, [f64; N], [&'a dyn StateCoordFnTrait; N]), Output = Ret>,
     Ret,
     const N: usize,
-> MutStateFnMut<N, Ret> for DDEStateFnMut<N, F, Ret>
+> MutStateFnMut<N> for DDEStateFnMut<N, F, Ret>
 {
+    type Output = Ret;
     fn eval_mut(&mut self, state: &mut impl State<N>) -> Ret {
         let coord_fns: [StateCoordFn<'_, N, _>; N] = state.coord_fns();
         let coord_fns = std::array::from_fn(|i| &coord_fns[i] as &dyn StateCoordFnTrait);
@@ -649,8 +664,9 @@ impl<
         >,
     Ret,
     const N: usize,
-> MutStateFnMut<N, Ret> for DDEMutStateFnMut<N, F, Ret>
+> MutStateFnMut<N> for DDEMutStateFnMut<N, F, Ret>
 {
+    type Output = Ret;
     fn eval_mut(&mut self, state: &mut impl State<N>) -> Ret {
         let coord_fns: [StateCoordFn<'_, N, _>; N] = state.coord_fns();
         let coord_fns = std::array::from_fn(|i| &coord_fns[i] as &dyn StateCoordFnTrait);
@@ -666,6 +682,22 @@ impl<
     }
 }
 
+// pub struct StateFnMutComposition<F, SF>(F, SF);
+//
+//
+// impl<Ret1, Ret2, SF: StateFnMut<N, Ret1>, F: FnMut<(Ret1,)>, const N: usize> StateFnMut<N, Ret2> for StateFnMutComposition<F, SF> {
+//     fn eval(&mut self, state: &impl State<N>) -> Ret2 {
+//         self.1(self.0.eval(state))
+//     }
+//
+//     fn eval_prev(&mut self, state: &impl State<N>) -> Ret2 {
+//         todo!()
+//     }
+//
+//     fn eval_at(&mut self, state: &impl State<N>, t: f64) -> Ret2 {
+//         todo!()
+//     }
+// }
 /// Struct that holds a reference to the state, and the coordinate index.
 ///
 /// It implements Fn() -> f64 and Fn(f64) -> f64 traits, as evaluation of current and past state
