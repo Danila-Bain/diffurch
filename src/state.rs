@@ -682,22 +682,23 @@ impl<
     }
 }
 
-// pub struct StateFnMutComposition<F, SF>(F, SF);
-//
-//
-// impl<Ret1, Ret2, SF: StateFnMut<N, Ret1>, F: FnMut<(Ret1,)>, const N: usize> StateFnMut<N, Ret2> for StateFnMutComposition<F, SF> {
-//     fn eval(&mut self, state: &impl State<N>) -> Ret2 {
-//         self.1(self.0.eval(state))
-//     }
-//
-//     fn eval_prev(&mut self, state: &impl State<N>) -> Ret2 {
-//         todo!()
-//     }
-//
-//     fn eval_at(&mut self, state: &impl State<N>, t: f64) -> Ret2 {
-//         todo!()
-//     }
-// }
+pub struct StateFnMutComposition<F, SF>(pub F, pub SF);
+impl<Ret1, Ret2, SF: StateFnMut<N, Output = Ret1>, F: FnMut(Ret1) -> Ret2, const N: usize> StateFnMut<N> for StateFnMutComposition<F, SF> {
+    type Output = Ret2;
+
+    fn eval(&mut self, state: &impl State<N>) -> Self::Output {
+        self.0(self.1.eval(state))
+    }
+
+    fn eval_prev(&mut self, state: &impl State<N>) -> Self::Output {
+        self.0(self.1.eval_prev(state))
+    }
+
+    fn eval_at(&mut self, state: &impl State<N>, t: f64) -> Self::Output {
+        self.0(self.1.eval_at(state, t))
+    }
+}
+
 /// Struct that holds a reference to the state, and the coordinate index.
 ///
 /// It implements Fn() -> f64 and Fn(f64) -> f64 traits, as evaluation of current and past state
