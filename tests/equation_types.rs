@@ -10,7 +10,6 @@ fn constant() {
     let solution = |t: f64| [t, -t, 0.];
 
     Solver::new()
-        .rk(&rk::RK98)
         .stepsize(0.25)
         .on_step(event!(|t, [x, y, z]| assert_eq!([x, y, z], solution(t))))
         .run(eq, ic, 0. ..10.);
@@ -23,7 +22,6 @@ fn time() {
     let solution = |t: f64| [0., t, t * t / 2.];
 
     Solver::new()
-        .rk(&rk::RK98)
         .stepsize(0.5)
         .on_step(event!(|t, [x, y, z]| assert_eq!([x, y, z], solution(t))))
         .run(eq, ic, 0. ..10.);
@@ -36,7 +34,6 @@ fn ode_exponent() {
     let solution = |t: f64| (-t).exp();
 
     Solver::new()
-        .rk(&rk::RK98)
         .stepsize(0.1)
         .on_step(event!(|t, [x]| {
             assert!((x - solution(t)).abs() < 1e-14)
@@ -51,7 +48,6 @@ fn ode_harmonic() {
     let solution = |t: f64| t.sin();
 
     Solver::new()
-        .rk(&rk::RK98)
         .stepsize(0.1)
         .on_step(event!(|t, [x, _dx]| {
             assert!((x - solution(t)).abs() < 1e-13)
@@ -66,7 +62,6 @@ fn ode2_lin() {
     let sol = |t: f64| t * t;
 
     Solver::new()
-        .rk(&rk::RK98)
         .stepsize(0.1)
         .on_step(event!(|t, [x]| assert!((x - sol(t)).abs() < 1e-11)))
         .run(eq, ic, 1. ..10.);
@@ -85,7 +80,6 @@ fn dde_sin() {
     let sol = |t: f64| (k * t).sin();
 
     Solver::new()
-        .rk(&rk::RK98)
         .stepsize(0.33)
         .on_step(event!(|t, [x]| assert!((x - sol(t)).abs() < 1e-11)))
         .run(eq, ic, ..10.);
@@ -104,7 +98,6 @@ fn ndde_sin() {
     let sol = |t: f64| (k * t).sin();
 
     Solver::new()
-        .rk(&rk::RK98)
         .stepsize(0.25)
         .on_step(event!(|t, [x]| assert!((x - sol(t)).abs() < 1e-10)))
         .run(eq, ic, ..10.);
@@ -129,7 +122,6 @@ fn bouncing_ball() {
     });
 
     Solver::new()
-        .rk(&rk::RK98)
         .stepsize(0.05)
         .on_loc(when_hit, bounce)
         .on_step(event!(|t, [x, _]| assert!((x - sol(t)).abs() < 1e-13)))
