@@ -8,7 +8,7 @@ use diffurch::{Filter, Loc, Solver, equation, event, event_mut, rk, state_fn};
 fn main() {
     let k = 0.9;
     let g = Cell::new(9.8);
-    let eq = equation!(|[_x, dx]| [dx, -g.get()]).with_delay(f64::INFINITY);
+    let eq = equation!(|[_x, dx]| [dx, -g.get()]).max_delay(f64::INFINITY);
 
     let ic = [1., -0.01];
     let range = 0. ..8.58;

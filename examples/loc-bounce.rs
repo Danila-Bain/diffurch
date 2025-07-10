@@ -6,7 +6,7 @@ use diffurch::{equation, event, state_fn, event_mut, rk, Filter, Loc, Solver};
 fn main() {
     let k = 0.90;
     let g = 9.8;
-    let eq = equation!(|[_x, dx]| [dx, -g]).with_delay(f64::INFINITY);
+    let eq = equation!(|[_x, dx]| [dx, -g]).max_delay(f64::INFINITY);
 
     let ic = [1., -0.01];
     let range = 0. ..8.58;

@@ -40,7 +40,7 @@ use crate::*;
 pub struct Equation<
     const N: usize,
     RHS: StateFnMut<N, Output = [f64; N]>,
-    Delays: HList = Nil,
+    Delayed: HList = Nil,
     Events: HList = Nil,
 > {
     /// The right-hand-side of the function, a function that acts on
@@ -48,7 +48,7 @@ pub struct Equation<
     pub rhs: RHS,
     /// Delays present in equation. Mentioned delays are used to manage propagating
     /// discontinuities to preserve the order of underlying continous integration method.
-    pub delays: Delays,
+    pub delayed: Delayed,
     /// Locators for discontinuities in equation
     pub events: Events,
     /// The maximal delay, that is present in the equation.
@@ -61,12 +61,12 @@ pub struct Equation<
     /// this old won't be needed. Solver panics, if needed solution history turns out to be deleted.
     ///
     /// If you need to integrate delay differential equations for long, you might want to set this field using
-    /// [Equation::with_delay] method, to avoid excessive memory usage.
+    /// [Equation::max_delay] method, to avoid excessive memory usage.
     ///
     /// Also, if you use events that compute something non-local, i.e. the amplitude of the
     /// periodic solution, or variance on the part of the solution, you might need to access past
     /// states, in which case you also might need to set this field to a larger value with
-    /// [Equation::with_delay]
+    /// [Equation::max_delay]
     ///
     pub max_delay: f64,
 }
@@ -87,19 +87,19 @@ pub struct Equation<
 #[macro_export]
 macro_rules! equation {
     (|| $expr:expr) => {
-        $crate::Equation::new_with_delay($crate::state::ConstantStateFnMut(|| $expr), 0.)
+        $crate::Equation::new($crate::state::ConstantStateFnMut(|| $expr)).max_delay(0.)
     };
     (|$t:ident| $expr:expr) => {
-        $crate::Equation::new_with_delay($crate::state::TimeStateFnMut(|$t| $expr), 0.)
+        $crate::Equation::new($crate::state::TimeStateFnMut(|$t| $expr)).max_delay(0.)
     };
     (|[$($x:pat),+]| $expr:expr) => {
-        $crate::Equation::new_with_delay($crate::state::ODEStateFnMut(|[$($x),+]| $expr), 0.)
+        $crate::Equation::new($crate::state::ODEStateFnMut(|[$($x),+]| $expr)).max_delay(0.)
     };
     (|$t:pat, [$($x:pat),+]| $expr:expr) => {
-        $crate::Equation::new_with_delay($crate::state::ODE2StateFnMut(|$t, [$($x),+]| $expr), 0.)
+        $crate::Equation::new($crate::state::ODE2StateFnMut(|$t, [$($x),+]| $expr)).max_delay(0.)
     };
     (|$t:pat, [$($x:pat),+], [$($x_:pat),+]| $expr:expr) => {
-        $crate::Equation::new_with_delay($crate::state::DDEStateFnMut(|$t, [$($x),+], [$($x_),+]| $expr), f64::MAX)
+        $crate::Equation::new($crate::state::DDEStateFnMut(|$t, [$($x),+], [$($x_),+]| $expr)).max_delay(f64::MAX)
     };
 }
 
@@ -109,7 +109,7 @@ macro_rules! equation {
 /// let eq = Equation {
 ///     rhs: ODE2StateFnMut(|t, [x, y]| [-y / t, x]),
 ///     max_delay: f64::NAN,
-///     delays: hlist2::Nil,
+///     delayed: hlist2::Nil,
 ///     events: hlist2::Nil,
 /// };
 /// ```
@@ -128,59 +128,42 @@ impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>> Equation<N, RHS> {
         Equation {
             rhs,
             max_delay: f64::NAN,
-            delays: Nil,
-            events: Nil,
-        }
-    }
-
-    /// like [Equation::new] but also sets max_delay field
-    ///
-    /// # Examples:
-    ///
-    /// ```rust
-    /// use diffurch::{Equation, state::*};
-    /// let eq = Equation::new_with_delay(DDEStateFnMut(|t, [x, y], [x_, y_]| [-y_(t-1.) / t, x]), 1.);
-    /// ```
-    pub fn new_with_delay(rhs: RHS, max_delay: f64) -> Self {
-        Equation {
-            rhs,
-            max_delay,
-            delays: Nil,
+            delayed: Nil,
             events: Nil,
         }
     }
 
     /// Sets [Equation::max_delay] and returns Self
-    pub fn with_delay(self, value: f64) -> Self {
+    pub fn max_delay(self, value: f64) -> Self {
         Self {
             rhs: self.rhs,
             max_delay: value,
-            delays: Nil,
+            delayed: Nil,
             events: Nil,
         }
     }
 }
 
-impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Delays: HList, Events: HList>
-    Equation<N, RHS, Delays, Events>
+impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Delayed: HList, Events: HList>
+    Equation<N, RHS, Delayed, Events>
 {
     pub fn loc<L: Locate<N>>(
         self,
         locate: L,
-    ) -> Equation<N, RHS, Delays, <Events as Append>::Output<(L, impl EventCall<N>)>>
+    ) -> Equation<N, RHS, Delayed, <Events as Append>::Output<(L, impl EventCall<N>)>>
     where
         Events: Append,
     {
         let Equation {
             rhs,
-            delays,
+            delayed,
             events,
             max_delay,
         } = self;
 
         Equation {
             rhs,
-            delays,
+            delayed,
             events: events.append((locate, event!())),
             max_delay,
         }
@@ -190,41 +173,54 @@ impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Delays: HList, Event
         self,
         locate: L,
         event: E,
-    ) -> Equation<N, RHS, Delays, <Events as Append>::Output<(L, E)>>
+    ) -> Equation<N, RHS, Delayed, <Events as Append>::Output<(L, E)>>
     where
         Events: Append,
     {
         let Equation {
             rhs,
-            delays,
+            delayed,
             events,
             max_delay,
         } = self;
 
         Equation {
             rhs,
-            delays,
+            delayed,
             events: events.append((locate, event)),
             max_delay,
         }
     }
 
-    pub fn delays<NewDelays: IntoHList>(
+    pub fn delay<D: StateFnMut<N, Output = f64>>(
         self,
-        new_delays: NewDelays,
-    ) -> Equation<N, RHS, <NewDelays as IntoHList>::HList, Events> {
+        delayed_arg_fn: D,
+    ) -> Equation<N, RHS, <Delayed as Append>::Output<D>, Events>
+    where
+        Delayed: Append,
+    {
         let Equation {
             rhs,
-            delays: _,
+            delayed,
             events,
             max_delay,
         } = self;
 
         Equation {
             rhs,
-            delays: new_delays.into_hlist(),
+            delayed: delayed.append(delayed_arg_fn),
             events,
             max_delay,
         }
+    }
+
+    pub fn const_delay(
+        self,
+        delay: f64,
+    ) -> Equation<N, RHS, <Delayed as Append>::Output<impl StateFnMut<N>>, Events>
+    where
+        Delayed: Append,
+    {
+        self.delay(state_fn!(move |t| t - delay))
     }
 }

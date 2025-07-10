@@ -57,7 +57,7 @@ fn with_delay(b: &mut Bencher) {
         let (eq, ic, range) = get_eq();
         Solver::rk(&rk::RK98)
             .stepsize(STEPSIZE)
-            .run(eq.with_delay(10.), ic, range);
+            .run(eq.max_delay(10.), ic, range);
     })
 }
 
@@ -67,7 +67,7 @@ fn with_delay_infinite(b: &mut Bencher) {
         let (eq, ic, range) = get_eq();
         Solver::rk(&rk::RK98)
             .stepsize(STEPSIZE)
-            .run(eq.with_delay(f64::MAX), ic, range);
+            .run(eq.max_delay(f64::MAX), ic, range);
     })
 }
 
@@ -203,7 +203,7 @@ fn get_eq_delay() -> (
     std::ops::Range<f64>,
 ) {
     let k = 1.;
-    let eq = Equation::dde(move |t, [_x, dx], [x_, _]| [dx, -k * k * x_(t - 1.)]).with_delay(2.);
+    let eq = Equation::dde(move |t, [_x, dx], [x_, _]| [dx, -k * k * x_(t - 1.)]).max_delay(2.);
     let ic = move |t: f64| [(t * k).sin(), k * (t * k).cos()];
     let range = RANGE;
     (eq, ic, range)

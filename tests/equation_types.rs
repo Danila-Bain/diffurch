@@ -112,7 +112,7 @@ fn ndde_sin() {
 
 #[test]
 fn bouncing_ball() {
-    let eq = equation!(|[_x, dx]| [dx, -2.]).with_delay(f64::INFINITY);
+    let eq = equation!(|[_x, dx]| [dx, -2.]).max_delay(f64::INFINITY);
 
     let ic = [0., 2.];
     let range = 0. ..10.;
