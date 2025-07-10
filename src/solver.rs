@@ -277,6 +277,9 @@ where
 
         let mut loc_events = self.loc_events.extend(eq.events);
 
+        // MAKE discontinuities FIELD IN STATE, SO PROPAGATION EVENTS CAN ACCESS IT
+        // let mut loc_events = self.loc_events.extend(eq.events).extend(PropagatedEach(eq.delays));
+
         self.start_events.call_each(&mut state);
         self.step_events.call_each(&mut state);
 
@@ -289,8 +292,9 @@ where
                 state.push_current();
                 self.step_events.call_each(&mut state);
                 event.call(&mut state); 
-                if state.t_prev() == state.t() { // zero step occured due to event
+                if state.t_prev() == state.t() {
                     self.step_events.call_each(&mut state);
+                    state.disco_mut().push_back((t, 0))
                 }
             } else {
                 state.push_current();

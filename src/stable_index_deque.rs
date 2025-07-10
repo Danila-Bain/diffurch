@@ -89,6 +89,14 @@ impl<T> StableIndexVecDeque<T> {
     pub fn remove(&mut self, index: usize, value: T) {
         self.deque.insert(index - self.offset, value)
     }
+
+    pub fn front_idx(&self) -> usize {
+        self.offset
+    }
+
+    pub fn back_idx(&self) -> usize {
+        self.offset + self.deque.len()
+    }
 }
 
 impl<T, A: Allocator> core::ops::Index<usize> for StableIndexVecDeque<T, A> {

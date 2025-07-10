@@ -1,11 +1,10 @@
 //! Defines [Loc] struct, which is an event locator
 
-use std::collections::VecDeque;
 use std::mem::swap;
 
 use std::ops::{Deref, DerefMut};
 
-use crate::state::*;
+use crate::{EventCall, state::*};
 
 macro_rules! impl_deref {
     ($name:ident) => {
@@ -380,38 +379,59 @@ where
 //
 // }
 
-//
-pub struct Propagated<Delayed> {
+pub struct Propagated<Alpha> {
+    /// at which order we shall stop propagating
     pub order: usize,
-    pub queue: Vec<(f64, usize)>,
-    pub delayed: Delayed,
+    /// index into state disco queue, it is assumed,
+    /// that previous evaluation is on the half-open interval
+    /// [ state.disco()[disco_idx - 1], state.disco[disco_idx] )
+    /// where state.disco()[-1] is f64::NEG_INFINITY
+    pub disco_idx: isize,
+    pub last_t: f64,
+    pub order_increase: usize,
+    /// Deviated argument function
+    pub alpha: Alpha,
 }
 
 impl<const N: usize, Alpha: Clone + StateFnMut<N, Output = f64>> Locate<N> for Propagated<Alpha> {
     fn locate(&mut self, state: &impl State<N>) -> Option<f64> {
-        let alpha = self.delayed.eval(state);
-        let alpha_prev = self.delayed.eval_prev(state);
+        // we assume that delay function is continuous, because otherwise
+        // additional events need to be introduced externally anyway
 
-        let i = self.queue.partition_point(|t_i| t_i.0 <= alpha); // unoptimal
-        let (t, order) = self.queue[i];
+        let alpha_value = self.alpha.eval(state);
 
-        if t >= alpha_prev && t < alpha {
-            let located_t = Loc(
-                Sign(StateFnMutComposition(
-                    |alpha_| alpha_ - t,
-                    self.delayed.clone(),
-                )),
-                Bisection,
-            )
-            .locate(state);
-            located_t.and_then(|located_t| {
-                if order <= 4 {
-                    self.queue.push((located_t, order + 1))
-                };
-                Some(located_t)
-            })
-        } else {
-            None
+        for (idx, dir) in [(self.disco_idx - 1, -1isize), (self.disco_idx, 1)].iter() {
+            if let Some((t, order)) = state.disco().get(*idx as usize)
+                && alpha_value < *t
+            {
+                let t_loc = Loc(
+                    Sign(StateFnMutComposition(
+                        |alpha_| alpha_ - *t,
+                        self.alpha.clone(),
+                    )),
+                    Bisection,
+                )
+                .locate(state);
+
+                if let Some(t_loc) = t_loc {
+                    self.order = *order;
+                    self.last_t = t_loc;
+                    self.disco_idx += dir;
+                    return Some(t_loc)
+                } else {
+                    return None
+                }
+            }
         }
+        None
+    }
+}
+
+impl<const N: usize, Alpha: Clone + StateFnMut<N, Output = f64>> EventCall<N>
+    for Propagated<Alpha>
+{
+    fn call(&mut self, state: &mut impl State<N>) {
+        let t = state.t();
+        state.disco_mut().push_back((t, self.order + self.order_increase))
     }
 }
