@@ -59,6 +59,18 @@ where
     }
 }
 
+impl<const N: usize, L, E> Locate<N> for (L, E) where L: Locate<N>, E: EventCall<N> {
+    fn locate(&mut self, state: &impl State<N>) -> Option<f64> {
+        self.0.locate(state)
+    }
+}
+impl<const N: usize, L, E> EventCall<N> for (L, E) where L: Locate<N>, E: EventCall<N> {
+    fn call(&mut self, state: &mut impl State<N>) {
+        self.1.call(state)
+    }
+}
+
+
 /// The trait for [HList]'s of ([Loc], [EventCall]) pairs.
 pub trait LocEventHList<const N: usize>: ToRef {
     /// If any even is located, return location and callback handler for the earlyiest one.
@@ -75,20 +87,19 @@ impl<const N: usize> LocEventHList<N> for Nil {
         None
     }
 }
-impl<const N: usize, L, E, T> LocEventHList<N> for Cons<(L, E), T>
+impl<const N: usize, LE, T> LocEventHList<N> for Cons<LE, T>
 where
-    L: Locate<N>,
-    E: EventCall<N>,
+    LE: Locate<N> + EventCall<N>,
     T: LocEventHList<N>,
 {
     fn locate_first<S: State<N>>(
         &mut self,
         state: &mut S,
     ) -> Option<(f64, &mut dyn EventCallConcrete<N, S>)> {
-        let Cons((loc, event), tail) = self;
+        let Cons(locevent, tail) = self;
 
-        let head = loc.locate(state).and_then(|t| {
-            let event: &mut dyn EventCallConcrete<N, S> = event;
+        let head = locevent.locate(state).and_then(|t| {
+            let event: &mut dyn EventCallConcrete<N, S> = locevent;
             Some((t, event))
         });
         let tail = tail.locate_first(state);
