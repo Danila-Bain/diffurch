@@ -1,6 +1,8 @@
 //! Defines [State], the core object which is acted upon during integration.
 
-use crate::InitialCondition;
+use std::collections::VecDeque;
+
+use crate::{InitialCondition, stable_index_deque::StableIndexVecDeque};
 
 /// Trait that abstracts [RKState], hiding memory layout and rk scheme specifications
 pub trait State<const N: usize> {
@@ -24,6 +26,9 @@ pub trait State<const N: usize> {
     fn x_mut(&mut self) -> &mut [f64; N];
     /// getter, that combines [State::t_mut] and [State::x_mut]
     fn tx_mut(&mut self) -> (&mut f64, &mut [f64; N]);
+
+    fn disco(&self) -> &StableIndexVecDeque<(f64, usize)>;
+    fn disco_mut(&mut self) -> &mut StableIndexVecDeque<(f64, usize)>;
 
     /// Make zero step by setting previous values to current ones.
     ///
@@ -101,6 +106,8 @@ where
 
     /// Used Runge-Kutta scheme
     pub rk: &'a crate::rk::RungeKuttaTable<S>,
+
+    pub disco: StableIndexVecDeque<(f64, usize)>,
 }
 
 impl<'a, const N: usize, const S: usize, IC: InitialCondition<N>> RKState<'a, N, S, IC>
@@ -127,6 +134,11 @@ where
             x,
             x_prev: x.clone(),
             x_seq: std::collections::VecDeque::from([x.clone()]),
+
+            disco: StableIndexVecDeque {
+                offset: 0,
+                deque: VecDeque::from([(t_init, 0)]), // assume initial discontinuity of order 0
+            },
 
             k: [[0.; N]; S],
             k_seq: std::collections::VecDeque::new(),
@@ -172,6 +184,14 @@ where
         (&mut self.t, &mut self.x)
     }
 
+    fn disco(&self) -> &StableIndexVecDeque<(f64, usize)> {
+        &self.disco
+    }
+
+    fn disco_mut(&mut self) -> &mut StableIndexVecDeque<(f64, usize)> {
+        &mut self.disco
+    }
+
     /// Push current values [State::t], [State::x], [State::k] to history, and pop old history
     /// (older than `self.t_prev - self.t_span - (self.t - self.t_prev)`).
     fn push_current(&mut self) {
@@ -179,8 +199,8 @@ where
         self.x_seq.push_back(self.x);
         self.k_seq.push_back(self.k);
         let t_tail = self.t_prev - self.t_span - (self.t - self.t_prev);
-        while t_tail
-            > *self
+        while &t_tail
+            > self
                 .t_seq
                 .front()
                 .expect("Last element won't pop for non-negative t_span")
@@ -188,6 +208,12 @@ where
             self.t_seq.pop_front();
             self.x_seq.pop_front();
             self.k_seq.pop_front();
+        }
+
+        while let Some((t, _order)) = self.disco.front()
+            && &t_tail > t
+        {
+            self.disco.pop_front();
         }
     }
 
@@ -683,7 +709,9 @@ impl<
 }
 
 pub struct StateFnMutComposition<F, SF>(pub F, pub SF);
-impl<Ret1, Ret2, SF: StateFnMut<N, Output = Ret1>, F: FnMut(Ret1) -> Ret2, const N: usize> StateFnMut<N> for StateFnMutComposition<F, SF> {
+impl<Ret1, Ret2, SF: StateFnMut<N, Output = Ret1>, F: FnMut(Ret1) -> Ret2, const N: usize>
+    StateFnMut<N> for StateFnMutComposition<F, SF>
+{
     type Output = Ret2;
 
     fn eval(&mut self, state: &impl State<N>) -> Self::Output {

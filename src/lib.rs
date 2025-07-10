@@ -5,6 +5,7 @@
 #![feature(impl_trait_in_assoc_type)]
 #![feature(file_buffered)]
 #![feature(generic_const_exprs)]
+#![feature(allocator_api)]
 #![allow(incomplete_features)]
 // #![warn(missing_docs)]
 
@@ -18,6 +19,7 @@ pub mod rk;
 pub mod solver;
 pub mod state;
 pub mod hlists;
+pub mod stable_index_deque;
 //
 pub use equation::*;
 pub use event::*;
