@@ -40,7 +40,7 @@ use crate::*;
 pub struct Equation<
     const N: usize,
     RHS: StateFnMut<N, Output = [f64; N]>,
-    Delayed: HList = Nil,
+    Propagations: HList = Nil,
     Events: HList = Nil,
 > {
     /// The right-hand-side of the function, a function that acts on
@@ -48,7 +48,7 @@ pub struct Equation<
     pub rhs: RHS,
     /// Delays present in equation. Mentioned delays are used to manage propagating
     /// discontinuities to preserve the order of underlying continous integration method.
-    pub delayed: Delayed,
+    pub propagations: Propagations,
     /// Locators for discontinuities in equation
     pub events: Events,
     /// The maximal delay, that is present in the equation.
@@ -109,7 +109,7 @@ macro_rules! equation {
 /// let eq = Equation {
 ///     rhs: ODE2StateFnMut(|t, [x, y]| [-y / t, x]),
 ///     max_delay: f64::NAN,
-///     delayed: hlist2::Nil,
+///     propagations: hlist2::Nil,
 ///     events: hlist2::Nil,
 /// };
 /// ```
@@ -128,7 +128,7 @@ impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>> Equation<N, RHS> {
         Equation {
             rhs,
             max_delay: f64::NAN,
-            delayed: Nil,
+            propagations: Nil,
             events: Nil,
         }
     }
@@ -138,32 +138,32 @@ impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>> Equation<N, RHS> {
         Self {
             rhs: self.rhs,
             max_delay: value,
-            delayed: Nil,
+            propagations: Nil,
             events: Nil,
         }
     }
 }
 
-impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Delayed: HList, Events: HList>
-    Equation<N, RHS, Delayed, Events>
+impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Propagations: HList, Events: HList>
+    Equation<N, RHS, Propagations, Events>
 {
     pub fn loc<L: Locate<N>>(
         self,
         locate: L,
-    ) -> Equation<N, RHS, Delayed, <Events as Append>::Output<(L, impl EventCall<N>)>>
+    ) -> Equation<N, RHS, Propagations, <Events as Append>::Output<(L, impl EventCall<N>)>>
     where
         Events: Append,
     {
         let Equation {
             rhs,
-            delayed,
+            propagations,
             events,
             max_delay,
         } = self;
 
         Equation {
             rhs,
-            delayed,
+            propagations,
             events: events.append((locate, event!())),
             max_delay,
         }
@@ -173,20 +173,20 @@ impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Delayed: HList, Even
         self,
         locate: L,
         event: E,
-    ) -> Equation<N, RHS, Delayed, <Events as Append>::Output<(L, E)>>
+    ) -> Equation<N, RHS, Propagations, <Events as Append>::Output<(L, E)>>
     where
         Events: Append,
     {
         let Equation {
             rhs,
-            delayed,
+            propagations,
             events,
             max_delay,
         } = self;
 
         Equation {
             rhs,
-            delayed,
+            propagations,
             events: events.append((locate, event)),
             max_delay,
         }
@@ -195,20 +195,20 @@ impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Delayed: HList, Even
     pub fn delay<D: StateFnMut<N, Output = f64>>(
         self,
         delayed_arg_fn: D,
-    ) -> Equation<N, RHS, <Delayed as Append>::Output<D>, Events>
+    ) -> Equation<N, RHS, <Propagations as Append>::Output<Propagated<D>>, Events>
     where
-        Delayed: Append,
+        Propagations: Append,
     {
         let Equation {
             rhs,
-            delayed,
+            propagations,
             events,
             max_delay,
         } = self;
 
         Equation {
             rhs,
-            delayed: delayed.append(delayed_arg_fn),
+            propagations: propagations.append(Propagated::new(delayed_arg_fn)),
             events,
             max_delay,
         }
@@ -217,10 +217,16 @@ impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Delayed: HList, Even
     pub fn const_delay(
         self,
         delay: f64,
-    ) -> Equation<N, RHS, <Delayed as Append>::Output<impl StateFnMut<N>>, Events>
+    ) -> Equation<N, RHS, <Propagations as Append>::Output<Propagated<impl StateFnMut<N>>>, Events>
     where
-        Delayed: Append,
+        Propagations: Append,
     {
-        self.delay(state_fn!(move |t| t - delay))
+        let mut new_self = self.delay(state_fn!(move |t| t - delay));
+        if new_self.max_delay.is_nan() {
+            new_self.max_delay = delay;
+        } else if !new_self.max_delay.is_infinite() {
+            new_self.max_delay = new_self.max_delay.max(delay)
+        }
+        new_self
     }
 }

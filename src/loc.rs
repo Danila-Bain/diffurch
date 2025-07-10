@@ -393,6 +393,18 @@ pub struct Propagated<Alpha> {
     pub alpha: Alpha,
 }
 
+impl<Alpha> Propagated<Alpha> {
+    pub fn new(alpha: Alpha) -> Self {
+        Propagated {
+            order: 0,
+            alpha,
+            disco_idx: 0,
+            last_t: f64::NEG_INFINITY,
+            order_increase: 1,
+        }
+    }
+}
+
 impl<const N: usize, Alpha: Clone + StateFnMut<N, Output = f64>> Locate<N> for Propagated<Alpha> {
     fn locate(&mut self, state: &impl State<N>) -> Option<f64> {
         // we assume that delay function is continuous, because otherwise

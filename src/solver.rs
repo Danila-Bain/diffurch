@@ -248,9 +248,9 @@ where
     }
 
     /// Run solver.
-    pub fn run<RHS: StateFnMut<N, Output = [f64; N]>, Delays: HList, EventsEquation>(
+    pub fn run<RHS: StateFnMut<N, Output = [f64; N]>, Propagations: HList, EventsEquation>(
         mut self,
-        eq: Equation<N, RHS, Delays, EventsEquation>,
+        eq: Equation<N, RHS, Propagations, EventsEquation>,
         ic: impl InitialCondition<N>,
         interval: impl std::ops::RangeBounds<f64>,
     ) where
@@ -259,7 +259,9 @@ where
         EventsOnStop: EventHList<N>,
         EventsOnLoc: LocEventHList<N> + Extend,
         EventsEquation: LocEventHList<N>,
-        <EventsOnLoc as Extend>::Output<EventsEquation>: LocEventHList<N>,
+        <EventsOnLoc as Extend>::Output<EventsEquation>: LocEventHList<N> + Extend,
+        Propagations: LocEventHList<N>,
+        <<EventsOnLoc as Extend>::Output<EventsEquation> as Extend>::Output::<Propagations> : LocEventHList<N>,
     {
         use std::ops::Bound::*;
         let t_init = match interval.start_bound() {
@@ -275,7 +277,7 @@ where
         let mut state = RKState::new(t_init, ic, eq.max_delay, &self.rk);
         let mut stepsize = self.stepsize;
 
-        let mut loc_events = self.loc_events.extend(eq.events);
+        let mut loc_events = self.loc_events.extend(eq.events).extend(eq.propagations);
 
         // MAKE discontinuities FIELD IN STATE, SO PROPAGATION EVENTS CAN ACCESS IT
         // let mut loc_events = self.loc_events.extend(eq.events).extend(PropagatedEach(eq.delays));
