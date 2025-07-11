@@ -207,11 +207,11 @@ where
             self.k_seq.pop_front();
         }
 
-        while let Some((t, _order)) = self.disco.front()
-            && &t_tail > t
-        {
-            self.disco.pop_front();
-        }
+        // while let Some((t, _order)) = self.disco.front()
+        //     && &t_tail > t
+        // {
+        //     self.disco.pop_front();
+        // }
     }
 
     /// Advance the state by `t_step`, using right-hand-side `rhs` of the equation.

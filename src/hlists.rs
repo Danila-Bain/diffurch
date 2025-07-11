@@ -177,3 +177,15 @@ where
         head.eval_at(state, t) && tail.all_at(state, t)
     }
 }
+
+// macro_rules! declare_trait_hlist {
+//     ($Trait:ident, ($($Args:expr),*), ($($Wheres:expr),*)) => {
+//         paste::paste!{
+//             pub trait [<$Trait HList>]<$($Args),*> where $($Wheres),* {
+//                 for
+//
+//             }
+//         }
+//     };
+// }
+//
