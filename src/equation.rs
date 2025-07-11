@@ -87,19 +87,19 @@ pub struct Equation<
 #[macro_export]
 macro_rules! equation {
     (|| $expr:expr) => {
-        $crate::Equation::new($crate::state::ConstantStateFnMut(|| $expr)).max_delay(0.)
+        $crate::Equation::new($crate::state_fn!(|| $expr)).max_delay(0.)
     };
     (|$t:ident| $expr:expr) => {
-        $crate::Equation::new($crate::state::TimeStateFnMut(|$t| $expr)).max_delay(0.)
+        $crate::Equation::new($crate::state_fn!(|$t| $expr)).max_delay(0.)
     };
     (|[$($x:pat),+]| $expr:expr) => {
-        $crate::Equation::new($crate::state::ODEStateFnMut(|[$($x),+]| $expr)).max_delay(0.)
+        $crate::Equation::new($crate::state_fn!(|[$($x),+]| $expr)).max_delay(0.)
     };
     (|$t:pat, [$($x:pat),+]| $expr:expr) => {
-        $crate::Equation::new($crate::state::ODE2StateFnMut(|$t, [$($x),+]| $expr)).max_delay(0.)
+        $crate::Equation::new($crate::state_fn!(|$t, [$($x),+]| $expr)).max_delay(0.)
     };
     (|$t:pat, [$($x:pat),+], [$($x_:pat),+]| $expr:expr) => {
-        $crate::Equation::new($crate::state::DDEStateFnMut(|$t, [$($x),+], [$($x_),+]| $expr)).max_delay(f64::MAX)
+        $crate::Equation::new($crate::state_fn!(|$t, [$($x),+], [$($x_),+]| $expr)).max_delay(f64::MAX)
     };
 }
 
