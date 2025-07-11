@@ -59,17 +59,24 @@ where
     }
 }
 
-impl<const N: usize, L, E> Locate<N> for (L, E) where L: Locate<N>, E: EventCall<N> {
+impl<const N: usize, L, E> Locate<N> for (L, E)
+where
+    L: Locate<N>,
+    E: EventCall<N>,
+{
     fn locate(&mut self, state: &impl State<N>) -> Option<f64> {
         self.0.locate(state)
     }
 }
-impl<const N: usize, L, E> EventCall<N> for (L, E) where L: Locate<N>, E: EventCall<N> {
+impl<const N: usize, L, E> EventCall<N> for (L, E)
+where
+    L: Locate<N>,
+    E: EventCall<N>,
+{
     fn call(&mut self, state: &mut impl State<N>) {
         self.1.call(state)
     }
 }
-
 
 /// The trait for [HList]'s of ([Loc], [EventCall]) pairs.
 pub trait LocEventHList<const N: usize>: ToRef {

@@ -1,6 +1,7 @@
 use std::{
     alloc::{Allocator, Global},
     collections::VecDeque,
+    fmt::Debug,
     ops::{Deref, DerefMut},
 };
 
@@ -25,18 +26,19 @@ use std::{
 /// assert_eq!(q[2], 3);
 ///
 /// ```
-pub struct StableIndexVecDeque<T, A: Allocator = Global> {
-    pub offset: usize,
-    pub deque: VecDeque<T, A>,
+#[derive(Debug, Clone)]
+pub struct StableIndexVecDeque<T> {
+    offset: usize,
+    deque: VecDeque<T>,
 }
 
-impl<T, A: Allocator> Deref for StableIndexVecDeque<T, A> {
-    type Target = VecDeque<T, A>;
+impl<T> Deref for StableIndexVecDeque<T> {
+    type Target = VecDeque<T>;
     fn deref(&self) -> &Self::Target {
         &self.deque
     }
 }
-impl<T, A: Allocator> DerefMut for StableIndexVecDeque<T, A> {
+impl<T> DerefMut for StableIndexVecDeque<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.deque
     }
@@ -58,7 +60,12 @@ impl<T> StableIndexVecDeque<T> {
     }
 
     pub fn get(&self, index: usize) -> Option<&T> {
-        self.deque.get(index - self.offset)
+        // dbg!(&self, index);
+        if index >= self.offset {
+            self.deque.get(index - self.offset)
+        } else {
+            None
+        }
     }
 
     pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
@@ -99,12 +106,21 @@ impl<T> StableIndexVecDeque<T> {
     }
 }
 
-impl<T, A: Allocator> core::ops::Index<usize> for StableIndexVecDeque<T, A> {
+impl<T, const N: usize> From<[T; N]> for StableIndexVecDeque<T> {
+    fn from(arr: [T; N]) -> Self {
+        Self {
+            offset: 0,
+            deque: VecDeque::from(arr),
+        }
+    }
+}
+
+impl<T> core::ops::Index<usize> for StableIndexVecDeque<T> {
     type Output = T;
 
     #[inline]
 
     fn index(&self, index: usize) -> &T {
-        self.get(index - self.offset).expect("Out of bounds access")
+        StableIndexVecDeque::get(&self, index).expect("Out of bounds access")
     }
 }

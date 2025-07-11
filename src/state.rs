@@ -135,10 +135,7 @@ where
             x_prev: x.clone(),
             x_seq: std::collections::VecDeque::from([x.clone()]),
 
-            disco: StableIndexVecDeque {
-                offset: 0,
-                deque: VecDeque::from([(t_init, 0)]), // assume initial discontinuity of order 0
-            },
+            disco: StableIndexVecDeque::from([(t_init, 0)]), // assume initial discontinuity of order 0
 
             k: [[0.; N]; S],
             k_seq: std::collections::VecDeque::new(),
@@ -709,8 +706,26 @@ impl<
 }
 
 pub struct StateFnMutComposition<F, SF>(pub F, pub SF);
-impl<Ret1, Ret2, SF: StateFnMut<N, Output = Ret1>, F: FnMut(Ret1) -> Ret2, const N: usize>
-    StateFnMut<N> for StateFnMutComposition<F, SF>
+// impl<Ret1, Ret2, SF: StateFnMut<N, Output = Ret1>, F: FnMut(Ret1) -> Ret2, const N: usize>
+//     StateFnMut<N> for StateFnMutComposition<F, SF>
+// {
+//     type Output = Ret2;
+//
+//     fn eval(&mut self, state: &impl State<N>) -> Self::Output {
+//         self.0(self.1.eval(state))
+//     }
+//
+//     fn eval_prev(&mut self, state: &impl State<N>) -> Self::Output {
+//         self.0(self.1.eval_prev(state))
+//     }
+//
+//     fn eval_at(&mut self, state: &impl State<N>, t: f64) -> Self::Output {
+//         self.0(self.1.eval_at(state, t))
+//     }
+// }
+
+impl<'a, 'b, Ret1, Ret2, SF: StateFnMut<N, Output = Ret1>, F: FnMut(Ret1) -> Ret2, const N: usize>
+    StateFnMut<N> for StateFnMutComposition<&'a mut F, &'b mut SF>
 {
     type Output = Ret2;
 
@@ -845,6 +860,9 @@ macro_rules! state_fn {
 // ///
 #[macro_export]
 macro_rules! mut_state_fn {
+    () => {
+        $crate::state::ConstantStateFnMut(|| {})
+    };
     ($($move:ident)? |$t:ident| $expr:expr) => {
         $crate::state::TimeMutStateFnMut($($move)? |$t| $expr)
     };

@@ -147,6 +147,9 @@ impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>> Equation<N, RHS> {
 impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Propagations: HList, Events: HList>
     Equation<N, RHS, Propagations, Events>
 {
+    /// Add detected event without any callback (for discontinuity tracking)
+    ///
+    /// Those events do get propagated
     pub fn loc<L: Locate<N>>(
         self,
         locate: L,
@@ -164,11 +167,12 @@ impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Propagations: HList,
         Equation {
             rhs,
             propagations,
-            events: events.append((locate, event!())),
+            events: events.append((locate, event_mut!())),
             max_delay,
         }
     }
 
+    /// Add located event with callback
     pub fn on_loc<L: Locate<N>, E: EventCall<N>>(
         self,
         locate: L,
@@ -192,6 +196,9 @@ impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Propagations: HList,
         }
     }
 
+    /// Add a variable delay to track discontinuities
+    ///
+    /// Sets [Self::max_delay] to `f64::INFINITY`
     pub fn delay<D: StateFnMut<N, Output = f64>>(
         self,
         delayed_arg_fn: D,
@@ -203,30 +210,42 @@ impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Propagations: HList,
             rhs,
             propagations,
             events,
-            max_delay,
+            max_delay: _,
         } = self;
 
         Equation {
             rhs,
             propagations: propagations.append(Propagated::new(delayed_arg_fn)),
             events,
-            max_delay,
+            max_delay: f64::INFINITY,
         }
     }
 
+    /// Add a constant delay to track discontinuities and set max_delay if there are no variable
+    /// delays
     pub fn const_delay(
         self,
         delay: f64,
-    ) -> Equation<N, RHS, <Propagations as Append>::Output<Propagated<impl StateFnMut<N>>>, Events>
+    ) -> Equation<
+        N,
+        RHS,
+        <Propagations as Append>::Output<Propagated<impl StateFnMut<N, Output = f64>>>,
+        Events,
+    >
     where
         Propagations: Append,
     {
-        let mut new_self = self.delay(state_fn!(move |t| t - delay));
-        if new_self.max_delay.is_nan() {
-            new_self.max_delay = delay;
-        } else if !new_self.max_delay.is_infinite() {
-            new_self.max_delay = new_self.max_delay.max(delay)
+        let mut max_delay = self.max_delay;
+        if max_delay.is_nan() {
+            max_delay = delay;
+        } else if !max_delay.is_infinite() {
+            max_delay = max_delay.max(delay)
         }
+        let mut new_self = self.delay(state_fn!(move |t| {
+            dbg!(t);
+            t - delay
+        }));
+        new_self.max_delay = max_delay;
         new_self
     }
 }

@@ -405,7 +405,7 @@ impl<Alpha> Propagated<Alpha> {
     }
 }
 
-impl<const N: usize, Alpha: Clone + StateFnMut<N, Output = f64>> Locate<N> for Propagated<Alpha> {
+impl<const N: usize, Alpha: StateFnMut<N, Output = f64>> Locate<N> for Propagated<Alpha> {
     fn locate(&mut self, state: &impl State<N>) -> Option<f64> {
         // we assume that delay function is continuous, because otherwise
         // additional events need to be introduced externally anyway
@@ -418,8 +418,8 @@ impl<const N: usize, Alpha: Clone + StateFnMut<N, Output = f64>> Locate<N> for P
             {
                 let t_loc = Loc(
                     Sign(StateFnMutComposition(
-                        |alpha_| alpha_ - *t,
-                        self.alpha.clone(),
+                        &mut |alpha_| alpha_ - *t,
+                        &mut self.alpha,
                     )),
                     Bisection,
                 )
@@ -439,7 +439,7 @@ impl<const N: usize, Alpha: Clone + StateFnMut<N, Output = f64>> Locate<N> for P
     }
 }
 
-impl<const N: usize, Alpha: Clone + StateFnMut<N, Output = f64>> EventCall<N>
+impl<const N: usize, Alpha: StateFnMut<N, Output = f64>> EventCall<N>
     for Propagated<Alpha>
 {
     fn call(&mut self, state: &mut impl State<N>) {
