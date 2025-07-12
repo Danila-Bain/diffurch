@@ -289,7 +289,7 @@ where
             state.make_step(&mut rhs, stepsize);
 
             if let Some((t, event)) = loc_events.locate_first(&mut state) && t > state.t_prev() {
-                println!("event located at {t}");
+                println!("event located at {t}, state.disco: {:?}", state.disco());
                 state.undo_step();
                 state.make_step(&mut rhs, t - state.t);
                 state.push_current();

@@ -15,14 +15,15 @@ In the case of neutral delay differential equations, which is the most general f
 - initial_condition
     - either constant, or function, or function + derivatives
     - initial discontinuities
+- integration interval
 - events:
     - event detection-location or integration stage: i.e. step, stop, propagate, etc
     - event filtering
     - event callback
         - output to outer variable
         - mutation of the state 
+- stepsize controll
 
 
-What I do not like in the current API:
-    - Variablity is implemented using different versions of similar methods, i.e. "on_step", "on_loc", "on_stop", etc
-        To solve this, may be the specification of those things should move to argument, i.e. `Solver::new().event(Event::<OnStep>::new().callback(state_fn!(|t| println!("{t}"))))` or `Solver::new().event::<OnStep>(mut_state_fn!(|t| println!("{t}")))`
+
+

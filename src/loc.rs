@@ -418,14 +418,14 @@ impl<const N: usize, Alpha: StateFnMut<N, Output = f64>> Locate<N> for Propagate
         // dbg!(alpha_value);
         //
 
-        if let Some((t, order)) = state.disco().get(self.disco_idx) {
-            dbg!(t);
+        if let Some((t_disco, order)) = state.disco().get(self.disco_idx) {
+            dbg!(t_disco);
             dbg!(alpha_value);
 
-            if &alpha_value > t {
+            if &alpha_value > t_disco {
                 let t_loc = Loc(
                     Sign(StateFnMutComposition(
-                        &mut |alpha_| alpha_ - *t,
+                        &mut |alpha_| alpha_ - *t_disco,
                         &mut self.alpha,
                     )),
                     Bisection,
@@ -436,9 +436,6 @@ impl<const N: usize, Alpha: StateFnMut<N, Output = f64>> Locate<N> for Propagate
                 return t_loc;
             }
         }
-
-
-
 
         None
 

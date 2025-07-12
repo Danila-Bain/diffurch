@@ -241,10 +241,7 @@ impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Propagations: HList,
         } else if !max_delay.is_infinite() {
             max_delay = max_delay.max(delay)
         }
-        let mut new_self = self.delay(state_fn!(move |t| {
-            dbg!(t);
-            t - delay
-        }));
+        let mut new_self = self.delay(state_fn!(move |t| t - delay));
         new_self.max_delay = max_delay;
         new_self
     }
