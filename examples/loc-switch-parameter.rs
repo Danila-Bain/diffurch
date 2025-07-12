@@ -30,9 +30,9 @@ fn main() {
                 .separated_by(0.01)
                 .subdivide(21),
         )
-        .on_loc(Loc::sign(state_fn!(|[_x, dx]| dx)).bisection(), event!())
-        .on_loc(
-            Loc::sign(state_fn!(|[x, _dx]| x)).bisection(),
+        .on(Loc::new(state_fn!(|[_x, dx]| dx)).sign().bisection(), event!())
+        .on(
+            Loc::new(state_fn!(|[x, _dx]| x)).sign().bisection(),
             event_mut!(|t, [_x, dx]| {
                 *dx *= k;
                 g.set(g.get() * -1.);

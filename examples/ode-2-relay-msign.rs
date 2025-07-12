@@ -8,10 +8,10 @@ fn main() {
     let mut points2 = vec![];
 
     let eq =
-        equation!(|_, [_, dx], [x, _]| [dx, -2. * x.prev().signum()]).loc(Loc::sign(state_fn!(|t, [x, _]| {
+        equation!(|_, [_, dx], [x, _]| [dx, -2. * x.prev().signum()]).loc(Loc::new(state_fn!(|t, [x, _]| {
             println!("try: {x} at {t}");
             x
-        })));
+        })).sign().bisection());
     let ic = [0.25, 0.];
     let interval = 0.5..20.5;
     let solution = |t: f64| {

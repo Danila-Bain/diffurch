@@ -1,6 +1,6 @@
 //! Defines [Equation], which holds the right hand side of the equation.
 
-use hlist2::{HList, Nil, convert::IntoHList, ops::Append};
+use hlist2::{HList, Nil, ops::Append};
 
 use crate::*;
 

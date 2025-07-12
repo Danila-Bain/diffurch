@@ -115,7 +115,7 @@ fn bouncing_ball() {
         t * (2. - t)
     };
 
-    let when_hit = Loc::neg(state_fn!(|[x, _]| x));
+    let when_hit = Loc::new(state_fn!(|[x, _]| x)).sign().bisection();
     let bounce = event_mut!(|[x, dx]| {
         *x = 0.;
         *dx = dx.abs();
@@ -123,7 +123,7 @@ fn bouncing_ball() {
 
     Solver::new()
         .stepsize(0.05)
-        .on_loc(when_hit, bounce)
+        .on(when_hit, bounce)
         .on_step(event!(|t, [x, _]| assert!((x - sol(t)).abs() < 1e-13)))
         .run(eq, ic, range);
 }

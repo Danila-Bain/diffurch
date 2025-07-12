@@ -1,5 +1,4 @@
 use std::{
-    alloc::{Allocator, Global},
     collections::VecDeque,
     fmt::Debug,
     ops::{Deref, DerefMut},

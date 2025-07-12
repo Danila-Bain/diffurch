@@ -1,6 +1,5 @@
 //! Defines [State], the core object which is acted upon during integration.
 
-use std::collections::VecDeque;
 
 use crate::{InitialCondition, stable_index_deque::StableIndexVecDeque};
 

@@ -212,7 +212,7 @@ where
     /// events are detected on a step, only the earliest one is triggered. In current
     /// implementation, solver always steps on the located event. Which can be used to implement
     /// numerical integration for discontinuous differential equations correctly.
-    pub fn on_loc<L: Locate<N>, E: EventCall<N>>(
+    pub fn on<L: Locate<N>, E: EventCall<N>>(
         self,
         event_locator: L,
         event: E,

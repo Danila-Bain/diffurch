@@ -19,10 +19,10 @@ fn main() {
         .stepsize(0.5)
         // .on_step(Event::ode(|[x, y, _dx, _dy]| (x, y)).to_vec(&mut points))
         // .on_step(Event::ode2_state().to_std())
-        .on_loc(
-            Loc::pos(state_fn!(|[x, y, _dx, _dy]| {
+        .on(
+            Loc::new(state_fn!(|[x, y, _dx, _dy]| {
                 x.powi(2) + y.powi(2) - y.powi(3) / 3. - 1. // zero set is the boundary
-            })),
+            })).pos().bisection(),
             event_mut!(|t, [x, y, dx, dy]| {
                 // println!("event_mut! start counter : {counter}");
                 // gradient of the boundary function

@@ -23,8 +23,8 @@ fn main() {
                 .separated_by(0.01)
                 .subdivide(21),
         )
-        .on_loc(
-            Loc::while_neg(state_fn!(|[x, _dx]| x)).bisection(),
+        .on(
+            Loc::new(state_fn!(|[x, _dx]| x)).while_neg().bisection(),
             event_mut!(|t, [x, dx]| {
                 *x = 0.;
                 *dx = k * dx.abs();

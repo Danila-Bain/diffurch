@@ -29,8 +29,8 @@ fn main() {
                 .to_vecs([&mut t, &mut x])
                 .to_std(),
         )
-        .on_loc(Loc::sign(state_fn!(|t, [_, _], [x, _]| x(t-T) - 1.)), event!()) // discontinuity
-        .on_loc(Loc::sign(state_fn!(|t, [_, _], [x, _]| x(t-T) + 1.)), event!()) // discontinuity
+        .on(Loc::new(state_fn!(|t, [_, _], [x, _]| x(t-T) - 1.)).sign().bisection(), event!()) // discontinuity
+        .on(Loc::new(state_fn!(|t, [_, _], [x, _]| x(t-T) + 1.)).sign().bisection(), event!()) // discontinuity
         .run(eq, ic, interval);
 
     let mut plot = pgfplots::axis::plot::Plot2D::new();
