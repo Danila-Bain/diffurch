@@ -1,6 +1,6 @@
 //! Defines [Event]
 
-use crate::{mut_state_fn, state::*, FilterHList, StreamHList};
+use crate::{mut_state_fn, state::*, collections::hlists::FilterHList, collections::hlists::StreamHList};
 use hlist2::{HList, Nil, ops::Append};
 // pub trait EventStream: HList + Append {}
 // impl<T: HList + Append> EventStream for T {}

@@ -1,5 +1,6 @@
 //! Defines [Solver].
 
+use crate::collections::hlists::{EventHList, LocEventHList};
 use crate::rk::{RK98, RungeKuttaTable};
 use crate::*;
 use hlist2::ops::{Append, Extend};

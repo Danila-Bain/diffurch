@@ -18,8 +18,7 @@ pub mod polynomial;
 pub mod rk;
 pub mod solver;
 pub mod state;
-pub mod hlists;
-pub mod stable_index_deque;
+pub mod collections;
 //
 pub use equation::*;
 pub use event::*;
@@ -28,4 +27,3 @@ pub use initial_condition::*;
 pub use loc::*;
 pub use solver::*;
 pub use state::*;
-pub use hlists::*;

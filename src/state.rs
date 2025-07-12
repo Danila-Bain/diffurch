@@ -1,7 +1,7 @@
 //! Defines [State], the core object which is acted upon during integration.
 
 
-use crate::{InitialCondition, stable_index_deque::StableIndexVecDeque};
+use crate::{InitialCondition, collections::stable_index_deque::StableIndexVecDeque};
 
 /// Trait that abstracts [RKState], hiding memory layout and rk scheme specifications
 pub trait State<const N: usize> {
