@@ -28,6 +28,8 @@ pub trait State<const N: usize> {
 
     fn disco(&self) -> &StableIndexVecDeque<(f64, usize)>;
     fn disco_mut(&mut self) -> &mut StableIndexVecDeque<(f64, usize)>;
+    fn method_order(&self) -> usize;
+    fn interpolation_order(&self) -> usize;
 
     /// Make zero step by setting previous values to current ones.
     ///
@@ -186,6 +188,13 @@ where
 
     fn disco_mut(&mut self) -> &mut StableIndexVecDeque<(f64, usize)> {
         &mut self.disco
+    }
+
+    fn method_order(&self) -> usize {
+        self.rk.order
+    }
+    fn interpolation_order(&self) -> usize {
+        self.rk.order_interpolant        
     }
 
     /// Push current values [State::t], [State::x], [State::k] to history, and pop old history
