@@ -1,115 +1,121 @@
-use super::{Loc, Locate};
+use crate::{EventCall, StateFnMut};
 
-use crate::event::*;
-use crate::{
-    StateFnMutComposition,
-    state::{State, StateFnMut},
-};
+use super::*;
 
-pub struct Propagated<Alpha> {
-    /// at which order we shall stop propagating
-    pub order: usize,
+pub struct Propagation;
+
+pub struct Propagator<const N: usize, Alpha: StateFnMut<N, Output = f64>> {
+    pub alpha: Alpha,
     /// index into state disco queue, it is assumed,
     /// that previous evaluation is on the half-open interval
     /// [ state.disco()[disco_idx - 1], state.disco[disco_idx] )
     /// where state.disco()[-1] is f64::NEG_INFINITY
     pub disco_idx: usize,
-    pub last_t: f64,
+    /// how order of discontinuity increases after this propagation
+    ///
+    /// 1 corresponds to retarded delay,
+    /// 0 corresponds to neutral delay
     pub order_increase: usize,
-    /// Deviated argument function
-    pub alpha: Alpha,
+    pub propagated_t: f64,
+    pub propagated_order: usize,
 }
 
-impl<Alpha> Propagated<Alpha> {
-    pub fn new(alpha: Alpha) -> Self {
-        Propagated {
-            order: 0,
+impl<const N: usize, Alpha: StateFnMut<N, Output = f64>> Propagator<N, Alpha> {
+    pub fn new(alpha: Alpha, order_increase: usize) -> Self {
+        Self {
             alpha,
             disco_idx: 0,
-            last_t: f64::NEG_INFINITY,
-            order_increase: 1,
+            order_increase,
+            propagated_t: f64::NAN,
+            propagated_order: usize::MAX,
         }
     }
 }
 
-impl<const N: usize, Alpha: StateFnMut<N, Output = f64>> Locate<N> for Propagated<Alpha> {
-    fn locate(&mut self, state: &impl State<N>) -> Option<f64> {
-        // we assume that delay function is continuous, because otherwise
-        // additional events need to be introduced externally anyway
+impl<const N: usize, Alpha: StateFnMut<N, Output = f64>> StateFnMut<N> for Propagator<N, Alpha> {
+    type Output = f64;
 
-        let alpha_value = self.alpha.eval(state);
+    fn eval(&mut self, state: &impl crate::State<N>) -> Self::Output {
+        self.alpha.eval(state) - self.propagated_t
+    }
 
-        // dbg!(&self);
-        // dbg!(&state.disco());
-        // dbg!(alpha_value);
-        //
+    fn eval_prev(&mut self, state: &impl crate::State<N>) -> Self::Output {
+        self.alpha.eval_prev(state) - self.propagated_t
+    }
 
-        if let Some((t_disco, _order)) = state.disco().get(self.disco_idx) {
-            dbg!(t_disco);
-            dbg!(alpha_value);
+    fn eval_at(&mut self, state: &impl crate::State<N>, t: f64) -> Self::Output {
+        self.alpha.eval_at(state, t) - self.propagated_t
+    }
+}
 
-            if &alpha_value > t_disco {
-                let t_loc = Loc(
-                    StateFnMutComposition(&mut |alpha_| alpha_ - *t_disco, &mut self.alpha),
-                    super::detection::Sign,
-                    super::location::Bisection,
-                )
-                .locate(state);
-                // let t_loc = crate::loc!(StateFnMutComposition(&mut |alpha_| alpha_ - *t_disco, &mut self.alpha)).locate(state);
+impl<const N: usize, Alpha: StateFnMut<N, Output = f64>, L> Detect<N>
+    for Loc<Propagator<N, Alpha>, Propagation, L>
+{
+    fn detect(&mut self, state: &impl crate::State<N>) -> bool {
+        let alpha_prev = self.0.alpha.eval_prev(state);
+        let alpha_curr = self.0.alpha.eval(state);
 
-                // dbg!(t_loc);
-                return t_loc;
+        if alpha_prev < alpha_curr {
+            // get first t_disco >= alpha_prev
+            while let Some((t_disco, _)) = state.disco().get(self.0.disco_idx)
+                && *t_disco < alpha_prev
+            {
+                self.0.disco_idx += 1;
             }
+            while self.0.disco_idx > 0 && let Some((t_disco, _)) = state.disco().get(self.0.disco_idx - 1)
+                && *t_disco > alpha_prev
+            {
+                self.0.disco_idx -= 1;
+            }
+
+            // check for t_disco < alpha_curr
+            if let Some((t_disco, order_disco)) = state.disco().get(self.0.disco_idx)
+                && *t_disco < alpha_curr
+            {
+                self.0.propagated_t = *t_disco;
+                self.0.propagated_order = *order_disco;
+                return true;
+            }
+        } else {
+            todo!();
         }
 
-        None
-
-        // for (idx, dir) in [(self.disco_idx - 1, -1isize), (self.disco_idx, 1)].iter() {
-        //     if let Some((t, order)) = state.disco().get(*idx as usize)
-        //         && alpha_value < *t
-        //     {
-        //         let t_loc = Loc(
-        //             Sign(StateFnMutComposition(
-        //                 &mut |alpha_| alpha_ - *t,
-        //                 &mut self.alpha,
-        //             )),
-        //             Bisection,
-        //         )
-        //         .locate(state);
-        //
-        //
-        //         if let Some(t_loc) = t_loc {
-        //             self.order = *order;
-        //             self.last_t = t_loc;
-        //             self.disco_idx += dir;
-        //             return Some(t_loc);
-        //         } else {
-        //             return None;
-        //         }
-        //     }
+        // while let Some((t_disco, _)) = state.disco().get(self.0.disco_idx + 1)
+        //     && *t_disco < alpha_prev
+        // {
+        //     self.0.disco_idx += 1;
         // }
-        // None
+        // if let Some((t_disco, _)) = state.disco().get(self.0.disco_idx + 1)
+        //     && alpha_curr > *t_disco
+        // {
+        //     self.0.propagated_t = *t_disco;
+        //     return true;
+        // }
+        //
+        // while let Some((t_disco, _)) = state.disco().get(self.0.disco_idx)
+        //     && *t_disco > alpha_prev
+        // {
+        //     self.0.disco_idx -= 1;
+        // }
+        // if let Some((t_disco, _)) = state.disco().get(self.0.disco_idx)
+        //     && alpha_curr < *t_disco
+        // {
+        //     self.0.propagated_t = *t_disco;
+        //     return true;
+        // }
+
+        false
     }
 }
 
-impl<const N: usize, Alpha: StateFnMut<N, Output = f64>> EventCall<N> for Propagated<Alpha> {
-    fn call(&mut self, state: &mut impl State<N>) {
-        let t = state.t();
-        self.disco_idx += 1;
-
-        state
-            .disco_mut()
-            .push_back((t, self.order + self.order_increase))
-    }
-}
-
-impl<Alpha> std::fmt::Debug for Propagated<Alpha> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Propagated")
-            .field("disco_idx", &self.disco_idx)
-            .field("last_t", &self.last_t)
-            .field("order", &self.order)
-            .field("order_increase", &self.order_increase)
-            .finish()
+impl<const N: usize, Alpha: StateFnMut<N, Output = f64>, L> EventCall<N>
+    for Loc<Propagator<N, Alpha>, Propagation, L>
+{
+    fn call(&mut self, state: &mut impl crate::State<N>) {
+        let new_order = self.0.propagated_order + self.0.order_increase;
+        if new_order < state.interpolation_order() {
+            let t = state.t();
+            state.disco_mut().push_back((t, new_order))
+        }
     }
 }

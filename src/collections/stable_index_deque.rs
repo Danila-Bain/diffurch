@@ -59,7 +59,6 @@ impl<T> StableIndexVecDeque<T> {
     }
 
     pub fn get(&self, index: usize) -> Option<&T> {
-        // dbg!(&self, index);
         if index >= self.offset {
             self.deque.get(index - self.offset)
         } else {

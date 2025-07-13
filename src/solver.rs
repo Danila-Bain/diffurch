@@ -305,6 +305,8 @@ where
                 self.step_events.call_each(&mut state);
             }
 
+            // dbg!(state.disco());
+
             stepsize = stepsize.min(t_end - state.t);
         }
 

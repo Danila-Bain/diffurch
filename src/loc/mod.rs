@@ -7,7 +7,7 @@ pub mod propagation;
 
 pub use detection::Detect;
 pub use location::Locate;
-pub use propagation::Propagated;
+pub use propagation::*;
 
 #[macro_export]
 macro_rules! loc {

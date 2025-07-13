@@ -202,7 +202,12 @@ impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Propagations: HList,
     pub fn delay<D: StateFnMut<N, Output = f64>>(
         self,
         delayed_arg_fn: D,
-    ) -> Equation<N, RHS, <Propagations as Append>::Output<Propagated<D>>, Events>
+    ) -> Equation<
+        N,
+        RHS,
+        <Propagations as Append>::Output<Loc<Propagator<N, D>, Propagation, location::Bisection>>,
+        Events,
+    >
     where
         Propagations: Append,
     {
@@ -215,7 +220,11 @@ impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Propagations: HList,
 
         Equation {
             rhs,
-            propagations: propagations.append(Propagated::new(delayed_arg_fn)),
+            propagations: propagations.append(crate::loc::Loc(
+                crate::loc::Propagator::new(delayed_arg_fn, 1),
+                crate::loc::Propagation,
+                crate::loc::location::Bisection,
+            )),
             events,
             max_delay: f64::INFINITY,
         }
@@ -229,20 +238,34 @@ impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Propagations: HList,
     ) -> Equation<
         N,
         RHS,
-        <Propagations as Append>::Output<Propagated<impl StateFnMut<N, Output = f64>>>,
+        <Propagations as Append>::Output<Loc<Propagator<N, impl StateFnMut<N, Output = f64>>, Propagation, location::Bisection>>,
         Events,
     >
     where
         Propagations: Append,
     {
-        let mut max_delay = self.max_delay;
+        let Equation {
+            rhs,
+            propagations,
+            events,
+            mut max_delay,
+        } = self;
+
         if max_delay.is_nan() {
             max_delay = delay;
         } else if !max_delay.is_infinite() {
             max_delay = max_delay.max(delay)
         }
-        let mut new_self = self.delay(state_fn!(move |t| t - delay));
-        new_self.max_delay = max_delay;
-        new_self
+
+        Equation {
+            rhs,
+            propagations: propagations.append(crate::loc::Loc(
+                crate::loc::Propagator::new(state_fn!(move |t| t - delay), 1),
+                crate::loc::Propagation,
+                crate::loc::location::Bisection,
+            )),
+            events,
+            max_delay,
+        }
     }
 }
