@@ -64,3 +64,26 @@ fn constant_1_smoothing() {
         vec![0., 0.75, 1., 1.75, 2., 2.75, 3., 3.75, 4.5, 5.25, 6.]
     )
 }
+
+
+#[test]
+fn pantograph() {
+    let eq = equation!(|| [0.]).neutral_delay(state_fn!(|t| t/2.));
+    let mut ts = vec![];
+
+    let stepsize = 0.123456789101112;
+
+    Solver::new()
+        .rk(&rk::CLASSIC4)
+        .stepsize(stepsize)
+        .on_step(event!(|t| ts.push(t)))
+        .run(eq, [0.], 1. ..2f64.powi(10));
+
+    for i in 1..=10 {
+        assert!(ts.contains(&2f64.powi(i)))
+    }
+    // assert_eq!(
+    //     ts,
+    //     vec![0., 0.75, 1., 1.75, 2., 2.75, 3., 3.75, 4.5, 5.25, 6.]
+    // )
+}
