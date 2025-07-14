@@ -15,17 +15,17 @@ pub struct Propagator<const N: usize, Alpha: StateFnMut<N, Output = f64>> {
     ///
     /// 1 corresponds to retarded delay,
     /// 0 corresponds to neutral delay
-    pub order_increase: usize,
+    pub smoothing_order: usize,
     pub propagated_t: f64,
     pub propagated_order: usize,
 }
 
 impl<const N: usize, Alpha: StateFnMut<N, Output = f64>> Propagator<N, Alpha> {
-    pub fn new(alpha: Alpha, order_increase: usize) -> Self {
+    pub fn new(alpha: Alpha, smoothing_order: usize) -> Self {
         Self {
             alpha,
             disco_idx: 0,
-            order_increase,
+            smoothing_order,
             propagated_t: f64::NAN,
             propagated_order: usize::MAX,
         }
@@ -115,7 +115,8 @@ impl<const N: usize, Alpha: StateFnMut<N, Output = f64>, L> EventCall<N>
     for Loc<Propagator<N, Alpha>, Propagation, L>
 {
     fn call(&mut self, state: &mut impl crate::State<N>) {
-        let new_order = self.0.propagated_order + self.0.order_increase;
+        let new_order = self.0.propagated_order + self.0.smoothing_order;
+        dbg!(self.0.propagated_order, self.0.smoothing_order, new_order);
         if new_order < state.interpolation_order() {
             let t = state.t();
             state.disco_mut().push_back((t, new_order))
