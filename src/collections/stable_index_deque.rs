@@ -8,7 +8,7 @@ use std::{
 /// `pop_front` and `push_front` operations.
 ///
 /// ```
-/// use diffurch::stable_index_deque::StableIndexVecDeque;
+/// use diffurch::collections::stable_index_deque::StableIndexVecDeque;
 ///
 /// let mut q = StableIndexVecDeque::new();
 ///

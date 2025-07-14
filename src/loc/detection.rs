@@ -22,7 +22,7 @@ impl<const N: usize, F: StateFnMut<N, Output = f64>, L> Detect<N> for Loc<F, Sig
     fn detect(&mut self, state: &impl State<N>) -> bool {
         let curr = self.0.eval(state);
         let prev = self.0.eval_prev(state);
-        curr > 0. && prev <= 0. || curr < 0. && prev >= 0.
+        curr >= 0. && prev < 0. || curr <= 0. && prev > 0.
     }
 }
 impl<const N: usize, F: StateFnMut<N, Output = f64>, L> Detect<N> for Loc<F, Pos, L> {

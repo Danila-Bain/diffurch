@@ -75,7 +75,7 @@ fn dde_sin() {
     let a = k / (k * tau).tan();
     let b = -k / (k * tau).sin();
 
-    let eq = equation!(|t, [x], [x_]| [a * x + b * x_(t - tau)]);
+    let eq = equation!(|t, [x], [x_]| [a * x + b * x_(t - tau)]).const_neutral_delay(tau);
     let ic = |t: f64| [(k * t).sin()];
     let sol = |t: f64| (k * t).sin();
 
