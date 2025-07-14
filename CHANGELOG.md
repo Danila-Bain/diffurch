@@ -1,4 +1,4 @@
-# Version 0.0.3
+# Version 0.0.3 : Ergonomics enchancment, experimental discontinuity propagation, minor functionality extension
 
 - Add `state_fn!` and `mut_state_fn!` convenience macros.
 - Make other convenience macros accept `_` for argument names in closures.
@@ -10,7 +10,10 @@
 - Add `DDEMutStateFnMut`, which allows state-mutating events which have (non-mutating) access to history.
 - Add `d_prev` method for a `State` for free evaluation of derivative of the state at the beginning of the last computed step.
 - Rename `Equation::with_delay` method into `Equation::max_delay`
-- Add `Equation::const_delay` and `Equation::delay` methods
+- Add methods like `Equation::delay` to specify delays in the equation (for discontinuity propagation and history length inference)
+- Restructure `Loc` struct into tuple struct `Loc(StateFunction, DetectionMethod, LocationMethod)` (pseudocode)
+- Add experimental propagation of discontinuities, that takes into account
+
 
 # Version 0.0.2
 
