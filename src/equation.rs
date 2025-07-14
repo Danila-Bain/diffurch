@@ -199,9 +199,10 @@ impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Propagations: HList,
     /// Add a variable delay to track discontinuities
     ///
     /// Sets [Self::max_delay] to `f64::INFINITY`
-    pub fn delay<D: StateFnMut<N, Output = f64>>(
+    pub fn delay_with_smoothing_order<D: StateFnMut<N, Output = f64>>(
         self,
         delayed_arg_fn: D,
+        smoothing_order: usize,
     ) -> Equation<
         N,
         RHS,
@@ -221,7 +222,7 @@ impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Propagations: HList,
         Equation {
             rhs,
             propagations: propagations.append(crate::loc::Loc(
-                crate::loc::Propagator::new(delayed_arg_fn, 1),
+                crate::loc::Propagator::new(delayed_arg_fn, smoothing_order),
                 crate::loc::Propagation,
                 crate::loc::location::Bisection,
             )),
@@ -230,15 +231,90 @@ impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Propagations: HList,
         }
     }
 
-    /// Add a constant delay to track discontinuities and set max_delay if there are no variable
-    /// delays
+    /// Add a variable delay to track discontinuities
+    ///
+    /// Sets [Self::max_delay] to `f64::INFINITY`
+    pub fn delay<D: StateFnMut<N, Output = f64>>(
+        self,
+        delayed_arg_fn: D,
+    ) -> Equation<
+        N,
+        RHS,
+        <Propagations as Append>::Output<Loc<Propagator<N, D>, Propagation, location::Bisection>>,
+        Events,
+    >
+    where
+        Propagations: Append,
+    {
+        self.delay_with_smoothing_order(delayed_arg_fn, 1)
+    }
+
+
+    /// Add a variable delay to track discontinuities
+    ///
+    /// Sets [Self::max_delay] to `f64::INFINITY`
+    pub fn neutral_delay<D: StateFnMut<N, Output = f64>>(
+        self,
+        delayed_arg_fn: D,
+    ) -> Equation<
+        N,
+        RHS,
+        <Propagations as Append>::Output<Loc<Propagator<N, D>, Propagation, location::Bisection>>,
+        Events,
+    >
+    where
+        Propagations: Append,
+    {
+        self.delay_with_smoothing_order(delayed_arg_fn, 0)
+    }
+
     pub fn const_delay(
         self,
         delay: f64,
     ) -> Equation<
         N,
         RHS,
-        <Propagations as Append>::Output<Loc<Propagator<N, impl StateFnMut<N, Output = f64>>, Propagation, location::Bisection>>,
+        <Propagations as Append>::Output<
+            Loc<Propagator<N, impl StateFnMut<N, Output = f64>>, Propagation, location::Bisection>,
+        >,
+        Events,
+    >
+    where
+        Propagations: Append,
+    {
+        self.const_delay_with_smoothing_order(delay, 1)
+    }
+
+
+    pub fn const_neutral_delay(
+        self,
+        delay: f64,
+    ) -> Equation<
+        N,
+        RHS,
+        <Propagations as Append>::Output<
+            Loc<Propagator<N, impl StateFnMut<N, Output = f64>>, Propagation, location::Bisection>,
+        >,
+        Events,
+    >
+    where
+        Propagations: Append,
+    {
+        self.const_delay_with_smoothing_order(delay, 0)
+    }
+
+    /// Add a constant delay to track discontinuities and set max_delay if there are no variable
+    /// delays
+    pub fn const_delay_with_smoothing_order(
+        self,
+        delay: f64,
+        smoothing_order: usize,
+    ) -> Equation<
+        N,
+        RHS,
+        <Propagations as Append>::Output<
+            Loc<Propagator<N, impl StateFnMut<N, Output = f64>>, Propagation, location::Bisection>,
+        >,
         Events,
     >
     where
@@ -260,7 +336,7 @@ impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Propagations: HList,
         Equation {
             rhs,
             propagations: propagations.append(crate::loc::Loc(
-                crate::loc::Propagator::new(state_fn!(move |t| t - delay), 1),
+                crate::loc::Propagator::new(state_fn!(move |t| t - delay), smoothing_order),
                 crate::loc::Propagation,
                 crate::loc::location::Bisection,
             )),
