@@ -52,13 +52,15 @@ impl<const N: usize, Alpha: StateFnMut<N, Output = f64>, L> Detect<N>
     for Loc<Propagator<N, Alpha>, Propagation, L>
 {
     fn detect(&mut self, state: &impl crate::State<N>) -> bool {
+
         let alpha_prev = self.0.alpha.eval_prev(state);
         let alpha_curr = self.0.alpha.eval(state);
+        // println!("Delay: {}, Time: {} -> {}, Delayed: {alpha_prev} -> {alpha_curr}", state.t() - alpha_curr, state.t_prev(), state.t());
 
         if alpha_prev < alpha_curr {
-            // get first t_disco >= alpha_prev
+            // get first t_disco > alpha_prev
             while let Some((t_disco, _)) = state.disco().get(self.0.disco_idx)
-                && *t_disco < alpha_prev
+                && *t_disco <= alpha_prev
             {
                 self.0.disco_idx += 1;
             }
@@ -70,8 +72,9 @@ impl<const N: usize, Alpha: StateFnMut<N, Output = f64>, L> Detect<N>
 
             // check for t_disco < alpha_curr
             if let Some((t_disco, order_disco)) = state.disco().get(self.0.disco_idx)
-                && *t_disco < alpha_curr
+                && *t_disco <= alpha_curr
             {
+                // println!("\tCrossing: {t_disco}");
                 self.0.propagated_t = *t_disco;
                 self.0.propagated_order = *order_disco;
                 return true;
