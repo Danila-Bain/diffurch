@@ -1,14 +1,15 @@
 //! Defines [State], the core object which is acted upon during integration.
 
+use std::collections::VecDeque;
 
 use crate::{InitialCondition, collections::stable_index_deque::StableIndexVecDeque};
 
-/// Trait that abstracts state of the equation over used numerical method. 
+/// Trait that abstracts state of the equation over used numerical method.
 ///
 /// There are 3 kinds of state:
 /// - Current state: obtained at the last state. Current state is accessed using
 /// methods [State::t], [State::x] for access by value, and [State::t_mut], [State::x_mut], and
-/// [State::tx_mut] for access by a mutable reference. 
+/// [State::tx_mut] for access by a mutable reference.
 /// - Previous state: obtained at the previous state. Previous state is accessed using
 /// [State::t_prev], [State::x_prev], [State::d_prev]. No mutable getters are provided for a
 /// previous step: you do not change the past.
@@ -17,20 +18,21 @@ use crate::{InitialCondition, collections::stable_index_deque::StableIndexVecDeq
 /// arbitrary time, and [State::coord_fns] for an array of functions that act that [State::eval]
 /// for different coordinates.
 pub trait State<const N: usize> {
+
+    /****************** Numerical method metadata ******************/
+
+    fn method_order(&self) -> usize;
+    fn interpolation_order(&self) -> usize;
+
+
+    /****************** Current state access ******************/
+
     /// Returns current time of the state
     fn t(&self) -> f64;
     /// Returns previous step time of the state
-    fn t_prev(&self) -> f64;
-    /// Returns a mutable reference to a current time of the state.
-    ///
-    /// Can be used to set the time of state to [f64::INFINITY], effectively stopping integration
     fn t_mut(&mut self) -> &mut f64;
     /// get current position of the state
     fn x(&self) -> [f64; N];
-    /// get previous step position of the state
-    fn x_prev(&self) -> [f64; N];
-    /// get previous step derivative of the state
-    fn d_prev(&self) -> [f64; N];
     /// get mutable reference to a current position of the state.
     ///
     /// Can be used to implement impacts in the systems due to some events.
@@ -38,10 +40,42 @@ pub trait State<const N: usize> {
     /// getter, that combines [State::t_mut] and [State::x_mut]
     fn tx_mut(&mut self) -> (&mut f64, &mut [f64; N]);
 
-    fn disco(&self) -> &StableIndexVecDeque<(f64, usize)>;
-    fn disco_mut(&mut self) -> &mut StableIndexVecDeque<(f64, usize)>;
-    fn method_order(&self) -> usize;
-    fn interpolation_order(&self) -> usize;
+    /****************** Previous state access ******************/
+
+    /// get previous step position of the state
+    fn t_prev(&self) -> f64;
+    /// Returns a mutable reference to a current time of the state.
+    ///
+    /// Can be used to set the time of state to [f64::INFINITY], effectively stopping integration
+    fn x_prev(&self) -> [f64; N];
+    /// get previous step derivative of the state
+    fn d_prev(&self) -> [f64; N];
+
+    /****************** State history access ******************/
+
+    fn t_seq(&self) -> &VecDeque<f64>;
+    fn t_seq_mut(&mut self) -> &mut VecDeque<f64>;
+    fn x_seq(&self) -> &VecDeque<[f64; N]>;
+    fn x_seq_mut(&mut self) -> &mut VecDeque<[f64; N]>;
+
+    fn disco_seq(&self) -> &StableIndexVecDeque<(f64, usize)>;
+    fn disco_seq_mut(&mut self) -> &mut StableIndexVecDeque<(f64, usize)>;
+
+
+    /****************** State history evaluation ******************/
+
+    /// Evaluate the position of the state at the time `t` in the past.
+    fn eval_all(&self, t: f64) -> [f64; N];
+    /// Evaluate the coordinate `coordinate` of the postion of the state at the time `t` in the past.
+    fn eval(&self, t: f64, coordinate: usize) -> f64;
+    /// Evaluate the derivative of the coordinate `coordinate` of the postion of the state at the time `t` in the past.
+    fn eval_derivative(&self, t: f64, coordinate: usize) -> f64;
+    /// Return coordinate functions, that can be used to evaluate state at the past times.
+    ///
+    /// This is the thing passed to the right hand side functions for delay differential equations.
+    fn coord_fns<'b>(&'b self) -> [StateCoordFn<'b, N, Self>; N];
+
+
 
     /// Make zero step by setting previous values to current ones.
     ///
@@ -58,17 +92,6 @@ pub trait State<const N: usize> {
     fn undo_step(&mut self);
     /// Save last computed step to history
     fn push_current(&mut self);
-
-    /// Evaluate the postion of the state at the time `t` in the past.
-    fn eval_all(&self, t: f64) -> [f64; N];
-    /// Evaluate the coordinate `coordinate` of the postion of the state at the time `t` in the past.
-    fn eval(&self, t: f64, coordinate: usize) -> f64;
-    /// Evaluate the derivative of the coordinate `coordinate` of the postion of the state at the time `t` in the past.
-    fn eval_derivative(&self, t: f64, coordinate: usize) -> f64;
-    /// Return coordinate functions, that can be used to evaluate state at the past times.
-    ///
-    /// This is the thing passed to the right hand side functions for delay differential equations.
-    fn coord_fns<'b>(&'b self) -> [StateCoordFn<'b, N, Self>; N];
 }
 
 /// [State] is an object that represents the state of the equation during solving.
@@ -162,121 +185,70 @@ impl<'a, const N: usize, const S: usize, IC: InitialCondition<N>> State<N> for R
 where
     [(); S * (S - 1) / 2]:,
 {
-    fn t(&self) -> f64 {
-        self.t
-    }
 
-    fn t_prev(&self) -> f64 {
-        self.t_prev
-    }
-
-    fn t_mut(&mut self) -> &mut f64 {
-        &mut self.t
-    }
-
-    fn x(&self) -> [f64; N] {
-        self.x
-    }
-
-    fn x_prev(&self) -> [f64; N] {
-        self.x_prev
-    }
-
-    fn d_prev(&self) -> [f64; N] {
-        self.k[0]
-    }
-
-    fn x_mut(&mut self) -> &mut [f64; N] {
-        &mut self.x
-    }
-
-    fn tx_mut(&mut self) -> (&mut f64, &mut [f64; N]) {
-        (&mut self.t, &mut self.x)
-    }
-
-    fn disco(&self) -> &StableIndexVecDeque<(f64, usize)> {
-        &self.disco
-    }
-
-    fn disco_mut(&mut self) -> &mut StableIndexVecDeque<(f64, usize)> {
-        &mut self.disco
-    }
+    /****************** Numerical method metadata ******************/
 
     fn method_order(&self) -> usize {
         self.rk.order
     }
     fn interpolation_order(&self) -> usize {
-        self.rk.order_interpolant        
+        self.rk.order_interpolant
     }
 
-    /// Push current values [State::t], [State::x], [State::k] to history, and pop old history
-    /// (older than `self.t_prev - self.t_span - (self.t - self.t_prev)`).
-    fn push_current(&mut self) {
-        self.t_seq.push_back(self.t);
-        self.x_seq.push_back(self.x);
-        self.k_seq.push_back(self.k);
-        let t_tail = self.t_prev - self.t_span - (self.t - self.t_prev);
-        while &t_tail
-            > self
-                .t_seq
-                .front()
-                .expect("Last element won't pop for non-negative t_span")
-        {
-            self.t_seq.pop_front();
-            self.x_seq.pop_front();
-            self.k_seq.pop_front();
-        }
 
-        // while let Some((t, _order)) = self.disco.front()
-        //     && &t_tail > t
-        // {
-        //     self.disco.pop_front();
-        // }
+    /****************** Current state access ******************/
+
+    fn t(&self) -> f64 {
+        self.t
+    }
+    fn t_mut(&mut self) -> &mut f64 {
+        &mut self.t
+    }
+    fn x(&self) -> [f64; N] {
+        self.x
+    }
+    fn x_mut(&mut self) -> &mut [f64; N] {
+        &mut self.x
+    }
+    fn tx_mut(&mut self) -> (&mut f64, &mut [f64; N]) {
+        (&mut self.t, &mut self.x)
     }
 
-    /// Advance the state by `t_step`, using right-hand-side `rhs` of the equation.
-    fn make_step(&mut self, rhs: &mut impl StateFnMut<N, Output = [f64; N]>, t_step: f64) {
-        self.t_prev = self.t;
-        self.x_prev = self.x;
+    /****************** Previous state access ******************/
 
-        let mut a_i = 0;
-        for i in 0..S {
-            self.t = self.t_prev + self.rk.c[i] * t_step;
-
-            self.x = std::array::from_fn(|k| {
-                self.x_prev[k]
-                    + t_step * (0..i).fold(0., |acc, j| acc + self.rk.a[a_i + j] * self.k[j][k])
-            });
-            a_i += i;
-            self.k[i] = rhs.eval(self);
-        }
-
-        self.x = std::array::from_fn(|k| {
-            self.x_prev[k] + t_step * (0..S).fold(0., |acc, j| acc + self.rk.b[j] * self.k[j][k])
-        });
-        self.t = self.t_prev + t_step;
+    fn t_prev(&self) -> f64 {
+        self.t_prev
+    }
+    fn x_prev(&self) -> [f64; N] {
+        self.x_prev
+    }
+    fn d_prev(&self) -> [f64; N] {
+        self.k[0]
     }
 
-    /// Advance the state by a zero step, not modifying current time or coordinates.
-    ///
-    /// This method is used when the state is modified externally by events, to record adjacent
-    /// pre- and post-change states with respect to event.
-    fn make_zero_step(&mut self) {
-        self.t_prev = self.t;
-        self.x_prev = self.x;
-        self.k = [[0.; N]; S];
+    /****************** State history access ******************/
+
+
+    fn t_seq(&self) -> &VecDeque<f64> {
+        &self.t_seq
+    }
+    fn t_seq_mut(&mut self) -> &mut VecDeque<f64> {
+        &mut self.t_seq
+    }
+    fn x_seq(&self) -> &VecDeque<[f64; N]> {
+        &self.x_seq
+    }
+    fn x_seq_mut(&mut self) -> &mut VecDeque<[f64; N]> {
+        &mut self.x_seq
+    }
+    fn disco_seq(&self) -> &StableIndexVecDeque<(f64, usize)> {
+        &self.disco
+    }
+    fn disco_seq_mut(&mut self) -> &mut StableIndexVecDeque<(f64, usize)> {
+        &mut self.disco
     }
 
-    /// Undo the previous step by setting current values to the previous.
-    ///
-    /// Used to reject last step due to stepsize controller or located step.
-    ///
-    /// Using this method twice is the same as using it once, because it just resets current time
-    /// and coordinates to the previous, without setting previous values to pre-previous values.
-    fn undo_step(&mut self) {
-        self.t = self.t_prev;
-        self.x = self.x_prev;
-    }
+    /****************** State history evaluation ******************/
 
     /// Evaluate coordinate vector of the state at the time `t` using interpolant provided by
     /// [crate::rk::RungeKuttaTable::bi]. For `t < self.t_init`, the field [State::x_init] is used.
@@ -438,6 +410,79 @@ where
             coord: i,
         })
     }
+
+
+
+    /// Push current values [State::t], [State::x], [State::k] to history, and pop old history
+    /// (older than `self.t_prev - self.t_span - (self.t - self.t_prev)`).
+    fn push_current(&mut self) {
+        self.t_seq.push_back(self.t);
+        self.x_seq.push_back(self.x);
+        self.k_seq.push_back(self.k);
+        let t_tail = self.t_prev - self.t_span - (self.t - self.t_prev);
+        while &t_tail
+            > self
+                .t_seq
+                .front()
+                .expect("Last element won't pop for non-negative t_span")
+        {
+            self.t_seq.pop_front();
+            self.x_seq.pop_front();
+            self.k_seq.pop_front();
+        }
+
+        // while let Some((t, _order)) = self.disco.front()
+        //     && &t_tail > t
+        // {
+        //     self.disco.pop_front();
+        // }
+    }
+
+    /// Advance the state by `t_step`, using right-hand-side `rhs` of the equation.
+    fn make_step(&mut self, rhs: &mut impl StateFnMut<N, Output = [f64; N]>, t_step: f64) {
+        self.t_prev = self.t;
+        self.x_prev = self.x;
+
+        let mut a_i = 0;
+        for i in 0..S {
+            self.t = self.t_prev + self.rk.c[i] * t_step;
+
+            self.x = std::array::from_fn(|k| {
+                self.x_prev[k]
+                    + t_step * (0..i).fold(0., |acc, j| acc + self.rk.a[a_i + j] * self.k[j][k])
+            });
+            a_i += i;
+            self.k[i] = rhs.eval(self);
+        }
+
+        self.x = std::array::from_fn(|k| {
+            self.x_prev[k] + t_step * (0..S).fold(0., |acc, j| acc + self.rk.b[j] * self.k[j][k])
+        });
+        self.t = self.t_prev + t_step;
+    }
+
+    /// Advance the state by a zero step, not modifying current time or coordinates.
+    ///
+    /// This method is used when the state is modified externally by events, to record adjacent
+    /// pre- and post-change states with respect to event.
+    fn make_zero_step(&mut self) {
+        self.t_prev = self.t;
+        self.x_prev = self.x;
+        self.k = [[0.; N]; S];
+    }
+
+    /// Undo the previous step by setting current values to the previous.
+    ///
+    /// Used to reject last step due to stepsize controller or located step.
+    ///
+    /// Using this method twice is the same as using it once, because it just resets current time
+    /// and coordinates to the previous, without setting previous values to pre-previous values.
+    fn undo_step(&mut self) {
+        self.t = self.t_prev;
+        self.x = self.x_prev;
+    }
+
+
 }
 
 /// Trait, that defines how a function is evaluated at the state.
