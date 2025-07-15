@@ -6,16 +6,25 @@ pub trait Detect<const N: usize> {
     /// Determine whether event is occured on the current step
     fn detect(&mut self, state: &impl State<N>) -> bool;
 }
-
+/// Detection method marker for detection of change of sign of the state function.
 pub struct Sign;
+/// Detection method marker for detection of state function value becoming positive.
 pub struct Pos;
+/// Detection method marker for detection of state function value becoming negative.
 pub struct Neg;
+/// Detection method marker for detection of state function value being positive.
 pub struct WhilePos;
+/// Detection method marker for detection of state function value being negative.
 pub struct WhileNeg;
+/// Detection method marker for detection of change of bool value of the state function.
 pub struct Bool;
+/// Detection method marker for detection of state function value becoming `true`.
 pub struct True;
+/// Detection method marker for detection of state function value becoming `false`.
 pub struct False;
+/// Detection method marker for detection of state function value being `true`.
 pub struct WhileTrue;
+/// Detection method marker for detection of state function value being `false`.
 pub struct WhileFalse;
 
 impl<const N: usize, F: StateFnMut<N, Output = f64>, L> Detect<N> for Loc<F, Sign, L> {

@@ -1,22 +1,26 @@
-use crate::{EventCall, StateFnMut};
+use crate::{EventCall, StateFnMut, State};
 
 use super::*;
 
+
+/// Detection method marker for detecting that a delayed argument function has crossed a value in
+/// the state discontinuity list [State::disco].
 pub struct Propagation;
 
+/// 
 pub struct Propagator<const N: usize, Alpha: StateFnMut<N, Output = f64>> {
+    /// Delayed argument function
     pub alpha: Alpha,
-    /// index into state disco queue, it is assumed,
-    /// that previous evaluation is on the half-open interval
-    /// [ state.disco()[disco_idx - 1], state.disco[disco_idx] )
-    /// where state.disco()[-1] is f64::NEG_INFINITY
+    /// index into state disco queue
     pub disco_idx: usize,
     /// how order of discontinuity increases after this propagation
     ///
     /// 1 corresponds to retarded delay,
     /// 0 corresponds to neutral delay
     pub smoothing_order: usize,
+    /// the time of propagated discontinuity from last detection
     pub propagated_t: f64,
+    /// the order of propagated discontinuity from last detection
     pub propagated_order: usize,
 }
 
@@ -35,15 +39,15 @@ impl<const N: usize, Alpha: StateFnMut<N, Output = f64>> Propagator<N, Alpha> {
 impl<const N: usize, Alpha: StateFnMut<N, Output = f64>> StateFnMut<N> for Propagator<N, Alpha> {
     type Output = f64;
 
-    fn eval(&mut self, state: &impl crate::State<N>) -> Self::Output {
+    fn eval(&mut self, state: &impl State<N>) -> Self::Output {
         self.alpha.eval(state) - self.propagated_t
     }
 
-    fn eval_prev(&mut self, state: &impl crate::State<N>) -> Self::Output {
+    fn eval_prev(&mut self, state: &impl State<N>) -> Self::Output {
         self.alpha.eval_prev(state) - self.propagated_t
     }
 
-    fn eval_at(&mut self, state: &impl crate::State<N>, t: f64) -> Self::Output {
+    fn eval_at(&mut self, state: &impl State<N>, t: f64) -> Self::Output {
         self.alpha.eval_at(state, t) - self.propagated_t
     }
 }
@@ -51,7 +55,7 @@ impl<const N: usize, Alpha: StateFnMut<N, Output = f64>> StateFnMut<N> for Propa
 impl<const N: usize, Alpha: StateFnMut<N, Output = f64>, L> Detect<N>
     for Loc<Propagator<N, Alpha>, Propagation, L>
 {
-    fn detect(&mut self, state: &impl crate::State<N>) -> bool {
+    fn detect(&mut self, state: &impl State<N>) -> bool {
 
         let alpha_prev = self.0.alpha.eval_prev(state);
         let alpha_curr = self.0.alpha.eval(state);
@@ -114,9 +118,8 @@ impl<const N: usize, Alpha: StateFnMut<N, Output = f64>, L> Detect<N>
 impl<const N: usize, Alpha: StateFnMut<N, Output = f64>, L> EventCall<N>
     for Loc<Propagator<N, Alpha>, Propagation, L>
 {
-    fn call(&mut self, state: &mut impl crate::State<N>) {
+    fn call(&mut self, state: &mut impl State<N>) {
         let new_order = self.0.propagated_order + self.0.smoothing_order;
-        dbg!(self.0.propagated_order, self.0.smoothing_order, new_order);
         if new_order < state.interpolation_order() {
             let t = state.t();
             state.disco_mut().push_back((t, new_order))

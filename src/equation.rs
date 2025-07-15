@@ -268,6 +268,7 @@ impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Propagations: HList,
         self.delay_with_smoothing_order(delayed_arg_fn, 0)
     }
 
+    /// Add constant delay to the equation
     pub fn const_delay(
         self,
         delay: f64,
@@ -286,6 +287,7 @@ impl<const N: usize, RHS: StateFnMut<N, Output = [f64; N]>, Propagations: HList,
     }
 
 
+    /// Add constant neutral delay to the equation
     pub fn const_neutral_delay(
         self,
         delay: f64,

@@ -3,13 +3,25 @@
 
 use crate::{InitialCondition, collections::stable_index_deque::StableIndexVecDeque};
 
-/// Trait that abstracts [RKState], hiding memory layout and rk scheme specifications
+/// Trait that abstracts state of the equation over used numerical method. 
+///
+/// There are 3 kinds of state:
+/// - Current state: obtained at the last state. Current state is accessed using
+/// methods [State::t], [State::x] for access by value, and [State::t_mut], [State::x_mut], and
+/// [State::tx_mut] for access by a mutable reference. 
+/// - Previous state: obtained at the previous state. Previous state is accessed using
+/// [State::t_prev], [State::x_prev], [State::d_prev]. No mutable getters are provided for a
+/// previous step: you do not change the past.
+/// - Past state: interpolation of the state at the past values. Past state is accessed through the
+/// methods [State::eval], [State::eval_all], [State::eval_derivative] for evaluation at an
+/// arbitrary time, and [State::coord_fns] for an array of functions that act that [State::eval]
+/// for different coordinates.
 pub trait State<const N: usize> {
-    /// get current time of the state
+    /// Returns current time of the state
     fn t(&self) -> f64;
-    /// get previous step time of the state
+    /// Returns previous step time of the state
     fn t_prev(&self) -> f64;
-    /// get mutable reference to a current time of the state.
+    /// Returns a mutable reference to a current time of the state.
     ///
     /// Can be used to set the time of state to [f64::INFINITY], effectively stopping integration
     fn t_mut(&mut self) -> &mut f64;
