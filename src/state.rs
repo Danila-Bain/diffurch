@@ -62,6 +62,8 @@ pub trait State<const N: usize> {
     ///
     /// Returned value is expected to be non-negative and allowed 
     /// to be zero for disabling history saving, and `f64::INFINITY` or `f64::NAN` for disabling history truncation.
+    ///
+    /// For negative values, solver will panic.
     fn t_span(&self) -> f64;
     /// Returns time values of the saved solution history. It may not contain the whole
     /// integration points due to history truncation determined by [State::t_span].
@@ -126,44 +128,37 @@ where
     [(); S * (S - 1) / 2]:,
 {
     /********** Time **********/
-    /// time of the state at the current step
+    /// Value of [State::t] and [State::t_mut]
     pub t: f64,
-    /// time of the state at the previous step
+    /// Value of [State::t_prev]
     pub t_prev: f64,
-    /// initial time of the state
+    /// Value of [State::t_init]
     pub t_init: f64,
-    /// length of past history stored in state,
-    ///
-    /// It must be >= than largest delay encountered in delay differential equation.
-    ///
-    /// It may be 0., may be f64::INFINITE.
-    ///
-    /// For negative values, solver will panic.
+    /// Value of [State::t_span]
     pub t_span: f64,
-    /// time instances of past steps
-    ///
-    /// The past values that are no longer needed are pop'ed during computation according to [State::t_span].
+    /// Value of [State::t_seq] and [State::t_seq_mut]
     pub t_seq: std::collections::VecDeque<f64>,
 
     /********** Position **********/
-    /// position of the state at the current step
+    /// Value of [State::x] and [State::x_mut]
     pub x: [f64; N],
-    /// position of the state at the previous step
+    /// Value of [State::x_prev]
     pub x_prev: [f64; N],
-    /// initial condition used to initialize or evaluate the state at times before [State::t_init].
+    /// Initial condition used to initialize or evaluate the state at times before [State::t_init].
     pub x_init: IC,
-    /// state values of past steps
-    ///
-    /// The past values that are no longer needed are pop'ed during computation according to [State::t_span].
+    /// Value of [State::x_seq] and [State::t_seq_mut]
     pub x_seq: std::collections::VecDeque<[f64; N]>,
+
     /********** Discontinuities **********/
+    
+    /// Value of [State::disco_seq] and [State::disco_seq_mut]
     pub disco_seq: StableIndexVecDeque<(f64, usize)>,
 
     /********** Runge-Kutta method stages **********/
-    /// Used Runge-Kutta scheme
+    /// Runge-Kutta scheme used for integration and history interpolation
     pub rk: &'a crate::rk::RungeKuttaTable<S>,
 
-    /// The Runge-Kutta method stages computed for the last step
+    /// The Runge-Kutta method stages computed for the last step.
     pub k: [[f64; N]; S],
     /// The past Runge-Kutta stages used for evaluation of the state at the past times between the
     /// nodal points.
