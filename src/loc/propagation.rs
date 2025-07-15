@@ -63,19 +63,19 @@ impl<const N: usize, Alpha: StateFnMut<N, Output = f64>, L> Detect<N>
 
         if alpha_prev < alpha_curr {
             // get first t_disco > alpha_prev
-            while let Some((t_disco, _)) = state.disco().get(self.0.disco_idx)
+            while let Some((t_disco, _)) = state.disco_seq().get(self.0.disco_idx)
                 && *t_disco <= alpha_prev
             {
                 self.0.disco_idx += 1;
             }
-            while self.0.disco_idx > 0 && let Some((t_disco, _)) = state.disco().get(self.0.disco_idx - 1)
+            while self.0.disco_idx > 0 && let Some((t_disco, _)) = state.disco_seq().get(self.0.disco_idx - 1)
                 && *t_disco > alpha_prev
             {
                 self.0.disco_idx -= 1;
             }
 
             // check for t_disco < alpha_curr
-            if let Some((t_disco, order_disco)) = state.disco().get(self.0.disco_idx)
+            if let Some((t_disco, order_disco)) = state.disco_seq().get(self.0.disco_idx)
                 && *t_disco <= alpha_curr
             {
                 // println!("\tCrossing: {t_disco}");
@@ -122,7 +122,7 @@ impl<const N: usize, Alpha: StateFnMut<N, Output = f64>, L> EventCall<N>
         let new_order = self.0.propagated_order + self.0.smoothing_order;
         if new_order < state.interpolation_order() {
             let t = state.t();
-            state.disco_mut().push_back((t, new_order))
+            state.disco_seq_mut().push_back((t, new_order))
         }
     }
 }

@@ -83,31 +83,34 @@ pub trait State<const N: usize> {
 
     /****************** State history evaluation ******************/
 
-    /// Evaluate the position of the state at the time `t` in the past.
+    /// Returns the position of the state at the time `t` in the past.
     fn eval_all(&self, t: f64) -> [f64; N];
-    /// Evaluate the coordinate `coordinate` of the postion of the state at the time `t` in the past.
+    /// Returns the coordinate `coordinate` of the position of the state at the time `t` in the past.
     fn eval(&self, t: f64, coordinate: usize) -> f64;
-    /// Evaluate the derivative of the coordinate `coordinate` of the postion of the state at the time `t` in the past.
+    /// Returns the derivative of the coordinate `coordinate` of the position of the state at the time `t` in the past.
     fn eval_derivative(&self, t: f64, coordinate: usize) -> f64;
-    /// Return coordinate functions, that can be used to evaluate state at the past times.
+    /// Returns coordinate functions, that can be used to evaluate state at the past times.
     ///
-    /// This is the thing passed to the right hand side functions for delay differential equations.
+    /// The primary use of those functions is being an arguments to the right-hand-side function of
+    /// delay differential equations.
     fn coord_fns<'b>(&'b self) -> [StateCoordFn<'b, N, Self>; N];
 
-    /// Make zero step by setting previous values to current ones.
+    /// Makes zero step by setting previous values to current ones.
     ///
     /// This is used internally before applying external changes to a state, such that state
     /// history is not lost.
     fn make_zero_step(&mut self);
-    /// Make a step of numerical method of the size `t_step`, using `rhs` as the right hand side of
+    /// Makes a step of numerical method of the size `t_step`, using `rhs` as the right hand side of
     /// the differential equation.
     fn make_step(&mut self, rhs: &mut impl StateFnMut<N, Output = [f64; N]>, t_step: f64);
-    /// Undo last step. (Repeated use does not have an effect)
+    /// Undoes last step by setting current step values to the previous step values. 
     ///
-    /// This is used to redo last step, because it was rejected due to event location or (not yet
+    /// Repeated use does not have an effect.
+    ///
+    /// The purpose of this method is to allow recalculation of steps that were rejected due to event location or (not yet
     /// implemented) step size controller.
     fn undo_step(&mut self);
-    /// Save last computed step to history
+    /// Saves last computed step to history.
     fn push_current(&mut self);
 }
 
@@ -153,14 +156,14 @@ where
     ///
     /// The past values that are no longer needed are pop'ed during computation according to [State::t_span].
     pub x_seq: std::collections::VecDeque<[f64; N]>,
-    /// The Runge-Kutta method stages computed for the last step
     /********** Discontinuities **********/
-    pub disco: StableIndexVecDeque<(f64, usize)>,
+    pub disco_seq: StableIndexVecDeque<(f64, usize)>,
 
     /********** Runge-Kutta method stages **********/
     /// Used Runge-Kutta scheme
     pub rk: &'a crate::rk::RungeKuttaTable<S>,
 
+    /// The Runge-Kutta method stages computed for the last step
     pub k: [[f64; N]; S],
     /// The past Runge-Kutta stages used for evaluation of the state at the past times between the
     /// nodal points.
@@ -192,7 +195,7 @@ where
             x_prev: x.clone(),
             x_seq: std::collections::VecDeque::from([x.clone()]),
 
-            disco: StableIndexVecDeque::from([(t_init, 0)]), // assume initial discontinuity of order 0
+            disco_seq: StableIndexVecDeque::from([(t_init, 0)]), // assume initial discontinuity of order 0
 
             k: [[0.; N]; S],
             k_seq: std::collections::VecDeque::new(),
@@ -266,10 +269,10 @@ where
         &mut self.x_seq
     }
     fn disco_seq(&self) -> &StableIndexVecDeque<(f64, usize)> {
-        &self.disco
+        &self.disco_seq
     }
     fn disco_seq_mut(&mut self) -> &mut StableIndexVecDeque<(f64, usize)> {
-        &mut self.disco
+        &mut self.disco_seq
     }
 
     /****************** State history evaluation ******************/
@@ -453,11 +456,11 @@ where
             self.k_seq.pop_front();
         }
 
-        // while let Some((t, _order)) = self.disco.front()
-        //     && &t_tail > t
-        // {
-        //     self.disco.pop_front();
-        // }
+        while let Some((t, _order)) = self.disco_seq.front()
+            && &t_tail > t
+        {
+            self.disco_seq.pop_front();
+        }
     }
 
     /// Advance the state by `t_step`, using right-hand-side `rhs` of the equation.

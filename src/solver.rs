@@ -290,7 +290,7 @@ where
             state.make_step(&mut rhs, stepsize);
 
             if let Some((t, event)) = loc_events.locate_first(&mut state) && t > state.t_prev() {
-                println!("event located at {t}, state.disco: {:?}", state.disco());
+                println!("event located at {t}, state.disco: {:?}", state.disco_seq());
                 state.undo_step();
                 state.make_step(&mut rhs, t - state.t);
                 state.push_current();
@@ -298,7 +298,7 @@ where
                 event.call(&mut state); 
                 if state.t_prev() == state.t() {
                     self.step_events.call_each(&mut state);
-                    state.disco_mut().push_back((t, 0))
+                    state.disco_seq_mut().push_back((t, 0))
                 }
             } else {
                 state.push_current();
