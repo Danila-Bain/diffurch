@@ -18,41 +18,49 @@ use crate::{InitialCondition, collections::stable_index_deque::StableIndexVecDeq
 /// arbitrary time, and [State::coord_fns] for an array of functions that act that [State::eval]
 /// for different coordinates.
 pub trait State<const N: usize> {
-
     /****************** Numerical method metadata ******************/
 
     fn method_order(&self) -> usize;
     fn interpolation_order(&self) -> usize;
 
-
     /****************** Current state access ******************/
 
     /// Returns current time of the state
     fn t(&self) -> f64;
-    /// Returns previous step time of the state
+    /// Returns mutable reference to the current time of the state
     fn t_mut(&mut self) -> &mut f64;
-    /// get current position of the state
+    /// Returns current position of the state
     fn x(&self) -> [f64; N];
-    /// get mutable reference to a current position of the state.
-    ///
-    /// Can be used to implement impacts in the systems due to some events.
+    /// Returns mutable reference to the current position of the state.
     fn x_mut(&mut self) -> &mut [f64; N];
-    /// getter, that combines [State::t_mut] and [State::x_mut]
+    /// Returns a tuple of mutable references to the current time and position of the state.
     fn tx_mut(&mut self) -> (&mut f64, &mut [f64; N]);
 
     /****************** Previous state access ******************/
 
-    /// get previous step position of the state
+    /// Returns previous time of the state
     fn t_prev(&self) -> f64;
-    /// Returns a mutable reference to a current time of the state.
-    ///
-    /// Can be used to set the time of state to [f64::INFINITY], effectively stopping integration
+    /// Returns previous position of the state
     fn x_prev(&self) -> [f64; N];
-    /// get previous step derivative of the state
+    /// Returns previous derivative of the position of the state
     fn d_prev(&self) -> [f64; N];
 
     /****************** State history access ******************/
 
+    /// Returns an initial time of the state.
+    ///
+    /// Evaluation of the data for time less than self.t_init() shall be provided by an initial
+    /// function.
+    fn t_init(&self) -> f64;
+    /// Returns a (non-negative) length of saved history.
+    ///
+    /// History is expected to be available on the interval
+    /// from self.t_prev() - self.t_span() to self.t().
+    ///
+    /// For values less than self.t_prev() - self.t_span(), history may be deleted to minimize
+    /// memory consumption.
+    fn t_span(&self) -> f64;
+    /// Returns
     fn t_seq(&self) -> &VecDeque<f64>;
     fn t_seq_mut(&mut self) -> &mut VecDeque<f64>;
     fn x_seq(&self) -> &VecDeque<[f64; N]>;
@@ -60,7 +68,6 @@ pub trait State<const N: usize> {
 
     fn disco_seq(&self) -> &StableIndexVecDeque<(f64, usize)>;
     fn disco_seq_mut(&mut self) -> &mut StableIndexVecDeque<(f64, usize)>;
-
 
     /****************** State history evaluation ******************/
 
@@ -74,8 +81,6 @@ pub trait State<const N: usize> {
     ///
     /// This is the thing passed to the right hand side functions for delay differential equations.
     fn coord_fns<'b>(&'b self) -> [StateCoordFn<'b, N, Self>; N];
-
-
 
     /// Make zero step by setting previous values to current ones.
     ///
@@ -105,6 +110,7 @@ pub struct RKState<'a, const N: usize, const S: usize, IC: InitialCondition<N>>
 where
     [(); S * (S - 1) / 2]:,
 {
+    /********** Time **********/
     /// time of the state at the current step
     pub t: f64,
     /// time of the state at the previous step
@@ -124,6 +130,7 @@ where
     /// The past values that are no longer needed are pop'ed during computation according to [State::t_span].
     pub t_seq: std::collections::VecDeque<f64>,
 
+    /********** Position **********/
     /// position of the state at the current step
     pub x: [f64; N],
     /// position of the state at the previous step
@@ -135,15 +142,17 @@ where
     /// The past values that are no longer needed are pop'ed during computation according to [State::t_span].
     pub x_seq: std::collections::VecDeque<[f64; N]>,
     /// The Runge-Kutta method stages computed for the last step
+    /********** Discontinuities **********/
+    pub disco: StableIndexVecDeque<(f64, usize)>,
+
+    /********** Runge-Kutta method stages **********/
+    /// Used Runge-Kutta scheme
+    pub rk: &'a crate::rk::RungeKuttaTable<S>,
+
     pub k: [[f64; N]; S],
     /// The past Runge-Kutta stages used for evaluation of the state at the past times between the
     /// nodal points.
     pub k_seq: std::collections::VecDeque<[[f64; N]; S]>,
-
-    /// Used Runge-Kutta scheme
-    pub rk: &'a crate::rk::RungeKuttaTable<S>,
-
-    pub disco: StableIndexVecDeque<(f64, usize)>,
 }
 
 impl<'a, const N: usize, const S: usize, IC: InitialCondition<N>> RKState<'a, N, S, IC>
@@ -185,7 +194,6 @@ impl<'a, const N: usize, const S: usize, IC: InitialCondition<N>> State<N> for R
 where
     [(); S * (S - 1) / 2]:,
 {
-
     /****************** Numerical method metadata ******************/
 
     fn method_order(&self) -> usize {
@@ -194,7 +202,6 @@ where
     fn interpolation_order(&self) -> usize {
         self.rk.order_interpolant
     }
-
 
     /****************** Current state access ******************/
 
@@ -228,7 +235,12 @@ where
 
     /****************** State history access ******************/
 
-
+    fn t_init(&self) -> f64 {
+        self.t_init
+    }
+    fn t_span(&self) -> f64 {
+        self.t_span
+    }
     fn t_seq(&self) -> &VecDeque<f64> {
         &self.t_seq
     }
@@ -411,8 +423,6 @@ where
         })
     }
 
-
-
     /// Push current values [State::t], [State::x], [State::k] to history, and pop old history
     /// (older than `self.t_prev - self.t_span - (self.t - self.t_prev)`).
     fn push_current(&mut self) {
@@ -481,8 +491,6 @@ where
         self.t = self.t_prev;
         self.x = self.x_prev;
     }
-
-
 }
 
 /// Trait, that defines how a function is evaluated at the state.
