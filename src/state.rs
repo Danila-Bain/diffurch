@@ -59,14 +59,26 @@ pub trait State<const N: usize> {
     ///
     /// For values less than self.t_prev() - self.t_span(), history may be deleted to minimize
     /// memory consumption.
+    ///
+    /// Returned value is expected to be non-negative and allowed 
+    /// to be zero for disabling history saving, and `f64::INFINITY` or `f64::NAN` for disabling history truncation.
     fn t_span(&self) -> f64;
-    /// Returns
+    /// Returns time values of the saved solution history. It may not contain the whole
+    /// integration points due to history truncation determined by [State::t_span].
     fn t_seq(&self) -> &VecDeque<f64>;
+    /// Returns a mutable reference to the time values of the saved solution history. It may not contain the whole
+    /// integration points due to history truncation determined by [State::t_span].
     fn t_seq_mut(&mut self) -> &mut VecDeque<f64>;
+    /// Returns position values of the saved solution history. It may not contain the whole
+    /// integration points due to history truncation determined by [State::t_span].
     fn x_seq(&self) -> &VecDeque<[f64; N]>;
+    /// Returns a mutable reference to the position values of the saved solution history. It may not contain the whole
+    /// integration points due to history truncation determined by [State::t_span].
     fn x_seq_mut(&mut self) -> &mut VecDeque<[f64; N]>;
 
+    /// Returns discontinuity points of the saved solution history. It may not contain all discontinuity points points due to history truncation determined by [State::t_span].
     fn disco_seq(&self) -> &StableIndexVecDeque<(f64, usize)>;
+    /// Returns a mutable reference to the discontinuity points of the saved solution history. It may not contain all discontinuity points points due to history truncation determined by [State::t_span].
     fn disco_seq_mut(&mut self) -> &mut StableIndexVecDeque<(f64, usize)>;
 
     /****************** State history evaluation ******************/
