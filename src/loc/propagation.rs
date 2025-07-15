@@ -1,13 +1,12 @@
-use crate::{EventCall, StateFnMut, State};
+use crate::{EventCall, State, StateFnMut};
 
 use super::*;
-
 
 /// Detection method marker for detecting that a delayed argument function has crossed a value in
 /// the state discontinuity list [State::disco].
 pub struct Propagation;
 
-/// 
+///
 pub struct Propagator<const N: usize, Alpha: StateFnMut<N, Output = f64>> {
     /// Delayed argument function
     pub alpha: Alpha,
@@ -25,6 +24,9 @@ pub struct Propagator<const N: usize, Alpha: StateFnMut<N, Output = f64>> {
 }
 
 impl<const N: usize, Alpha: StateFnMut<N, Output = f64>> Propagator<N, Alpha> {
+    /// Constructs a new Propagator object with provided values for `alpha` and
+    /// `smoothing_order` and sets `disco_idx: 0`, `propagated_t: f64::NAN`,
+    /// `propagated_order: usize::MAX`
     pub fn new(alpha: Alpha, smoothing_order: usize) -> Self {
         Self {
             alpha,
@@ -56,7 +58,6 @@ impl<const N: usize, Alpha: StateFnMut<N, Output = f64>, L> Detect<N>
     for Loc<Propagator<N, Alpha>, Propagation, L>
 {
     fn detect(&mut self, state: &impl State<N>) -> bool {
-
         let alpha_prev = self.0.alpha.eval_prev(state);
         let alpha_curr = self.0.alpha.eval(state);
         // println!("Delay: {}, Time: {} -> {}, Delayed: {alpha_prev} -> {alpha_curr}", state.t() - alpha_curr, state.t_prev(), state.t());
@@ -68,7 +69,8 @@ impl<const N: usize, Alpha: StateFnMut<N, Output = f64>, L> Detect<N>
             {
                 self.0.disco_idx += 1;
             }
-            while self.0.disco_idx > 0 && let Some((t_disco, _)) = state.disco_seq().get(self.0.disco_idx - 1)
+            while self.0.disco_idx > 0
+                && let Some((t_disco, _)) = state.disco_seq().get(self.0.disco_idx - 1)
                 && *t_disco > alpha_prev
             {
                 self.0.disco_idx -= 1;

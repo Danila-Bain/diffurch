@@ -20,7 +20,17 @@ use crate::{InitialCondition, collections::stable_index_deque::StableIndexVecDeq
 pub trait State<const N: usize> {
     /****************** Numerical method metadata ******************/
 
+    /// Returns the order of the underlying (discrete) numerical method.
+    ///
+    /// This value is used in discontinuity propagation: when the order of derivative at which
+    /// discontinuity occurs is larger than the order of the method, location of this discontinuity
+    /// is not needed to preserve the order of the method.
+    ///
+    /// Also, this value is used in adaptive step size schemes (which are not yet implemented).
     fn method_order(&self) -> usize;
+    /// Returns the order of the underlying continuous numerical method, i.e. dense output formula.
+    ///
+    /// See also [State::method_order].
     fn interpolation_order(&self) -> usize;
 
     /****************** Current state access ******************/
@@ -60,7 +70,7 @@ pub trait State<const N: usize> {
     /// For values less than self.t_prev() - self.t_span(), history may be deleted to minimize
     /// memory consumption.
     ///
-    /// Returned value is expected to be non-negative and allowed 
+    /// Returned value is expected to be non-negative and allowed
     /// to be zero for disabling history saving, and `f64::INFINITY` or `f64::NAN` for disabling history truncation.
     ///
     /// For negative values, solver will panic.
@@ -105,7 +115,7 @@ pub trait State<const N: usize> {
     /// Makes a step of numerical method of the size `t_step`, using `rhs` as the right hand side of
     /// the differential equation.
     fn make_step(&mut self, rhs: &mut impl StateFnMut<N, Output = [f64; N]>, t_step: f64);
-    /// Undoes last step by setting current step values to the previous step values. 
+    /// Undoes last step by setting current step values to the previous step values.
     ///
     /// Repeated use does not have an effect.
     ///
@@ -150,7 +160,6 @@ where
     pub x_seq: std::collections::VecDeque<[f64; N]>,
 
     /********** Discontinuities **********/
-    
     /// Value of [State::disco_seq] and [State::disco_seq_mut]
     pub disco_seq: StableIndexVecDeque<(f64, usize)>,
 
@@ -505,6 +514,7 @@ where
 
 /// Trait, that defines how a function is evaluated at the state.
 pub trait StateFnMut<const N: usize> {
+    /// return type of the state function
     type Output;
     /// evaluate self at the current state
     fn eval(&mut self, state: &impl State<N>) -> Self::Output;
@@ -515,6 +525,7 @@ pub trait StateFnMut<const N: usize> {
 }
 /// Trait, that defines how a function is evaluated at the state, which can also mutate the state.
 pub trait MutStateFnMut<const N: usize> {
+    /// return type of the state function
     type Output;
 
     /// evaluate self at the mutable state
@@ -746,7 +757,7 @@ impl<
     }
 }
 
-// Borrowing rules violation
+/// Mutable time-, mutable position-, and past state-dependent function of the state
 pub struct DDEMutStateFnMut<
     const N: usize,
     F: for<'a> FnMut<
@@ -788,24 +799,8 @@ impl<
     }
 }
 
+/// Composition of a regular function and a state function
 pub struct StateFnMutComposition<F, SF>(pub F, pub SF);
-// impl<Ret1, Ret2, SF: StateFnMut<N, Output = Ret1>, F: FnMut(Ret1) -> Ret2, const N: usize>
-//     StateFnMut<N> for StateFnMutComposition<F, SF>
-// {
-//     type Output = Ret2;
-//
-//     fn eval(&mut self, state: &impl State<N>) -> Self::Output {
-//         self.0(self.1.eval(state))
-//     }
-//
-//     fn eval_prev(&mut self, state: &impl State<N>) -> Self::Output {
-//         self.0(self.1.eval_prev(state))
-//     }
-//
-//     fn eval_at(&mut self, state: &impl State<N>, t: f64) -> Self::Output {
-//         self.0(self.1.eval_at(state, t))
-//     }
-// }
 
 impl<'a, 'b, Ret1, Ret2, SF: StateFnMut<N, Output = Ret1>, F: FnMut(Ret1) -> Ret2, const N: usize>
     StateFnMut<N> for StateFnMutComposition<&'a mut F, &'b mut SF>
@@ -838,9 +833,11 @@ pub struct StateCoordFn<'a, const N: usize, S: State<N> + ?Sized> {
 
 /// Trait to erase generic parameter S from StateCoordFn
 pub trait StateCoordFnTrait: Fn(f64) -> f64 {
-    /// evaluate the derivative
+    /// Returns derivative of the position coordinate at the given time.
     fn d(&self, t: f64) -> f64;
+    /// Returns previous position coordinate.
     fn prev(&self) -> f64;
+    /// Returns previous derivative of the position coordinate.
     fn d_prev(&self) -> f64;
 }
 
@@ -878,29 +875,35 @@ impl<'a, const N: usize, S: State<N>> StateCoordFnTrait for StateCoordFn<'a, N, 
         self.state.d_prev()[self.coord]
     }
 }
-//
-// /// Creates a [crate::Event] from a closure.
-// ///
-// /// `event!` allows `Event` to be defined with closures of different calling signatures,
-// /// being a replacement of some constructors of [crate::Event]:
-// ///
-// /// ```rust
-// /// #![feature(generic_const_exprs)]
-// /// #![allow(incomplete_features)]
-// ///
-// /// use diffurch::event;
-// ///
-// /// // use in solver for generic parameters inference
-// /// let solver = diffurch::Solver::new()
-// ///     .on_step(event!(|| 1.)) // equivalent to .on_step(Event::constant(...))
-// ///     .on_step(event!(|t| t + t.cos())) // equivalent to .on_step(Event::time(...))
-// ///     .on_step(event!(|[x, y]| [x, y, x+y])) // equivalent to .on_step(Event::ode(...))
-// ///     .on_step(event!(|t, [x, y]| [t, x, y])) // equivalent to .on_step(Event::ode2(...))
-// ///     .on_step(event!(|t, [x, y], [x_, y_]| [t, x, x_(t - 1.)])) // equivalent to .on_step(Event::dde(...))
-// ///     .on_step(event!(|t, [x, y], [x_, y_]| [t, x, x_(t - 1.), x_.d(t - 1.)])); // equivalent to .on_step(Event::dde(...))
-// /// ```
-// ///
-// /// For state mutating events, use [event_mut!].
+
+/// Constructs a [StateFnMut] object from a closure.
+///
+/// Depending on the provided closure signature, it wraps the closure with corresponding type,
+/// choosing between [ConstantStateFnMut], [TimeStateFnMut], [ODEStateFnMut], [ODE2StateFnMut], and
+/// [DDEStateFnMut].
+///
+///
+/// ```rust
+/// #![feature(generic_const_exprs)]
+/// #![allow(incomplete_features)]
+///
+/// use diffurch::state_fn;
+/// use diffurch::Event;
+///
+/// // use in solver for generic parameters inference
+/// let solver = diffurch::Solver::new()
+///     .on_step(Event::new(state_fn!(|| 1.)))
+///     .on_step(Event::new(state_fn!(|t| t + t.cos())))
+///     .on_step(Event::new(state_fn!(|[x, y]| [x, y, x+y])))
+///     .on_step(Event::new(state_fn!(|t, [x, y]| [t, x, y])))
+///     .on_step(Event::new(state_fn!(|t, [x, y], [x_, y_]| [t, x, x_(t - 1.)])))
+///     .on_step(Event::new(state_fn!(|t, [x, y], [x_, y_]| [t, x, x_(t - 1.), x_.d(t - 1.)]))); 
+/// ```
+///
+/// For state mutating functions, see [mut_state_fn!].
+///
+/// See also convenience [crate::equation!], [crate::event!], [crate::loc_sign!], and [crate::loc_bool!], which all use
+/// [state_fn!] internally.
 #[macro_export]
 macro_rules! state_fn {
     () => {
@@ -922,25 +925,16 @@ macro_rules! state_fn {
         $crate::state::DDEStateFnMut($($move)? |$t, [$($x),+], [$($x_),+]| $expr)
     };
 }
-//
-// /// State-mutating counter-part of [event!].
-// ///
-// /// `event_mut!` allows `Event` to be defined with closures of different calling signatures,
-// /// being a replacement of some constructors of [crate::Event]:
-// ///
-// /// ```rust
-// /// #![feature(generic_const_exprs)]
-// /// #![allow(incomplete_features)]
-// ///
-// /// use diffurch::event_mut;
-// ///
-// /// // use in solver for generic parameters inference
-// /// let solver = diffurch::Solver::new()
-// ///     .on_step(event_mut!(|t| *t = f64::INFINITY))
-// ///     .on_step(event_mut!(|[x, y]| {*x = -*x; [*x, *y, *x + *y]}))
-// ///     .on_step(event_mut!(|t, [x, y]| {*x = -*y; *t = f64::INFINITY;}));
-// /// ```
-// ///
+/// Constructs a [MutStateFnMut] object from a closure.
+///
+/// Depending on the provided closure signature, it wraps the closure with corresponding type,
+/// choosing between [ConstantStateFnMut] (note the absence of "Mut" before "State"), [TimeMutStateFnMut], [ODEMutStateFnMut], [ODE2MutStateFnMut], and
+/// [DDEMutStateFnMut].
+///
+///
+/// See also [crate::event_mut!], which uses [mut_state_fn!] internally.
+///
+/// See also [state_fn!]
 #[macro_export]
 macro_rules! mut_state_fn {
     () => {
