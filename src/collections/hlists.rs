@@ -1,3 +1,18 @@
+//! This module implements traits for heterogeneous lists, including 
+//! [EventHList], [LocHList], [LocEventHList], [FilterHList], [StreamHList].
+//!
+//! The purpose of those traits is to implement specialized iterating behaviour over heterogeneous
+//! lists. 
+//!
+//! For [EventHList] and [StreamHList], we just want to call each object in the list.
+//!
+//! For [FilterHList], we want a short-circuiting method `all`.
+//!
+//! For [LocHList] we want to get the minimal `Some` value among callbacks, which is first located
+//! event, if any event is located.
+//!
+//! For [LocEventHList] we want to get first located event, and a pointer to its callback, if any
+//! event is located at the step.
 use hlist2::{Cons, HList, Nil, ops::ToRef};
 
 use crate::{EventCall, EventCallConcrete, Locate, State, StateFnMut};

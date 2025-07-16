@@ -44,6 +44,7 @@ impl<T> DerefMut for StableIndexVecDeque<T> {
 }
 
 impl<T> StableIndexVecDeque<T> {
+    /// Creates a new [StableIndexVecDeque] initializing deque by [VecDeque::new]
     pub const fn new() -> Self {
         Self {
             offset: 0,
@@ -51,6 +52,7 @@ impl<T> StableIndexVecDeque<T> {
         }
     }
 
+    /// Creates a new [StableIndexVecDeque] initializing deque by [VecDeque::with_capacity]
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             offset: 0,
@@ -58,6 +60,7 @@ impl<T> StableIndexVecDeque<T> {
         }
     }
 
+    /// Stable index version of [VecDeque::get]
     pub fn get(&self, index: usize) -> Option<&T> {
         if index >= self.offset {
             self.deque.get(index - self.offset)
@@ -66,14 +69,17 @@ impl<T> StableIndexVecDeque<T> {
         }
     }
 
+    /// Stable index version of [VecDeque::get_mut]
     pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
         self.deque.get_mut(index - self.offset)
     }
 
+    /// Stable index version of [VecDeque::swap]
     pub fn swap(&mut self, i: usize, j: usize) {
         self.deque.swap(i - self.offset, j - self.offset)
     }
 
+    /// Stable index version of [VecDeque::pop_front]
     pub fn pop_front(&mut self) -> Option<T> {
         let ret = self.deque.pop_front();
         if ret.is_some() {
@@ -82,23 +88,28 @@ impl<T> StableIndexVecDeque<T> {
         ret
     }
 
+    /// Stable index version of [VecDeque::push_front]
     pub fn push_front(&mut self, value: T) {
         self.deque.push_front(value);
         self.offset -= 1;
     }
 
+    /// Stable index version of [VecDeque::insert]
     pub fn insert(&mut self, index: usize, value: T) {
         self.deque.insert(index - self.offset, value)
     }
 
+    /// Stable index version of [VecDeque::remove]
     pub fn remove(&mut self, index: usize, value: T) {
         self.deque.insert(index - self.offset, value)
     }
 
+    /// Get the index of the front of the deque.
     pub fn front_idx(&self) -> usize {
         self.offset
     }
 
+    /// Get the index of the (non-inclusive) end of the deque.
     pub fn back_idx(&self) -> usize {
         self.offset + self.deque.len()
     }
