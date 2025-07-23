@@ -260,9 +260,9 @@ where
         EventsOnStop: EventHList<N>,
         EventsOnLoc: LocEventHList<N> + Extend,
         EventsEquation: LocEventHList<N>,
-        <EventsOnLoc as Extend>::Output<EventsEquation>: LocEventHList<N> + Extend,
         Propagations: LocEventHList<N>,
-        <<EventsOnLoc as Extend>::Output<EventsEquation> as Extend>::Output::<Propagations> : LocEventHList<N>,
+        <EventsOnLoc as Extend>::Output<EventsEquation>: LocEventHList<N> + Extend,
+        <<EventsOnLoc as Extend>::Output<EventsEquation> as Extend>::Output<Propagations> : LocEventHList<N>,
     {
         use std::ops::Bound::*;
         let t_init = match interval.start_bound() {
@@ -290,7 +290,6 @@ where
             state.make_step(&mut rhs, stepsize);
 
             if let Some((t, event)) = loc_events.locate_first(&mut state) && t > state.t_prev() {
-                println!("event located at {t}, state.disco: {:?}", state.disco_seq());
                 state.undo_step();
                 state.make_step(&mut rhs, t - state.t);
                 state.push_current();
