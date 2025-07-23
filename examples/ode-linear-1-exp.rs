@@ -4,16 +4,18 @@
 use diffurch::*;
 
 fn main() {
-    let k = f64::ln(2.);
-    let eq = equation!(|[x]| [k * x]);
-    let ic = [1.];
-    let sol = |t: f64| (k * t).exp();
 
-    let range = 0. ..16.;
+    let k = f64::ln(2.);
+    let range = 0. .. 16.;
+    let sol = |t: f64| (k * t).exp();
 
     let mut points = vec![];
 
-    Solver::new().rk(&rk::RK98)
+    Solver::new()
+        .equation(state_fn!(|[x]| [k * x]))
+        .initial([1.])
+        .interval(range.clone())
+        .rk(&rk::RK98)
         .stepsize(1.)
         .on_step(
             event!(|t, [x]| (t as f32, x as f32))
@@ -25,7 +27,7 @@ fn main() {
             let rel_err = err / x;
             println!("t={t:<2.0}, x={x:<5.0}, abs error={err:.0e}, rel error={rel_err:.0e}",)
         }))
-        .run(eq, ic, range.clone());
+        .run();
 
     use textplots::*;
     Chart::new(100, 50, range.start as f32, range.end as f32)

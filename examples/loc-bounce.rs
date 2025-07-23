@@ -1,21 +1,20 @@
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]
 
-use diffurch::{equation, event, state_fn, event_mut, rk, Filter, Loc, Solver};
+use diffurch::{Filter, Loc, Solver, event, event_mut, state_fn};
 
 fn main() {
     let k = 0.90;
     let g = 9.8;
-    let eq = equation!(|[_x, dx]| [dx, -g]).max_delay(f64::INFINITY);
-
-    let ic = [1., -0.01];
-    let range = 0. ..8.58;
 
     let mut points = Vec::new();
     let mut points_continuous = Vec::new();
 
-    Solver::new().rk(&rk::RK98)
-        .stepsize(0.05)
+    Solver::new()
+        .equation(state_fn!(|[_x, dx]| [dx, -g]))
+        .max_delay(f64::INFINITY)
+        .initial([1., -0.01])
+        .interval(0. ..8.58)
         .on_step(event!(|t, [x, _dx]| (t, x)).to_vec(&mut points).to_std())
         .on_step(
             event!(|t, [x, _dx]| (t, x))
@@ -32,7 +31,7 @@ fn main() {
             })
             .to_std(),
         )
-        .run(eq, ic, range);
+        .run();
 
     let mut axis = pgfplots::axis::Axis::new();
     for (color, coords) in [("red", points), ("blue", points_continuous)] {

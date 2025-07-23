@@ -7,28 +7,28 @@ fn main() {
     let rho = 28.;
     let beta = 8. / 3.;
 
-    // equation and initial conditions
-    let eq =
-        diffurch::equation!(|[x, y, z]| [sigma * (y - x), x * (rho - z) - y, x * y - beta * z]);
-    let ic = [1., 2., 20.];
-    let interval = 0. ..50.;
-
     // output variables
     let mut t = Vec::new();
     let mut x = Vec::new();
     let mut y = Vec::new();
     let mut z = Vec::new();
 
-
     // run solver
     diffurch::Solver::new()
+        .equation(diffurch::state_fn!(|[x, y, z]| [
+            sigma * (y - x),
+            x * (rho - z) - y,
+            x * y - beta * z
+        ]))
+        .initial([1., 2., 20.])
+        .interval(0. ..50.)
         .on_step(
             diffurch::event!(|t, [x, y, z]| [t, x, y, z])
                 .subdivide(4) // dense output: save 4 points per step for smoother plot
                 .to_vecs([&mut t, &mut x, &mut y, &mut z]) // save values to individual `Vec<f64>`s
                 .to_std(), // additionally output values to console
         )
-        .run(eq, ic, interval);
+        .run();
 
     // plot with pgfplots
     let mut axis = pgfplots::axis::Axis::new();

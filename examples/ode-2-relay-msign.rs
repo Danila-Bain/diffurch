@@ -7,13 +7,8 @@ fn main() {
     let mut points1 = vec![];
     let mut points2 = vec![];
 
-    let eq =
-        equation!(|_, [_, dx], [x, _]| [dx, -2. * x.prev().signum()]).loc(Loc::new(state_fn!(|t, [x, _]| {
-            println!("try: {x} at {t}");
-            x
-        })).sign().bisection());
-    let ic = [0.25, 0.];
     let interval = 0.5..20.5;
+
     let solution = |t: f64| {
         let t = t;
         [
@@ -23,15 +18,30 @@ fn main() {
     };
 
     Solver::new()
+        .equation(state_fn!(|_, [_, dx], [x, _]| [
+            dx,
+            -2. * x.prev().signum()
+        ]))
+        .initial([0.25, 0.])
+        .interval(interval.clone())
         .rk(&rk::RK98)
         .stepsize(0.3)
+        .on(
+            Loc::new(state_fn!(|t, [x, _]| {
+                println!("try: {x} at {t}");
+                x
+            }))
+            .sign()
+            .bisection(),
+            event!(),
+        )
         .on_step(event!(|t, [x, _dx]| points1.push((t as f32, x as f32))).subdivide(10))
         .on_step(event!(|t, [x, _dx]| points2.push((t, x).into())).subdivide(10))
         .on_step(event!(|t, [x, dx]| {
             println!("step: {t}");
             dbg!(t, x, dx, (x - solution(t)[0]).abs())
         }))
-        .run(eq, ic, interval.clone());
+        .run();
 
     use textplots::*;
     Chart::new(160, 80, interval.start as f32, interval.end as f32)

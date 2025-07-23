@@ -14,24 +14,35 @@ fn main() {
     let v0 = 1.;
     assert!(v0 >= 0.);
 
-    let eq =
-        equation!(|t, [x, dx], [x_, _]| [dx, -sigma * dx - x - alpha * x_(t - T).clamp(-1., 1.)]);
-    let ic = [1., -alpha * v0];
-    let interval = 0. ..100. * T;
-
     let mut t = Vec::new();
     let mut x = Vec::new();
 
     Solver::new()
+        .equation(state_fn!(|t, [x, dx], [x_, _]| [
+            dx,
+            -sigma * dx - x - alpha * x_(t - T).clamp(-1., 1.)
+        ]))
+        .initial([1., -alpha * v0])
+        .interval(0. ..100. * T)
         .stepsize(0.1)
         .on_step(
             event!(|t, [x, _dx]| [t, x])
                 .to_vecs([&mut t, &mut x])
                 .to_std(),
         )
-        .on(Loc::new(state_fn!(|t, [_, _], [x, _]| x(t-T) - 1.)).sign().bisection(), event!()) // discontinuity
-        .on(Loc::new(state_fn!(|t, [_, _], [x, _]| x(t-T) + 1.)).sign().bisection(), event!()) // discontinuity
-        .run(eq, ic, interval);
+        .on(
+            Loc::new(state_fn!(|t, [_, _], [x, _]| x(t - T) - 1.))
+                .sign()
+                .bisection(),
+            event!(),
+        ) // discontinuity
+        .on(
+            Loc::new(state_fn!(|t, [_, _], [x, _]| x(t - T) + 1.))
+                .sign()
+                .bisection(),
+            event!(),
+        ) // discontinuity
+        .run();
 
     let mut plot = pgfplots::axis::plot::Plot2D::new();
     plot.coordinates = (0..t.len()).map(|i| (t[i], x[i]).into()).collect();

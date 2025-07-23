@@ -36,16 +36,16 @@
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]
 
-#![warn(missing_docs)]
-#![deny(rust_2018_idioms)]
-#![deny(unused)]
-#![deny(refining_impl_trait)]
-#![deny(clippy::pedantic)]
-#![deny(clippy::nursery)]
+// #![warn(missing_docs)]
+// #![deny(rust_2018_idioms)]
+// #![deny(unused)]
+// #![deny(refining_impl_trait)]
+// #![deny(clippy::pedantic)]
+// #![deny(clippy::nursery)]
 
 #![allow(clippy::module_name_repetitions)]
 
-pub mod equation;
+// pub mod equation;
 pub mod event;
 pub mod filter;
 pub mod initial_condition;
@@ -55,8 +55,9 @@ pub mod rk;
 pub mod solver;
 pub mod state;
 pub mod collections;
+pub mod delay;
 
-pub use equation::*;
+// pub use equation::*;
 pub use event::*;
 pub use filter::*;
 pub use initial_condition::*;
@@ -65,3 +66,4 @@ pub use solver::*;
 pub use state::*;
 pub use collections::hlists::*;
 pub use collections::stable_index_deque::*;
+pub use delay::*;

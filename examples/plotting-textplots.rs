@@ -5,13 +5,15 @@ use std::f64::consts::PI;
 use diffurch::*;
 
 fn main() {
-    let eq = equation!(|[x, dx]| [dx, -4. * x]);
     let range = 0. ..PI * 3.5;
 
     let mut t_x = Vec::new();
     let mut t_dx = Vec::new();
 
     Solver::new()
+        .equation(state_fn!(|[x, dx]| [dx, -4. * x]))
+        .initial([0., 1.])
+        .interval(range.clone())
         .rk(&rk::RK98)
         .stepsize(1.)
         .on_step(
@@ -19,7 +21,7 @@ fn main() {
                 .subdivide(10)
                 .to_vecs([&mut t_x, &mut t_dx]),
         )
-        .run(eq, [0., 1.], range.clone());
+        .run();
 
     use textplots::*;
     Chart::new(160, 80, range.start as f32, range.end as f32)

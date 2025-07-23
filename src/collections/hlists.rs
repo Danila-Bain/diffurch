@@ -1,8 +1,8 @@
-//! This module implements traits for heterogeneous lists, including 
+//! This module implements traits for heterogeneous lists, including
 //! [EventHList], [LocHList], [LocEventHList], [FilterHList], [StreamHList].
 //!
 //! The purpose of those traits is to implement specialized iterating behaviour over heterogeneous
-//! lists. 
+//! lists.
 //!
 //! For [EventHList] and [StreamHList], we just want to call each object in the list.
 //!
@@ -13,7 +13,10 @@
 //!
 //! For [LocEventHList] we want to get first located event, and a pointer to its callback, if any
 //! event is located at the step.
-use hlist2::{Cons, HList, Nil, ops::ToRef};
+use hlist2::{
+    Cons, HList, Nil,
+    ops::{Extend, ToRef},
+};
 
 use crate::{EventCall, EventCallConcrete, Locate, State, StateFnMut};
 
@@ -94,7 +97,7 @@ where
 }
 
 /// The trait for [HList]'s of ([Loc], [EventCall]) pairs.
-pub trait LocEventHList<const N: usize>: ToRef {
+pub trait LocEventHList<const N: usize>: ToRef + Extend {
     /// If any even is located, return location and callback handler for the earlyiest one.
     fn locate_first<S: State<N>>(
         &mut self,

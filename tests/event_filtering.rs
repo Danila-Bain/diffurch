@@ -5,7 +5,7 @@ use diffurch::*;
 
 #[test]
 fn main() {
-    let eq = equation!(|t| [polynomial![t => 1.,-2.,3.]]);
+    let eq = state_fn!(|t| [polynomial![t => 1.,-2.,3.]]);
     let solution = |t: f64| [polynomial![t => 0.,1.,-1.,1.]];
     let ic = |t: f64| [polynomial![t => 0.,1.,-1.,1.]];
     let interval = 0. ..50.;
@@ -74,6 +74,9 @@ fn main() {
     let event_sub4 = Event::new(f).to_vec(&mut p_sub4).subdivide(4);
 
     Solver::new()
+        .equation(eq)
+        .initial(ic)
+        .interval(interval)
         .rk(&rk::RK98) // it is exact for polynomials up to 8th or 9th order
         .stepsize(1.)
         .on_step(event)
@@ -92,7 +95,7 @@ fn main() {
         .on_step(event_g_100_first)
         .on_step(event_sub2)
         .on_step(event_sub4)
-        .run(eq, ic, interval);
+        .run();
 
     let f_i = |i| (i as f64, solution(i as f64)[0]);
     let f_t = |t| (t, solution(t)[0]);

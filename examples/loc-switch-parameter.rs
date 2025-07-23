@@ -3,25 +3,24 @@
 
 use std::cell::Cell;
 
-use diffurch::{Filter, Loc, Solver, equation, event, event_mut, rk, state_fn};
+use diffurch::{Filter, Loc, Solver, event, event_mut, state_fn};
 
 fn main() {
     let k = 0.9;
     let g = Cell::new(9.8);
-    let eq = equation!(|[_x, dx]| [dx, -g.get()]).max_delay(f64::INFINITY);
-
-    let ic = [1., -0.01];
-    let range = 0. ..8.58;
 
     let mut points = Vec::new();
     let mut points_continuous = Vec::new();
 
     Solver::new()
-        .rk(&rk::RK98)
-        .stepsize(0.5)
+        .equation(state_fn!(|[_x, dx]| [dx, -g.get()]))
+        .max_delay(f64::INFINITY)
+        .initial([1., -0.01])
+        .interval(0. ..8.58)
         .on_step(
-            event!(|t, [x, _dx]| (t, x)).to_vec(&mut points).to_std(), // .separated_by(0.01)
-                                                                       // .subdivide(21)
+            event!(|t, [x, _dx]| (t, x)).to_vec(&mut points).to_std(), 
+            // .separated_by(0.01)
+            // .subdivide(21)
         )
         .on_step(
             event!(|t, [x, _dx]| (t, x))
@@ -30,7 +29,10 @@ fn main() {
                 .separated_by(0.01)
                 .subdivide(21),
         )
-        .on(Loc::new(state_fn!(|[_x, dx]| dx)).sign().bisection(), event!())
+        .on(
+            Loc::new(state_fn!(|[_x, dx]| dx)).sign().bisection(),
+            event!(),
+        )
         .on(
             Loc::new(state_fn!(|[x, _dx]| x)).sign().bisection(),
             event_mut!(|t, [_x, dx]| {
@@ -40,7 +42,7 @@ fn main() {
             })
             .to_std(),
         )
-        .run(eq, ic, range);
+        .run();
 
     let mut axis = pgfplots::axis::Axis::new();
 

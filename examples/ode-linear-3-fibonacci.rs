@@ -15,20 +15,19 @@ fn main() {
         [-2.2732777998989695, 1.4049629462081452, -0.4812118250596034],
     ];
 
-    // linear system of differential equations
-    let eq = equation!(|[x, y, z]| [
-        /* x' = */ a[0][0] * x + a[0][1] * y + a[0][2] * z,
-        /* y' = */ a[1][0] * x + a[1][1] * y + a[1][2] * z,
-        /* z' = */ a[2][0] * x + a[2][1] * y + a[2][2] * z,
-    ]);
-
-    let ic = [1., 1., 0.]; // [f_0, f_1, 0.]
-
     Solver::new()
+        // linear system of differential equations
+        .equation(state_fn!(|[x, y, z]| [
+            /* x' = */ a[0][0] * x + a[0][1] * y + a[0][2] * z,
+            /* y' = */ a[1][0] * x + a[1][1] * y + a[1][2] * z,
+            /* z' = */ a[2][0] * x + a[2][1] * y + a[2][2] * z,
+        ]))
+        .initial([1., 1., 0.]) // [f_0, f_1, 0.]
+        .interval(0. ..50.)
         .stepsize(1. / 256.) // avoid rounding errors in time step by choosing exactly
-                             // representible number
+        // representible number
         .on_step(event!(|t, [x, _y, _z]| println!("f_{t:0.0} = {x:0.0}")).separated_by(0.9999))
-        .run(eq, ic, 0. ..50.);
+        .run();
 }
 
 // Here we construct a 3-dimensional linear system of the form

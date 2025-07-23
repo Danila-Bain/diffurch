@@ -1,6 +1,7 @@
 //! Defines [Solver].
 
 use crate::collections::hlists::{EventHList, LocEventHList};
+use crate::delay::IntoDelay;
 use crate::rk::{RK98, RungeKuttaTable};
 use crate::*;
 use hlist2::ops::{Append, Extend};
@@ -12,6 +13,9 @@ pub struct Solver<
     'a,
     const N: usize,
     const S: usize,
+    Equation = (),
+    Initial = (),
+    Interval = (),
     EventsOnStep: HList = Nil,
     EventsOnStart: HList = Nil,
     EventsOnStop: HList = Nil,
@@ -19,6 +23,10 @@ pub struct Solver<
 > where
     [(); S * (S - 1) / 2]:,
 {
+    pub equation: Equation,
+    pub initial: Initial,
+    pub interval: Interval,
+    pub max_delay: f64,
     /// Runge-Kutta scheme used during integration. See [crate::rk].
     ///
     /// Set in constructor [Solver::rk].
@@ -47,13 +55,17 @@ pub struct Solver<
     pub loc_events: EventsOnLoc,
 }
 
-impl<'a, const N: usize> Solver<'a, N, 26> {
-    /// Constructor which defaults Runge-Kutta scheme to [crate::rk::RK98],
+impl<'a, const N: usize> Solver<'a, N, 7> {
+    /// Constructor which defaults Runge-Kutta scheme to [crate::rk::RKTP64],
     /// and stepsize to 0.05.
     pub fn new() -> Self {
-        Solver::<N, 26> {
-            rk: &RK98,
+        Solver::<N, 7> {
+            rk: &rk::RKTP64,
             stepsize: 0.05,
+            equation: (),
+            initial: (),
+            interval: (),
+            max_delay: f64::NAN,
             step_events: Nil,
             start_events: Nil,
             stop_events: Nil,
@@ -66,35 +78,212 @@ impl<
     'a,
     const N: usize,
     const S: usize,
+    Equation,
+    Initial,
+    Interval,
     EventsOnStep: HList,
     EventsOnStart: HList,
     EventsOnStop: HList,
     EventsOnLoc: HList,
-> Solver<'a, N, S, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>
+>
+    Solver<
+        'a,
+        N,
+        S,
+        Equation,
+        Initial,
+        Interval,
+        EventsOnStep,
+        EventsOnStart,
+        EventsOnStop,
+        EventsOnLoc,
+    >
 where
     [(); S * (S - 1) / 2]:,
 {
+
+    pub fn equation<NewEquation>(
+        self,
+        equation: NewEquation,
+    ) -> Solver<
+        'a,
+        N,
+        S,
+        NewEquation,
+        Initial,
+        Interval,
+        EventsOnStep,
+        EventsOnStart,
+        EventsOnStop,
+        EventsOnLoc,
+    >
+    {
+        let Solver {
+            equation: _,
+            initial,
+            interval,
+            max_delay,
+            rk,
+            stepsize,
+            step_events,
+            start_events,
+            stop_events,
+            loc_events,
+        } = self;
+
+        Solver {
+            equation,
+            initial,
+            interval,
+            max_delay,
+            rk,
+            stepsize,
+            step_events,
+            start_events,
+            stop_events,
+            loc_events,
+        }
+    }
+    pub fn initial<NewInitial>(
+        self,
+        initial: NewInitial,
+    ) -> Solver<
+        'a,
+        N,
+        S,
+        Equation,
+        NewInitial,
+        Interval,
+        EventsOnStep,
+        EventsOnStart,
+        EventsOnStop,
+        EventsOnLoc,
+    >
+    {
+        let Solver {
+            equation,
+            initial: _,
+            interval,
+            max_delay,
+            rk,
+            stepsize,
+            step_events,
+            start_events,
+            stop_events,
+            loc_events,
+        } = self;
+
+        Solver {
+            equation,
+            initial,
+            interval,
+            max_delay,
+            rk,
+            stepsize,
+            step_events,
+            start_events,
+            stop_events,
+            loc_events,
+        }
+    }
+    pub fn interval<NewInterval>(
+        self,
+        interval: NewInterval,
+    ) -> Solver<
+        'a,
+        N,
+        S,
+        Equation,
+        Initial,
+        NewInterval,
+        EventsOnStep,
+        EventsOnStart,
+        EventsOnStop,
+        EventsOnLoc,
+    >
+    {
+        let Solver {
+            equation,
+            initial,
+            interval: _,
+            max_delay,
+            rk,
+            stepsize,
+            step_events,
+            start_events,
+            stop_events,
+            loc_events,
+        } = self;
+
+        Solver {
+            equation,
+            initial,
+            interval,
+            max_delay,
+            rk,
+            stepsize,
+            step_events,
+            start_events,
+            stop_events,
+            loc_events,
+        }
+    }
+
+
     /// Self-consuming setter for [Self::rk] field
     pub fn rk<const S_: usize>(
         self,
         rk: &'a RungeKuttaTable<S_>,
-    ) -> Solver<'a, N, S_, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>
+    ) -> Solver<
+        'a,
+        N,
+        S_,
+        Equation,
+        Initial,
+        Interval,
+        EventsOnStep,
+        EventsOnStart,
+        EventsOnStop,
+        EventsOnLoc,
+    >
     where
         [(); S_ * (S_ - 1) / 2]:,
     {
+        let Solver {
+            equation,
+            initial,
+            interval,
+            max_delay,
+            rk: _,
+            stepsize,
+            step_events,
+            start_events,
+            stop_events,
+            loc_events,
+        } = self;
+
         Solver {
+            equation,
+            initial,
+            interval,
+            max_delay,
             rk,
-            stepsize: 0.05,
-            step_events: self.step_events,
-            start_events: self.start_events,
-            stop_events: self.stop_events,
-            loc_events: self.loc_events,
+            stepsize,
+            step_events,
+            start_events,
+            stop_events,
+            loc_events,
         }
     }
 
     /// [Solver::stepsize] setter. Returns self.
     pub fn stepsize(self, stepsize: f64) -> Self {
         Self { stepsize, ..self }
+    }
+
+    /// [Solver::max_delay] setter. Returns self.
+    pub fn max_delay(self, max_delay: f64) -> Self {
+        Self { max_delay, ..self }
     }
 
     /// Add event to a list of step events.
@@ -109,6 +298,9 @@ where
         'a,
         N,
         S,
+        Equation,
+        Initial,
+        Interval,
         <EventsOnStep as Append>::Output<E>,
         EventsOnStart,
         EventsOnStop,
@@ -118,6 +310,10 @@ where
         EventsOnStep: Append,
     {
         let Solver {
+            equation,
+            initial,
+            interval,
+            max_delay,
             rk,
             stepsize,
             step_events,
@@ -127,6 +323,10 @@ where
         } = self;
 
         Solver {
+            equation,
+            initial,
+            interval,
+            max_delay,
             rk,
             stepsize,
             step_events: step_events.append(event),
@@ -146,6 +346,9 @@ where
         'a,
         N,
         S,
+        Equation,
+        Initial,
+        Interval,
         EventsOnStep,
         <EventsOnStart as Append>::Output<E>,
         EventsOnStop,
@@ -155,6 +358,10 @@ where
         EventsOnStart: Append,
     {
         let Solver {
+            equation,
+            initial,
+            interval,
+            max_delay,
             rk,
             stepsize,
             step_events,
@@ -164,6 +371,10 @@ where
         } = self;
 
         Solver {
+            equation,
+            initial,
+            interval,
+            max_delay,
             rk,
             stepsize,
             step_events,
@@ -181,6 +392,9 @@ where
         'a,
         N,
         S,
+        Equation,
+        Initial,
+        Interval,
         EventsOnStep,
         EventsOnStart,
         <EventsOnStop as Append>::Output<E>,
@@ -190,6 +404,10 @@ where
         EventsOnStop: Append,
     {
         let Solver {
+            equation,
+            initial,
+            interval,
+            max_delay,
             rk,
             stepsize,
             step_events,
@@ -199,6 +417,10 @@ where
         } = self;
 
         Solver {
+            equation,
+            initial,
+            interval,
+            max_delay,
             rk,
             stepsize,
             step_events,
@@ -221,6 +443,9 @@ where
         'a,
         N,
         S,
+        Equation,
+        Initial,
+        Interval,
         EventsOnStep,
         EventsOnStart,
         EventsOnStop,
@@ -230,6 +455,10 @@ where
         EventsOnLoc: Append,
     {
         let Solver {
+            equation,
+            initial,
+            interval,
+            max_delay,
             rk,
             stepsize,
             step_events,
@@ -239,6 +468,10 @@ where
         } = self;
 
         Solver {
+            equation,
+            initial,
+            interval,
+            max_delay,
             rk,
             stepsize,
             step_events,
@@ -248,37 +481,144 @@ where
         }
     }
 
+    pub fn delay_with_smoothing_order<D: IntoDelay<N>>(
+        self,
+        value: D,
+        smoothing_order: usize,
+    ) -> Solver<
+        'a,
+        N,
+        S,
+        Equation,
+        Initial,
+        Interval,
+        EventsOnStep,
+        EventsOnStart,
+        EventsOnStop,
+        <EventsOnLoc as Append>::Output<
+            Loc<Propagator<N, <D as IntoDelay<N>>::Output>, Propagation, location::Bisection>,
+        >,
+    >
+    where
+        EventsOnLoc: Append,
+    {
+        let new_max_delay = value.max_delay();
+
+        let propagator = loc::Loc(
+            loc::Propagator::new(value.into_delay(), smoothing_order),
+            loc::Propagation,
+            loc::location::Bisection,
+        );
+
+        let Solver {
+            equation,
+            initial,
+            interval,
+            mut max_delay,
+            rk,
+            stepsize,
+            step_events,
+            start_events,
+            stop_events,
+            loc_events,
+        } = self;
+
+        if !new_max_delay.is_nan() {
+           if max_delay.is_nan() {
+               max_delay = new_max_delay;
+           } else {
+               max_delay = max_delay.max(new_max_delay)
+           }
+        }
+
+        Solver {
+            equation,
+            initial,
+            interval,
+            max_delay,
+            rk,
+            stepsize,
+            step_events,
+            start_events,
+            stop_events,
+            loc_events: loc_events.append(propagator),
+        }
+    }
+
+    pub fn delay<D: IntoDelay<N>>(
+        self,
+        value: D,
+    ) -> Solver<
+        'a,
+        N,
+        S,
+        Equation,
+        Initial,
+        Interval,
+        EventsOnStep,
+        EventsOnStart,
+        EventsOnStop,
+        <EventsOnLoc as Append>::Output<
+            Loc<Propagator<N, <D as IntoDelay<N>>::Output>, Propagation, location::Bisection>,
+        >,
+    >
+    where
+        EventsOnLoc: Append,
+    {
+        self.delay_with_smoothing_order(value, 1)
+    }
+
+    pub fn neutral_delay<D: IntoDelay<N>>(
+        self,
+        value: D,
+    ) -> Solver<
+        'a,
+        N,
+        S,
+        Equation,
+        Initial,
+        Interval,
+        EventsOnStep,
+        EventsOnStart,
+        EventsOnStop,
+        <EventsOnLoc as Append>::Output<
+            Loc<Propagator<N, <D as IntoDelay<N>>::Output>, Propagation, location::Bisection>,
+        >,
+    >
+    where
+        EventsOnLoc: Append,
+    {
+        self.delay_with_smoothing_order(value, 0)
+    }
+
     /// Run solver.
-    pub fn run<RHS: StateFnMut<N, Output = [f64; N]>, Propagations: HList, EventsEquation>(
-        mut self,
-        eq: Equation<N, RHS, Propagations, EventsEquation>,
-        ic: impl InitialCondition<N>,
-        interval: impl std::ops::RangeBounds<f64>,
-    ) where
+    pub fn run(mut self)
+    where
+        Equation: StateFnMut<N, Output = [f64; N]>,
+        Initial: InitialCondition<N>,
+        Interval: std::ops::RangeBounds<f64>,
         EventsOnStep: EventHList<N>,
         EventsOnStart: EventHList<N>,
         EventsOnStop: EventHList<N>,
-        EventsOnLoc: LocEventHList<N> + Extend,
-        EventsEquation: LocEventHList<N>,
-        Propagations: LocEventHList<N>,
-        <EventsOnLoc as Extend>::Output<EventsEquation>: LocEventHList<N> + Extend,
-        <<EventsOnLoc as Extend>::Output<EventsEquation> as Extend>::Output<Propagations> : LocEventHList<N>,
+        EventsOnLoc: LocEventHList<N>,
     {
         use std::ops::Bound::*;
-        let t_init = match interval.start_bound() {
+        let t_init = match self.interval.start_bound() {
             Unbounded => 0.,
             Included(&value) | Excluded(&value) => value,
         };
-        let t_end = match interval.end_bound() {
+        let t_end = match self.interval.end_bound() {
             Unbounded => f64::INFINITY,
             Included(&value) | Excluded(&value) => value,
         };
 
-        let mut rhs = eq.rhs;
-        let mut state = RKState::new(t_init, ic, eq.max_delay, &self.rk);
+        let mut rhs = self.equation;
+        let mut state = RKState::new(t_init, self.initial, self.max_delay, &self.rk);
         let mut stepsize = self.stepsize;
 
-        let mut loc_events = self.loc_events.extend(eq.events).extend(eq.propagations);
+        // let mut loc_events = self.loc_events.extend(eq.propagations).extend(eq.events);
+        let mut loc_events = self.loc_events;
+        // let mut loc_events = self.loc_events.extend(eq.events);
 
         // MAKE discontinuities FIELD IN STATE, SO PROPAGATION EVENTS CAN ACCESS IT
         // let mut loc_events = self.loc_events.extend(eq.events).extend(PropagatedEach(eq.delays));
@@ -289,12 +629,14 @@ where
         while state.t() < t_end {
             state.make_step(&mut rhs, stepsize);
 
-            if let Some((t, event)) = loc_events.locate_first(&mut state) && t > state.t_prev() {
+            if let Some((t, event)) = loc_events.locate_first(&mut state)
+                && t > state.t_prev()
+            {
                 state.undo_step();
                 state.make_step(&mut rhs, t - state.t);
                 state.push_current();
                 self.step_events.call_each(&mut state);
-                event.call(&mut state); 
+                event.call(&mut state);
                 if state.t_prev() == state.t() {
                     self.step_events.call_each(&mut state);
                     state.disco_seq_mut().push_back((t, 0))

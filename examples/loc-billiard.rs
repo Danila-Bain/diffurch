@@ -4,17 +4,14 @@
 use diffurch::*;
 
 fn main() {
-    // equation of steady motion on a plain
-    let eq = equation!(|[_x, _y, dx, dy]| [dx, dy, 0., 0.]);
-
-    let ic = [0., 0.1, 0.3, 0.4];
-    let range = 0. ..1000.; // infinite range, stop integration from event
-
     let mut points = Vec::new();
 
     let mut counter = 0;
 
     Solver::new()
+        .equation(state_fn!(|[_x, _y, dx, dy]| [dx, dy, 0., 0.]))
+        .initial([0., 0.1, 0.3, 0.4])
+        .interval(0. ..1000.)
         .rk(&rk::RK98)
         .stepsize(0.5)
         // .on_step(Event::ode(|[x, y, _dx, _dy]| (x, y)).to_vec(&mut points))
@@ -22,7 +19,9 @@ fn main() {
         .on(
             Loc::new(state_fn!(|[x, y, _dx, _dy]| {
                 x.powi(2) + y.powi(2) - y.powi(3) / 3. - 1. // zero set is the boundary
-            })).pos().bisection(),
+            }))
+            .pos()
+            .bisection(),
             event_mut!(|t, [x, y, dx, dy]| {
                 // println!("event_mut! start counter : {counter}");
                 // gradient of the boundary function
@@ -48,7 +47,7 @@ fn main() {
             .to_vec(&mut points)
             .to_std(),
         )
-        .run(eq, ic, range);
+        .run();
 
     // plotting with pgfplots
     let mut axis = pgfplots::axis::Axis::new();

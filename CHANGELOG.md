@@ -1,3 +1,9 @@
+# Version 0.0.4
+
+- Remove `Equation` in favor of `Solver` builder pattern setters.
+- Move `Solver::run` arguments to `Solver` setters.
+
+
 # Version 0.0.3 : Ergonomics enchancment, experimental discontinuity propagation, minor functionality extension
 
 - Add `state_fn!` and `mut_state_fn!` convenience macros.

@@ -1,26 +1,26 @@
 #![feature(test)]
 extern crate test;
 
-use diffurch::{Equation, Event, Solver, rk};
+use diffurch::{EquationStruct, Event, Solver, rk};
 use test::Bencher;
 
 const RANGE: std::ops::Range<f64> = 0. ..100.;
 const STEPSIZE: f64 = 0.05;
 
 fn get_eq() -> (
-    Equation<'static, 2>,
+    EquationStruct<'static, 2>,
     impl Fn(f64) -> [f64; 2],
     std::ops::Range<f64>,
 ) {
     let k = 1.;
-    let eq = Equation::ode(move |[x, dx]| [dx, -k * k * x]);
+    let eq = EquationStruct::ode(move |[x, dx]| [dx, -k * k * x]);
     let ic = move |t: f64| [(t * k).sin(), k * (t * k).cos()];
     let range = RANGE;
     (eq, ic, range)
 }
 
 fn get_eq_dyn() -> (
-    Equation<'static, 2>,
+    EquationStruct<'static, 2>,
     impl Fn(f64) -> [f64; 2],
     std::ops::Range<f64>,
 ) {
@@ -28,7 +28,7 @@ fn get_eq_dyn() -> (
 
     let rhs: Box<dyn Fn([f64; 2]) -> [f64; 2]> = Box::new(move |[x, dx]| [dx, -k * k * x]);
 
-    let eq = Equation::ode(rhs);
+    let eq = EquationStruct::ode(rhs);
     let ic = move |t: f64| [(t * k).sin(), k * (t * k).cos()];
     let range = RANGE;
 
@@ -198,12 +198,12 @@ fn subdivide_compensate_20(b: &mut Bencher) {
 }
 
 fn get_eq_delay() -> (
-    Equation<'static, 2>,
+    EquationStruct<'static, 2>,
     impl Fn(f64) -> [f64; 2],
     std::ops::Range<f64>,
 ) {
     let k = 1.;
-    let eq = Equation::dde(move |t, [_x, dx], [x_, _]| [dx, -k * k * x_(t - 1.)]).max_delay(2.);
+    let eq = EquationStruct::dde(move |t, [_x, dx], [x_, _]| [dx, -k * k * x_(t - 1.)]).max_delay(2.);
     let ic = move |t: f64| [(t * k).sin(), k * (t * k).cos()];
     let range = RANGE;
     (eq, ic, range)

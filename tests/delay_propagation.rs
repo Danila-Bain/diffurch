@@ -5,16 +5,17 @@ use diffurch::*;
 
 #[test]
 fn constant_1() {
-    let eq = equation!(|| [0.]).const_neutral_delay(1.);
-    let ic = [0.];
-
     let mut ts = vec![];
 
     Solver::new()
+        .equation(state_fn!(|| [0.]))
+        .initial([0.])
+        .neutral_delay(1.)
+        .interval(0. ..5.)
         .rk(&rk::EULER)
         .stepsize(0.75)
         .on_step(event!(|t| ts.push(t)))
-        .run(eq, ic, 0. ..5.);
+        .run();
 
     assert_eq!(
         ts,
@@ -24,19 +25,19 @@ fn constant_1() {
 
 #[test]
 fn constant_2() {
-    let eq = equation!(|| [0.])
-        .const_neutral_delay(1.)
-        .const_neutral_delay(1.25);
-    let ic = [0.];
-
     let mut ts = vec![];
 
     let stepsize = 7. / 8.;
     Solver::new()
+        .equation(state_fn!(|| [0.]))
+        .initial([0.])
+        .neutral_delay(1.)
+        .neutral_delay(1.25)
+        .interval(0. ..5.)
         .rk(&rk::EULER)
         .stepsize(stepsize)
         .on_step(event!(|t| ts.push(t)))
-        .run(eq, ic, 0. ..5.);
+        .run();
 
     assert_eq!(
         ts,
@@ -48,16 +49,17 @@ fn constant_2() {
 
 #[test]
 fn constant_1_smoothing() {
-    let eq = equation!(|| [0.]).const_delay(1.);
-    let ic = [0.];
-
     let mut ts = vec![];
 
     Solver::new()
+        .equation(state_fn!(|| [0.]))
+        .initial([0.])
+        .delay(1.)
+        .interval(0. ..6.)
         .rk(&rk::CLASSIC4)
         .stepsize(0.75)
         .on_step(event!(|t| ts.push(t)))
-        .run(eq, ic, 0. ..6.);
+        .run();
 
     assert_eq!(
         ts,
@@ -65,19 +67,20 @@ fn constant_1_smoothing() {
     )
 }
 
-
 #[test]
 fn pantograph() {
-    let eq = equation!(|| [0.]).neutral_delay(state_fn!(|t| t/2.));
     let mut ts = vec![];
-
     let stepsize = 0.123456789101112;
 
     Solver::new()
+        .equation(state_fn!(|| [0.]))
+        .neutral_delay(state_fn!(|t| t / 2.))
+        .initial([0.])
+        .interval(1. ..2f64.powi(10))
         .rk(&rk::CLASSIC4)
         .stepsize(stepsize)
         .on_step(event!(|t| ts.push(t)))
-        .run(eq, [0.], 1. ..2f64.powi(10));
+        .run();
 
     for i in 1..=10 {
         assert!(ts.contains(&2f64.powi(i)))
