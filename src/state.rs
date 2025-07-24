@@ -181,6 +181,7 @@ where
     /// State constructor used in [crate::Solver]
     pub fn new(
         t_init: f64,
+        disco_init: impl Into<StableIndexVecDeque<(f64, usize)>>,
         x_init: IC,
         t_span: f64,
         rk: &'a crate::rk::RungeKuttaTable<S>,
@@ -199,7 +200,7 @@ where
             x_prev: x.clone(),
             x_seq: std::collections::VecDeque::from([x.clone()]),
 
-            disco_seq: StableIndexVecDeque::from([(t_init, 0)]), // assume initial discontinuity of order 0
+            disco_seq: disco_init.into(), // assume initial discontinuity of order 0
 
             k: [[0.; N]; S],
             k_seq: std::collections::VecDeque::new(),

@@ -115,14 +115,35 @@ impl<T> StableIndexVecDeque<T> {
     }
 }
 
-impl<T, const N: usize> From<[T; N]> for StableIndexVecDeque<T> {
-    fn from(arr: [T; N]) -> Self {
+// impl<T, I: Into<VecDeque<T>>> Into<StableIndexVecDeque<T>> for I {
+//     fn into(self) -> StableIndexVecDeque<T> {
+//         StableIndexVecDeque {
+//             offset: 0,
+//             deque: self.into(),
+//         }
+//     }
+// }
+
+impl<T, F> From<F> for StableIndexVecDeque<T>
+where
+    VecDeque<T>: From<F>,
+{
+    fn from(f: F) -> Self {
         Self {
             offset: 0,
-            deque: VecDeque::from(arr),
+            deque: VecDeque::from(f),
         }
     }
 }
+
+// impl<T, const N: usize> From<[T; N]> for StableIndexVecDeque<T> {
+//     fn from(arr: [T; N]) -> Self {
+//         Self {
+//             offset: 0,
+//             deque: VecDeque::from(arr),
+//         }
+//     }
+// }
 
 impl<T> core::ops::Index<usize> for StableIndexVecDeque<T> {
     type Output = T;

@@ -2,9 +2,9 @@
 
 use crate::collections::hlists::{EventHList, LocEventHList};
 use crate::delay::IntoDelay;
-use crate::rk::{RK98, RungeKuttaTable};
+use crate::rk::RungeKuttaTable;
 use crate::*;
-use hlist2::ops::{Append, Extend};
+use hlist2::ops::Append;
 use hlist2::{HList, Nil};
 
 /// Implements the integration of differential equation, containing the implementation specific (not
@@ -25,6 +25,7 @@ pub struct Solver<
 {
     pub equation: Equation,
     pub initial: Initial,
+    // pub initial_disco: Vec<f64>,
     pub interval: Interval,
     pub max_delay: f64,
     /// Runge-Kutta scheme used during integration. See [crate::rk].
@@ -55,7 +56,7 @@ pub struct Solver<
     pub loc_events: EventsOnLoc,
 }
 
-impl<'a, const N: usize> Solver<'a, N, 7> {
+impl<const N: usize> Solver<'static, N, 7> {
     /// Constructor which defaults Runge-Kutta scheme to [crate::rk::RKTP64],
     /// and stepsize to 0.05.
     pub fn new() -> Self {
@@ -101,7 +102,6 @@ impl<
 where
     [(); S * (S - 1) / 2]:,
 {
-
     pub fn equation<NewEquation>(
         self,
         equation: NewEquation,
@@ -116,8 +116,7 @@ where
         EventsOnStart,
         EventsOnStop,
         EventsOnLoc,
-    >
-    {
+    > {
         let Solver {
             equation: _,
             initial,
@@ -158,8 +157,7 @@ where
         EventsOnStart,
         EventsOnStop,
         EventsOnLoc,
-    >
-    {
+    > {
         let Solver {
             equation,
             initial: _,
@@ -200,8 +198,7 @@ where
         EventsOnStart,
         EventsOnStop,
         EventsOnLoc,
-    >
-    {
+    > {
         let Solver {
             equation,
             initial,
@@ -228,7 +225,6 @@ where
             loc_events,
         }
     }
-
 
     /// Self-consuming setter for [Self::rk] field
     pub fn rk<const S_: usize>(
@@ -524,11 +520,11 @@ where
         } = self;
 
         if !new_max_delay.is_nan() {
-           if max_delay.is_nan() {
-               max_delay = new_max_delay;
-           } else {
-               max_delay = max_delay.max(new_max_delay)
-           }
+            if max_delay.is_nan() {
+                max_delay = new_max_delay;
+            } else {
+                max_delay = max_delay.max(new_max_delay)
+            }
         }
 
         Solver {
@@ -613,7 +609,7 @@ where
         };
 
         let mut rhs = self.equation;
-        let mut state = RKState::new(t_init, self.initial, self.max_delay, &self.rk);
+        let mut state = RKState::new(t_init, [(t_init, 0)], self.initial, self.max_delay, &self.rk);
         let mut stepsize = self.stepsize;
 
         // let mut loc_events = self.loc_events.extend(eq.propagations).extend(eq.events);
