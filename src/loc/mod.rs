@@ -10,9 +10,12 @@ pub mod location;
 /// Delay-propagation of discontinuities
 pub mod propagation;
 
+pub mod periodic;
+
 pub use detection::Detect;
 pub use location::Locate;
 pub use propagation::*;
+pub use periodic::*;
 
 /// Convenience macro for change-of-sign event locator
 #[macro_export]
