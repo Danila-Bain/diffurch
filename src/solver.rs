@@ -25,7 +25,7 @@ pub struct Solver<
 {
     pub equation: Equation,
     pub initial: Initial,
-    // pub initial_disco: Vec<f64>,
+    pub initial_disco: Vec<(f64, usize)>,
     pub interval: Interval,
     pub max_delay: f64,
     /// Runge-Kutta scheme used during integration. See [crate::rk].
@@ -65,6 +65,7 @@ impl<const N: usize> Solver<'static, N, 7> {
             stepsize: 0.05,
             equation: (),
             initial: (),
+            initial_disco: vec!(),
             interval: (),
             max_delay: f64::NAN,
             step_events: Nil,
@@ -120,6 +121,7 @@ where
         let Solver {
             equation: _,
             initial,
+            initial_disco,
             interval,
             max_delay,
             rk,
@@ -133,6 +135,7 @@ where
         Solver {
             equation,
             initial,
+            initial_disco,
             interval,
             max_delay,
             rk,
@@ -161,6 +164,7 @@ where
         let Solver {
             equation,
             initial: _,
+            initial_disco,
             interval,
             max_delay,
             rk,
@@ -174,6 +178,7 @@ where
         Solver {
             equation,
             initial,
+            initial_disco,
             interval,
             max_delay,
             rk,
@@ -183,6 +188,11 @@ where
             stop_events,
             loc_events,
         }
+    }
+
+    /// [Solver::initial_disco] setter. Returns self.
+    pub fn initial_disco(self, initial_disco: impl Into<Vec<(f64, usize)>>) -> Self {
+        Self { initial_disco: initial_disco.into(), ..self }
     }
     pub fn interval<NewInterval>(
         self,
@@ -202,6 +212,7 @@ where
         let Solver {
             equation,
             initial,
+            initial_disco,
             interval: _,
             max_delay,
             rk,
@@ -215,6 +226,7 @@ where
         Solver {
             equation,
             initial,
+            initial_disco,
             interval,
             max_delay,
             rk,
@@ -248,6 +260,7 @@ where
         let Solver {
             equation,
             initial,
+            initial_disco,
             interval,
             max_delay,
             rk: _,
@@ -261,6 +274,7 @@ where
         Solver {
             equation,
             initial,
+            initial_disco,
             interval,
             max_delay,
             rk,
@@ -308,6 +322,7 @@ where
         let Solver {
             equation,
             initial,
+            initial_disco,
             interval,
             max_delay,
             rk,
@@ -321,6 +336,7 @@ where
         Solver {
             equation,
             initial,
+            initial_disco,
             interval,
             max_delay,
             rk,
@@ -356,6 +372,7 @@ where
         let Solver {
             equation,
             initial,
+            initial_disco,
             interval,
             max_delay,
             rk,
@@ -369,6 +386,7 @@ where
         Solver {
             equation,
             initial,
+            initial_disco,
             interval,
             max_delay,
             rk,
@@ -402,6 +420,7 @@ where
         let Solver {
             equation,
             initial,
+            initial_disco,
             interval,
             max_delay,
             rk,
@@ -415,6 +434,7 @@ where
         Solver {
             equation,
             initial,
+            initial_disco,
             interval,
             max_delay,
             rk,
@@ -453,6 +473,7 @@ where
         let Solver {
             equation,
             initial,
+            initial_disco,
             interval,
             max_delay,
             rk,
@@ -466,6 +487,7 @@ where
         Solver {
             equation,
             initial,
+            initial_disco,
             interval,
             max_delay,
             rk,
@@ -509,6 +531,7 @@ where
         let Solver {
             equation,
             initial,
+            initial_disco,
             interval,
             mut max_delay,
             rk,
@@ -530,6 +553,7 @@ where
         Solver {
             equation,
             initial,
+            initial_disco,
             interval,
             max_delay,
             rk,
@@ -609,7 +633,13 @@ where
         };
 
         let mut rhs = self.equation;
-        let mut state = RKState::new(t_init, [(t_init, 0)], self.initial, self.max_delay, &self.rk);
+        let mut state = RKState::new(
+            t_init,
+            self.initial_disco,
+            self.initial,
+            self.max_delay,
+            &self.rk,
+        );
         let mut stepsize = self.stepsize;
 
         // let mut loc_events = self.loc_events.extend(eq.propagations).extend(eq.events);

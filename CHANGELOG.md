@@ -2,6 +2,7 @@
 
 - Remove `Equation` in favor of `Solver` builder pattern setters.
 - Move `Solver::run` arguments to `Solver` setters.
+- Add `Solver::initial_disco` field and setter, which are initially delay propagated points
 
 
 # Version 0.0.3 : Ergonomics enchancment, experimental discontinuity propagation, minor functionality extension
