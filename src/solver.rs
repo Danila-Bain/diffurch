@@ -514,18 +514,19 @@ where
         EventsOnStart,
         EventsOnStop,
         <EventsOnLoc as Append>::Output<
-            Loc<Propagator<N, <D as IntoDelay<N>>::Output>, Propagation, location::Bisection>,
+            Loc<Propagator<N, <D as IntoDelay<N>>::Output>, Propagation, D::LocationMethod>,
         >,
     >
     where
         EventsOnLoc: Append,
     {
         let new_max_delay = value.max_delay();
+        let location_method = value.location();
 
         let propagator = loc::Loc(
             loc::Propagator::new(value.into_delay(), smoothing_order),
             loc::Propagation,
-            loc::location::Bisection,
+            location_method,
         );
 
         let Solver {
@@ -579,7 +580,7 @@ where
         EventsOnStart,
         EventsOnStop,
         <EventsOnLoc as Append>::Output<
-            Loc<Propagator<N, <D as IntoDelay<N>>::Output>, Propagation, location::Bisection>,
+            Loc<Propagator<N, <D as IntoDelay<N>>::Output>, Propagation, D::LocationMethod>,
         >,
     >
     where
@@ -602,7 +603,7 @@ where
         EventsOnStart,
         EventsOnStop,
         <EventsOnLoc as Append>::Output<
-            Loc<Propagator<N, <D as IntoDelay<N>>::Output>, Propagation, location::Bisection>,
+            Loc<Propagator<N, <D as IntoDelay<N>>::Output>, Propagation, D::LocationMethod>,
         >,
     >
     where
