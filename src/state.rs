@@ -304,10 +304,11 @@ where
                 x_prev[i] + t_step * (0..S).fold(0., |acc, j| acc + self.rk.bi[j](theta) * k[j][i])
             });
         } else {
-            let i = self.t_seq.partition_point(|t_i| t_i < &t); // first i : t_seq[i] >= t
+            let i = self.t_seq.partition_point(|t_i| t_i <= &t); // first i : t_seq[i] > t
             if i == 0 {
                 panic!(
-                    "Evaluation of state in deleted time range. Try adding .with_delay({}) to your equation.",
+                    "Evaluation of state at {t} in deleted time range (before {:?}). Try setting .max_delay({}) or larger.",
+                    self.t_seq.front(),
                     self.t - t
                 );
             } else if i == self.t_seq.len() {
@@ -358,10 +359,11 @@ where
             return x_prev
                 + t_step * (0..S).fold(0., |acc, j| acc + self.rk.bi[j](theta) * k[j][coordinate]);
         } else {
-            let i = self.t_seq.partition_point(|t_i| t_i < &t); // first i : t_seq[i] >= t
+            let i = self.t_seq.partition_point(|t_i| t_i <= &t); // first i : t_seq[i] > t
             if i == 0 {
                 panic!(
-                    "Evaluation of state in deleted time range. Try adding .with_delay({}) to your equation.",
+                    "Evaluation of state at {t} in deleted time range (before {:?}). Try setting .max_delay({}) or larger.",
+                    self.t_seq.front(),
                     self.t - t
                 );
             } else if i == self.t_seq.len() {
@@ -412,10 +414,11 @@ where
             let theta = (t - t_prev) / t_step;
             return (0..S).fold(0., |acc, j| acc + self.rk.bi[j].d(theta) * k[j][coordinate]);
         } else {
-            let i = self.t_seq.partition_point(|t_i| t_i < &t); // first i : t_seq[i] >= t
+            let i = self.t_seq.partition_point(|t_i| t_i <= &t); // first i : t_seq[i] > t
             if i == 0 {
                 panic!(
-                    "Evaluation of state in deleted time range. Try adding .with_delay({}) to your equation.",
+                    "Evaluation of state at {t} in deleted time range (before {:?}). Try setting .max_delay({}) or larger.",
+                    self.t_seq.front(),
                     self.t - t
                 );
             } else if i == self.t_seq.len() {
@@ -449,7 +452,7 @@ where
         self.t_seq.push_back(self.t);
         self.x_seq.push_back(self.x);
         self.k_seq.push_back(self.k);
-        let t_tail = self.t_prev - self.t_span - (self.t - self.t_prev);
+        let t_tail = self.t_prev - self.t_span;
         while &t_tail
             > self
                 .t_seq
@@ -898,7 +901,7 @@ impl<'a, const N: usize, S: State<N>> StateCoordFnTrait for StateCoordFn<'a, N, 
 ///     .on_step(Event::new(state_fn!(|[x, y]| [x, y, x+y])))
 ///     .on_step(Event::new(state_fn!(|t, [x, y]| [t, x, y])))
 ///     .on_step(Event::new(state_fn!(|t, [x, y], [x_, y_]| [t, x, x_(t - 1.)])))
-///     .on_step(Event::new(state_fn!(|t, [x, y], [x_, y_]| [t, x, x_(t - 1.), x_.d(t - 1.)]))); 
+///     .on_step(Event::new(state_fn!(|t, [x, y], [x_, y_]| [t, x, x_(t - 1.), x_.d(t - 1.)])));
 /// ```
 ///
 /// For state mutating functions, see [mut_state_fn!].
