@@ -843,6 +843,8 @@ pub trait StateCoordFnTrait: Fn(f64) -> f64 {
     fn prev(&self) -> f64;
     /// Returns previous derivative of the position coordinate.
     fn d_prev(&self) -> f64;
+    /// Returns previous time of the state
+    fn t_prev(&self) -> f64;
 }
 
 impl<'a, const N: usize, S: State<N>> FnOnce<(f64,)> for StateCoordFn<'a, N, S> {
@@ -877,6 +879,10 @@ impl<'a, const N: usize, S: State<N>> StateCoordFnTrait for StateCoordFn<'a, N, 
 
     fn d_prev(&self) -> f64 {
         self.state.d_prev()[self.coord]
+    }
+
+    fn t_prev(&self) -> f64 {
+        self.state.t_prev()
     }
 }
 
