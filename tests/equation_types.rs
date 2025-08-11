@@ -91,7 +91,7 @@ fn dde_sin() {
 
     Solver::new()
         .equation(state_fn!(|t, [x], [x_]| [a * x + b * x_(t - tau)]))
-        .neutral_delay(tau)
+        .delay(tau)
         .initial(|t: f64| [(k * t).sin()])
         .interval(..10.)
         .rk(&rk::RK98)

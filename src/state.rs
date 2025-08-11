@@ -1,5 +1,6 @@
 //! Defines [State], the core object which is acted upon during integration.
 
+use core::f64;
 use std::collections::VecDeque;
 
 use crate::{InitialCondition, collections::stable_index_deque::StableIndexVecDeque};
@@ -453,11 +454,8 @@ where
         self.x_seq.push_back(self.x);
         self.k_seq.push_back(self.k);
         let t_tail = self.t_prev - self.t_span;
-        while &t_tail
-            > self
-                .t_seq
-                .front()
-                .expect("Last element won't pop for non-negative t_span")
+        while let Some(second_t) = self.t_seq.get(1)
+            && *second_t < t_tail
         {
             self.t_seq.pop_front();
             self.x_seq.pop_front();
@@ -465,7 +463,7 @@ where
         }
 
         while let Some((t, _order)) = self.disco_seq.front()
-            && &t_tail > t
+            && t < &t_tail
         {
             self.disco_seq.pop_front();
         }
