@@ -377,6 +377,17 @@ pub trait EventCall<const N: usize> {
     fn call(&mut self, state: &mut impl State<N>);
 }
 
+impl<const N: usize, F: StateFnMut<N>> EventCall<N> for F {
+    fn call(&mut self, state: &mut impl State<N>) {
+        let _ = self.eval(state);
+    }
+}
+// impl<const N: usize, F: MutStateFnMut<N>> EventCall<N> for F {
+//     fn call(&mut self, state: &mut impl State<N>) {
+//         let _ = self.eval_mut(state);
+//     }
+// }
+
 /// Like [EventCall], but generic state is attached to a trait instead of the method.
 pub trait EventCallConcrete<const N: usize, S: State<N>> {
     /// Initiate event callback
@@ -387,7 +398,6 @@ impl<const N: usize, S: State<N>, EC: EventCall<N>> EventCallConcrete<N, S> for 
         self.call(state);
     }
 }
-
 
 impl<const N: usize, Callback, Output, Stream, Filter> EventCall<N>
     for Event<N, false, (), Callback, Output, Stream, Filter>
