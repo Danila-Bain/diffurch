@@ -88,6 +88,7 @@ impl<const N: usize> Event<N> {
     }
 }
 
+
 // impl Filter for Event
 impl<const N: usize, const MUT: bool, Subdivision, Callback, Output, Stream, Filter: HList + Append>
     crate::Filter<N> for Event<N, MUT, Subdivision, Callback, Output, Stream, Filter>
@@ -120,6 +121,22 @@ impl<const N: usize, const MUT: bool, Subdivision, Callback, Stream, Filter, Out
         let stream = self.stream;
         let filter = self.filter;
         let subdivision = n;
+        Event {
+            callback,
+            stream,
+            filter,
+            subdivision,
+            output_marker: self.output_marker,
+        }
+    }
+
+    pub fn and_stop_integration(self) -> Event<N, MUT, Subdivision, Callback, Output, Stream, Filter>  {
+        
+        let callback = self.callback;
+        let stream = self.stream;
+        let filter = self.filter;
+        let subdivision = self.subdivision;
+
         Event {
             callback,
             stream,
