@@ -132,8 +132,12 @@ impl<
     #[allow(unused)]
     pub fn run(mut self)
     where
+        Equation: crate::state::EvalStateFn<N, T, [T; N]>,
         Interval: crate::interval::IntegrationInterval<T>,
         Initial: crate::initial_condition::InitialCondition<N, T>,
+        EventsOnStart: crate::state::EvalStateFnHList<N, T, ()>,
+        EventsOnStep: crate::state::EvalStateFnHList<N, T, ()>,
+        EventsOnStop: crate::state::EvalStateFnHList<N, T, ()>,
     {
         let t_init = self.interval.start_bound();
         let t_end = self.interval.end_bound();
@@ -143,6 +147,21 @@ impl<
 
         let mut stepsize = self.stepsize;
 
-        todo!();
+        self.events_on_start.eval_curr(&state);
+        self.events_on_step.eval_curr(&state);
+
+        while state.t_curr < t_end {
+            state.make_step(&rhs, stepsize);
+
+            if (false) {
+            } else {
+                state.commit_step();
+                self.events_on_step.eval_curr(&state);
+            }
+
+            stepsize = stepsize.min(t_end - state.t_curr);
+        }
+
+        self.events_on_stop.eval_curr(&state);
     }
 }
