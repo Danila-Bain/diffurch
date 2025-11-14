@@ -102,9 +102,9 @@ impl<
         }
     }
 
-    pub fn make_step<F: Fn(&StateRef<T, N>) -> [T; N]>(
+    pub fn make_step(
         &mut self,
-        rhs: &StateFn<N, T, [T; N], F>,
+        rhs: &impl EvalStateFn<N, T, [T; N]>,
         t_step: T,
     ) {
         self.t_prev = self.t_curr;
@@ -130,6 +130,25 @@ impl<
                 + t_step * (0..S).fold(T::zero(), |acc, j| acc + self.rk.b[j] * self.k_curr[j][k])
         });
         self.t_curr = self.t_prev + t_step;
+    }
+
+    pub fn commit_step(&mut self) {
+        self.t_deque.push_back(self.t_curr);
+        self.x_deque.push_back(self.x_curr);
+        self.k_deque.push_back(self.k_curr);
+        let t_tail = self.t_prev - self.t_span;
+        while let Some(second_t) = self.t_deque.get(1)
+            && *second_t < t_tail
+        {
+            self.t_deque.pop_front();
+            self.x_deque.pop_front();
+            self.k_deque.pop_front();
+        }
+        // while let Some((t, _order)) = self.disco_seq.front()
+        //     && t < &t_tail
+        // {
+        //     self.disco_seq.pop_front();
+        // }
     }
 
     pub fn make_zero_step(&mut self) {
@@ -162,10 +181,9 @@ pub struct StateRefMut<'s, T, const N: usize> {
     pub h: &'s dyn Fn(T) -> [T; N],
 }
 
-pub struct StateFn<const N: usize, T, Output, F, Filter = (), Subdivision = ()> {
+#[allow(unused)]
+pub struct StateFn<const N: usize, T, Output, F> {
     f: F,
-    filter: Filter,
-    subdivision: Subdivision,
     _phantom_f: std::marker::PhantomData<fn(&StateRef<T, N>) -> Output>,
 }
 
@@ -175,46 +193,8 @@ impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: Fn(&StateRef<T,
     pub fn new(f: F) -> Self {
         Self {
             f,
-            filter: (),
-            subdivision: (),
             _phantom_f: std::marker::PhantomData,
         }
-    }
-}
-
-impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: Fn(&StateRef<T, N>) -> Output, Filter>
-    StateFn<N, T, Output, F, Filter>
-{
-    pub fn eval_curr<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
-        &self,
-        state: &'s State<N, S, S2, T, IC>,
-    ) -> Output {
-        (self.f)(&StateRef {
-            t: &state.t_curr,
-            x: &state.x_curr,
-            h: &|t: T| state.eval(t),
-        })
-    }
-    pub fn eval_prev<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
-        &self,
-        state: &'s State<N, S, S2, T, IC>,
-    ) -> Output {
-        (self.f)(&StateRef {
-            t: &state.t_prev,
-            x: &state.x_prev,
-            h: &|t: T| state.eval(t),
-        })
-    }
-    pub fn eval_at<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
-        &self,
-        state: &'s State<N, S, S2, T, IC>,
-        t: T,
-    ) -> Output {
-        (self.f)(&StateRef {
-            t: &t,
-            x: &state.eval(t),
-            h: &|t: T| state.eval(t),
-        })
     }
 }
 
@@ -228,12 +208,81 @@ impl<
     pub fn new_mut(f: F) -> Self {
         Self {
             f,
-            filter: (),
-            subdivision: (),
             _phantom_f: std::marker::PhantomData,
         }
     }
-    pub fn eval_mut<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
+}
+
+// abstract F parameter away
+pub trait EvalStateFn<const N: usize, T, Output> {
+    fn eval_curr<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
+        &self,
+        state: &'s State<N, S, S2, T, IC>,
+    ) -> Output;
+
+    fn eval_prev<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
+        &self,
+        state: &'s State<N, S, S2, T, IC>,
+    ) -> Output;
+
+    fn eval_at<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
+        &self,
+        state: &'s State<N, S, S2, T, IC>,
+        t: T,
+    ) -> Output;
+}
+
+impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: Fn(&StateRef<T, N>) -> Output>
+    EvalStateFn<N, T, Output> for StateFn<N, T, Output, F>
+{
+    fn eval_curr<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
+        &self,
+        state: &'s State<N, S, S2, T, IC>,
+    ) -> Output {
+        (self.f)(&StateRef {
+            t: &state.t_curr,
+            x: &state.x_curr,
+            h: &|t: T| state.eval(t),
+        })
+    }
+    fn eval_prev<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
+        &self,
+        state: &'s State<N, S, S2, T, IC>,
+    ) -> Output {
+        (self.f)(&StateRef {
+            t: &state.t_prev,
+            x: &state.x_prev,
+            h: &|t: T| state.eval(t),
+        })
+    }
+    fn eval_at<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
+        &self,
+        state: &'s State<N, S, S2, T, IC>,
+        t: T,
+    ) -> Output {
+        (self.f)(&StateRef {
+            t: &t,
+            x: &state.eval(t),
+            h: &|t: T| state.eval(t),
+        })
+    }
+}
+
+pub trait EvalMutStateFn<T: num::Float + std::fmt::Debug, const N: usize, Output> {
+    fn eval_mut<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
+        &mut self,
+        state: &'s mut State<N, S, S2, T, IC>,
+    ) -> Output;
+}
+
+impl<
+    T: num::Float + std::fmt::Debug,
+    const N: usize,
+    Output,
+    F: FnMut(&mut StateRefMut<T, N>) -> Output,
+> EvalMutStateFn<T, N, Output> for StateFn<N, T, Output, F>
+{
+    fn eval_mut<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
         &mut self,
         state: &'s mut State<N, S, S2, T, IC>,
     ) -> Output {
@@ -242,6 +291,16 @@ impl<
             x: &mut state.x_curr,
             h: &|t: T| [t; N],
         })
+    }
+}
+
+
+trait_hlist::TraitHList! {
+    pub EvalStateFnHList for trait EvalStateFn<const N: usize, T, Output> {
+        fn eval_curr<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
+            &self,
+            state: &'s State<N, S, S2, T, IC>,
+        ) -> Output where T: 's, IC: 's;
     }
 }
 
