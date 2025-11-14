@@ -82,10 +82,12 @@ dependencies = [
  "num-traits",
  "pgfplots",
  "rayon",
+ "replace",
  "rgb",
  "serde_json",
  "term_size",
  "textplots",
+ "trait_hlist",
 ]
 
 [[package]]
@@ -422,6 +424,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "809e8dc61f6de73b46c85f4c96486310fe304c434cfa43669d7b40f711150908"
 
 [[package]]
+name = "replace"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "rgb"
 version = "0.8.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -540,6 +551,16 @@ version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
 dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "trait_hlist"
+version = "0.1.0"
+dependencies = [
+ "hlist2",
  "proc-macro2",
  "quote",
  "syn",

@@ -32,4 +32,6 @@ hlist2 = "0.0.15"
 num = "0.4.3"
 num-traits = "0.2.19"
 
+replace = { path="macros/replace" }
+trait_hlist = { path="macros/trait_hlist" }
 

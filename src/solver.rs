@@ -1,21 +1,33 @@
 use hlist2::{HList, Nil};
-use macro_find_and_replace::{replace_token_sequence};
+
+use replace::replace_ident;
+
+use crate::rk::ExplicitRungeKuttaTable;
 
 macro_rules! SolverType {
     () => {Solver<'rk, N, S, S2, T, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc> };
-    ($arg:ident => $replacement:expr) => {replace_token_sequence!([$arg], [$replacement], Solver<'rk, N, S, S2, T, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>) };
+    ($arg:ident => $replacement:expr) => {
+        replace_ident!($arg, $replacement, Solver<'rk, N, S, S2, T, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>)
+    };
+    ($arg1:ident => $replacement1:expr, $arg2:ident => $replacement2:expr) => {
+        replace_ident!($arg1, $replacement1,
+            replace_ident!($arg2, $replacement2,
+                Solver<'rk, N, S, S2, T, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>
+            )
+        )
+    };
 }
 
 macro_rules! solver_set {
     ($self:expr, $field:ident: $value:expr) => {
         {
-            replace_token_sequence!(
-                [$field], [$field],
+            replace_ident!(
+                $field, $field,
                 #[allow(unused_variables)]
                 let Solver { equation, initial, initial_disco, interval, max_delay, rk, stepsize, events_on_step, events_on_start, events_on_stop, events_on_loc, } = $self;
             );
-            replace_token_sequence!(
-                [$field], [$field: $value],
+            replace_ident!(
+                $field, $field: $value,
                 Solver { equation, initial, initial_disco, interval, max_delay, rk, stepsize, events_on_step, events_on_start, events_on_stop, events_on_loc, }
             )
         }
@@ -58,10 +70,10 @@ impl<
     Equation,
     Initial,
     Interval,
-    EventsOnStep: HList,
-    EventsOnStart: HList,
-    EventsOnStop: HList,
-    EventsOnLoc: HList,
+    EventsOnStep: HList + hlist2::ops::Append,
+    EventsOnStart: HList + hlist2::ops::Append,
+    EventsOnStop: HList + hlist2::ops::Append,
+    EventsOnLoc: HList + hlist2::ops::Append,
 > SolverType!()
 {
     /// [Solver::initial_disco] setter. Returns self.
@@ -82,41 +94,40 @@ impl<
         Self { max_delay, ..self }
     }
 
-    pub fn equation<NewEquation>(
-        self,
-        new_equation: NewEquation,
-    ) -> SolverType!(Equation => NewEquation) {
+    pub fn equation<E>(self, new_equation: E) -> SolverType!(Equation => E) {
         solver_set!(self, equation: new_equation)
     }
 
-    pub fn initial<NewInitial>(
-        self,
-        new_initial: NewInitial,
-    ) -> SolverType!(Initial => NewInitial) {
+    pub fn initial<I>(self, new_initial: I) -> SolverType!(Initial => I) {
         solver_set!(self, initial: new_initial)
     }
 
-    pub fn interval<NewInterval>(
-        self,
-        new_interval: NewInterval,
-    ) -> SolverType!(Interval => NewInterval) {
+    pub fn interval<I>(self, new_interval: I) -> SolverType!(Interval => I) {
         solver_set!(self, interval: new_interval)
     }
 
-    // pub fn rk<const NewS: usize, const NewS2: usize>(
-    //     self,
-    //     new_rk: &'rk crate::rk::ExplicitRungeKuttaTable<S, S2, T>,
-    // ) -> SolverType!(S => NewS, S2 => NewS2) {
-    //     solver_set!(self, rk: new_rk)
-    // }
-
-    pub fn on_step<NewCallback>(
+    pub fn rk<const S_: usize, const S2_: usize>(
         self,
-        new_callback: NewCallback,
-    ) -> SolverType!(EventsOnStep => <EventsOnStep as hlist2::ops::Append>::Output::<NewCallback>)
-    where
-        EventsOnStep: hlist2::ops::Append,
+        new_rk: &'rk ExplicitRungeKuttaTable<S_, S2_, T>,
+    ) -> SolverType!(S => S_, S2 => S2_) {
+        solver_set!(self, rk: new_rk)
+    }
+
+    pub fn on_step<C>(self, callback: C) -> SolverType!(EventsOnStep => EventsOnStep::Output::<C>)
     {
-        solver_set!(self, events_on_step: events_on_step.append(new_callback))
+        solver_set!(self, events_on_step: events_on_step.append(callback))
+    }
+
+    pub fn on_stop<C>(self, callback: C) -> SolverType!(EventsOnStop => EventsOnStop::Output::<C>)
+    {
+        solver_set!(self, events_on_stop: events_on_stop.append(callback))
+    }
+
+    pub fn on_start<C>(
+        self,
+        callback: C,
+    ) -> SolverType!(EventsOnStart => EventsOnStart::Output::<C>)
+    {
+        solver_set!(self, events_on_start: events_on_start.append(callback))
     }
 }
