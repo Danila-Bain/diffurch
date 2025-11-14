@@ -154,3 +154,4 @@ impl<T> core::ops::Index<usize> for StableIndexVecDeque<T> {
         StableIndexVecDeque::get(&self, index).expect("Out of bounds access")
     }
 }
+
