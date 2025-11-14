@@ -29,6 +29,7 @@ rayon = "1.10.0"
 
 [dependencies]
 hlist2 = "0.0.15"
+num = "0.4.3"
 num-traits = "0.2.19"
 
 
