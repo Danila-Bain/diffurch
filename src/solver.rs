@@ -1,5 +1,6 @@
 use hlist2::{HList, Nil};
 
+use num::Float;
 use replace::replace_ident;
 
 use crate::rk::ExplicitRungeKuttaTable;
@@ -66,7 +67,7 @@ impl<
     const N: usize,
     const S: usize,
     const S2: usize,
-    T,
+    T: Float + std::fmt::Debug,
     Equation,
     Initial,
     Interval,
@@ -113,21 +114,35 @@ impl<
         solver_set!(self, rk: new_rk)
     }
 
-    pub fn on_step<C>(self, callback: C) -> SolverType!(EventsOnStep => EventsOnStep::Output::<C>)
-    {
+    pub fn on_step<C>(self, callback: C) -> SolverType!(EventsOnStep => EventsOnStep::Output::<C>) {
         solver_set!(self, events_on_step: events_on_step.append(callback))
     }
 
-    pub fn on_stop<C>(self, callback: C) -> SolverType!(EventsOnStop => EventsOnStop::Output::<C>)
-    {
+    pub fn on_stop<C>(self, callback: C) -> SolverType!(EventsOnStop => EventsOnStop::Output::<C>) {
         solver_set!(self, events_on_stop: events_on_stop.append(callback))
     }
 
     pub fn on_start<C>(
         self,
         callback: C,
-    ) -> SolverType!(EventsOnStart => EventsOnStart::Output::<C>)
-    {
+    ) -> SolverType!(EventsOnStart => EventsOnStart::Output::<C>) {
         solver_set!(self, events_on_start: events_on_start.append(callback))
+    }
+
+    #[allow(unused)]
+    pub fn run(mut self)
+    where
+        Interval: crate::interval::IntegrationInterval<T>,
+        Initial: crate::initial_condition::InitialCondition<N, T>,
+    {
+        let t_init = self.interval.start_bound();
+        let t_end = self.interval.end_bound();
+
+        let mut rhs = self.equation;
+        let mut state = crate::state::State::new(t_init, self.initial, &self.rk);
+
+        let mut stepsize = self.stepsize;
+
+        todo!();
     }
 }
