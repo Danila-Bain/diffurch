@@ -286,6 +286,7 @@ pub fn TraitHList(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 }
 
 struct TraitHListInput {
+    vis: Option<syn::Token![pub]>,
     hlist_trait: syn::Ident,
     base_trait: syn::Ident,
     trait_generic_params: Vec<syn::GenericParam>,
@@ -436,6 +437,11 @@ impl TraitHListMethod {
 
 impl syn::parse::Parse for TraitHListInput {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let vis = if input.peek(syn::Token![pub]) {
+            Some(input.parse()?)
+        } else {
+            None
+        };
         let hlist_trait: syn::Ident = input.parse()?;
         input.parse::<syn::Token![for]>()?;
         input.parse::<syn::Token![trait]>()?;
@@ -481,6 +487,7 @@ impl syn::parse::Parse for TraitHListInput {
         Ok(Self {
             hlist_trait,
             base_trait,
+            vis,
             methods,
             trait_generic_params,
             trait_where_clause,
@@ -493,6 +500,7 @@ impl TraitHListInput {
         let Self {
             hlist_trait,
             base_trait,
+            vis,
             methods,
             trait_generic_params,
             trait_where_clause,
@@ -655,7 +663,7 @@ impl TraitHListInput {
             .collect();
 
         quote::quote! {
-            trait #hlist_trait<#(#trait_generic_params),*> #trait_where_clause {
+            #vis trait #hlist_trait<#(#trait_generic_params),*> #trait_where_clause {
                 #(#method_defs)*
                 #(#bool_method_defs)*
             }
