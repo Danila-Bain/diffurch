@@ -102,11 +102,7 @@ impl<
         }
     }
 
-    pub fn make_step(
-        &mut self,
-        rhs: &mut impl EvalStateFn<N, T, [T; N]>,
-        t_step: T,
-    ) {
+    pub fn make_step(&mut self, rhs: &mut impl EvalStateFn<N, T, [T; N]>, t_step: T) {
         self.t_prev = self.t_curr;
         self.x_prev = self.x_curr;
 
@@ -182,13 +178,13 @@ pub struct StateRefMut<'s, T, const N: usize> {
 }
 
 #[allow(unused)]
-pub struct StateFn<const N: usize, T, Output, F> {
+pub struct StateFn<const N: usize, T, Output, F, const MUT: bool = false> {
     f: F,
     _phantom_f: std::marker::PhantomData<fn(&StateRef<T, N>) -> Output>,
 }
 
 impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: FnMut(&StateRef<T, N>) -> Output>
-    StateFn<N, T, Output, F>
+    StateFn<N, T, Output, F, false>
 {
     pub fn new(f: F) -> Self {
         Self {
@@ -203,7 +199,7 @@ impl<
     const N: usize,
     Output,
     F: FnMut(&mut StateRefMut<T, N>) -> Output,
-> StateFn<N, T, Output, F>
+> StateFn<N, T, Output, F, true>
 {
     pub fn new_mut(f: F) -> Self {
         Self {
@@ -233,7 +229,7 @@ pub trait EvalStateFn<const N: usize, T, Output> {
 }
 
 impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: FnMut(&StateRef<T, N>) -> Output>
-    EvalStateFn<N, T, Output> for StateFn<N, T, Output, F>
+    EvalStateFn<N, T, Output> for StateFn<N, T, Output, F, false>
 {
     fn eval_curr<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
         &mut self,
@@ -267,8 +263,7 @@ impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: FnMut(&StateRef
         })
     }
 }
-
-pub trait EvalMutStateFn<T: num::Float + std::fmt::Debug, const N: usize, Output> {
+pub trait EvalMutStateFn<const N: usize, T, Output> {
     fn eval_mut<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
         &mut self,
         state: &'s mut State<N, S, S2, T, IC>,
@@ -280,7 +275,7 @@ impl<
     const N: usize,
     Output,
     F: FnMut(&mut StateRefMut<T, N>) -> Output,
-> EvalMutStateFn<T, N, Output> for StateFn<N, T, Output, F>
+> EvalMutStateFn<N, T, Output> for StateFn<N, T, Output, F, true>
 {
     fn eval_mut<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
         &mut self,
@@ -294,12 +289,31 @@ impl<
     }
 }
 
+impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: FnMut(&StateRef<T, N>) -> Output>
+    EvalMutStateFn<N, T, Output> for StateFn<N, T, Output, F, false>
+{
+    fn eval_mut<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
+        &mut self,
+        state: &'s mut State<N, S, S2, T, IC>,
+    ) -> Output {
+        self.eval_curr(state)
+    }
+}
 
 trait_hlist::TraitHList! {
     pub EvalStateFnHList for trait EvalStateFn<const N: usize, T, Output> {
         fn eval_curr<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
             &mut self,
             state: &'s State<N, S, S2, T, IC>,
+        ) -> Output where T: 's, IC: 's;
+    }
+}
+
+trait_hlist::TraitHList! {
+    pub EvalMutStateFnHList for trait EvalMutStateFn<const N: usize, T, Output> {
+        fn eval_mut<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
+            &mut self,
+            state: &'s mut State<N, S, S2, T, IC>,
         ) -> Output where T: 's, IC: 's;
     }
 }

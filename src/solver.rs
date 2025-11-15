@@ -151,9 +151,9 @@ impl<
         Equation: crate::state::EvalStateFn<N, T, [T; N]>,
         Interval: crate::interval::IntegrationInterval<T>,
         Initial: crate::initial_condition::InitialCondition<N, T>,
-        EventsOnStart: crate::state::EvalStateFnHList<N, T, ()>,
-        EventsOnStep: crate::state::EvalStateFnHList<N, T, ()>,
-        EventsOnStop: crate::state::EvalStateFnHList<N, T, ()>,
+        EventsOnStart: crate::state::EvalMutStateFnHList<N, T, ()>,
+        EventsOnStep: crate::state::EvalMutStateFnHList<N, T, ()>,
+        EventsOnStop: crate::state::EvalMutStateFnHList<N, T, ()>,
     {
         let t_init = self.interval.start_bound();
         let t_end = self.interval.end_bound();
@@ -163,8 +163,8 @@ impl<
 
         let mut stepsize = self.stepsize;
 
-        self.events_on_start.eval_curr(&state);
-        self.events_on_step.eval_curr(&state);
+        self.events_on_start.eval_mut(&mut state);
+        self.events_on_step.eval_mut(&mut state);
 
         while state.t_curr < t_end {
             state.make_step(&mut rhs, stepsize);
@@ -172,11 +172,11 @@ impl<
             if (false) {
             } else {
                 state.commit_step();
-                self.events_on_step.eval_curr(&state);
+                self.events_on_step.eval_mut(&mut state);
             }
 
             stepsize = stepsize.min(t_end - state.t_curr);
         }
-        self.events_on_stop.eval_curr(&state);
+        self.events_on_stop.eval_mut(&mut state);
     }
 }
