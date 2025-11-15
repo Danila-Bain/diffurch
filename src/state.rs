@@ -104,7 +104,7 @@ impl<
 
     pub fn make_step(
         &mut self,
-        rhs: &impl EvalStateFn<N, T, [T; N]>,
+        rhs: &mut impl EvalStateFn<N, T, [T; N]>,
         t_step: T,
     ) {
         self.t_prev = self.t_curr;
@@ -164,10 +164,10 @@ impl<
 }
 
 pub struct StateRef<'s, T, const N: usize> {
-    /// Reference to time of a state
-    pub t: &'s T,
-    /// Reference to position of a state
-    pub x: &'s [T; N],
+    /// Time of a state
+    pub t: T,
+    /// Position of a state
+    pub x: [T; N],
 
     pub h: &'s dyn Fn(T) -> [T; N],
 }
@@ -187,7 +187,7 @@ pub struct StateFn<const N: usize, T, Output, F> {
     _phantom_f: std::marker::PhantomData<fn(&StateRef<T, N>) -> Output>,
 }
 
-impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: Fn(&StateRef<T, N>) -> Output>
+impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: FnMut(&StateRef<T, N>) -> Output>
     StateFn<N, T, Output, F>
 {
     pub fn new(f: F) -> Self {
@@ -216,53 +216,53 @@ impl<
 // abstract F parameter away
 pub trait EvalStateFn<const N: usize, T, Output> {
     fn eval_curr<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
-        &self,
+        &mut self,
         state: &'s State<N, S, S2, T, IC>,
     ) -> Output;
 
     fn eval_prev<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
-        &self,
+        &mut self,
         state: &'s State<N, S, S2, T, IC>,
     ) -> Output;
 
     fn eval_at<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
-        &self,
+        &mut self,
         state: &'s State<N, S, S2, T, IC>,
         t: T,
     ) -> Output;
 }
 
-impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: Fn(&StateRef<T, N>) -> Output>
+impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: FnMut(&StateRef<T, N>) -> Output>
     EvalStateFn<N, T, Output> for StateFn<N, T, Output, F>
 {
     fn eval_curr<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
-        &self,
+        &mut self,
         state: &'s State<N, S, S2, T, IC>,
     ) -> Output {
         (self.f)(&StateRef {
-            t: &state.t_curr,
-            x: &state.x_curr,
+            t: state.t_curr,
+            x: state.x_curr,
             h: &|t: T| state.eval(t),
         })
     }
     fn eval_prev<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
-        &self,
+        &mut self,
         state: &'s State<N, S, S2, T, IC>,
     ) -> Output {
         (self.f)(&StateRef {
-            t: &state.t_prev,
-            x: &state.x_prev,
+            t: state.t_prev,
+            x: state.x_prev,
             h: &|t: T| state.eval(t),
         })
     }
     fn eval_at<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
-        &self,
+        &mut self,
         state: &'s State<N, S, S2, T, IC>,
         t: T,
     ) -> Output {
         (self.f)(&StateRef {
-            t: &t,
-            x: &state.eval(t),
+            t: t,
+            x: state.eval(t),
             h: &|t: T| state.eval(t),
         })
     }
@@ -298,7 +298,7 @@ impl<
 trait_hlist::TraitHList! {
     pub EvalStateFnHList for trait EvalStateFn<const N: usize, T, Output> {
         fn eval_curr<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
-            &self,
+            &mut self,
             state: &'s State<N, S, S2, T, IC>,
         ) -> Output where T: 's, IC: 's;
     }
@@ -352,7 +352,7 @@ mod test {
 
         let mut state = State::new(0., [0., 0., 0.], &rk);
 
-        let lorenz_rhs = StateFn::new(|&StateRef { x: [x, y, z], .. }| {
+        let mut lorenz_rhs = StateFn::new(|&StateRef { x: [x, y, z], .. }| {
             [sigma * (y - x), x * (rho - z) - y, x * y - beta * z]
         });
         lorenz_rhs.eval_curr(&state);

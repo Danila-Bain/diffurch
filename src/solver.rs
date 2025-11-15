@@ -167,7 +167,7 @@ impl<
         self.events_on_step.eval_curr(&state);
 
         while state.t_curr < t_end {
-            state.make_step(&rhs, stepsize);
+            state.make_step(&mut rhs, stepsize);
 
             if (false) {
             } else {
