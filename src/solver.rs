@@ -6,14 +6,14 @@ use replace::replace_ident;
 use crate::rk::ExplicitRungeKuttaTable;
 
 macro_rules! SolverType {
-    () => {Solver<'rk, N, S, S2, T, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc> };
+    () => {Solver<N, S, S2, T, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc> };
     ($arg:ident => $replacement:expr) => {
-        replace_ident!($arg, $replacement, Solver<'rk, N, S, S2, T, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>)
+        replace_ident!($arg, $replacement, Solver<N, S, S2, T, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>)
     };
     ($arg1:ident => $replacement1:expr, $arg2:ident => $replacement2:expr) => {
         replace_ident!($arg1, $replacement1,
             replace_ident!($arg2, $replacement2,
-                Solver<'rk, N, S, S2, T, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>
+                Solver<N, S, S2, T, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>
             )
         )
     };
@@ -36,7 +36,6 @@ macro_rules! solver_set {
 }
 
 pub struct Solver<
-    'rk,
     const N: usize = 0,
     const S: usize = 0,
     const S2: usize = 0,
@@ -53,7 +52,7 @@ pub struct Solver<
     pub initial: Initial,
     pub initial_disco: Vec<(T, usize)>,
     pub interval: Interval,
-    pub rk: &'rk crate::rk::ExplicitRungeKuttaTable<S, S2, T>,
+    pub rk: crate::rk::ExplicitRungeKuttaTable<S, S2, T>,
     pub stepsize: T,
     pub max_delay: T,
     pub events_on_step: EventsOnStep,
@@ -62,8 +61,24 @@ pub struct Solver<
     pub events_on_loc: EventsOnLoc,
 }
 
+impl<const N: usize, T: Float> Solver<N, 0, 0, T> {
+    pub fn new() -> Solver<N, 7, 21, T, (), (), (), Nil, Nil, Nil> {
+        Solver {
+            equation: (),
+            initial: (),
+            initial_disco: vec![],
+            interval: (),
+            max_delay: T::zero(),
+            rk: crate::rk::rktp64(),
+            stepsize: T::from(0.05).unwrap(),
+            events_on_step: Nil,
+            events_on_start: Nil,
+            events_on_stop: Nil,
+            events_on_loc: Nil,
+        }
+    }
+}
 impl<
-    'rk,
     const N: usize,
     const S: usize,
     const S2: usize,
@@ -77,6 +92,7 @@ impl<
     EventsOnLoc: HList + hlist2::ops::Append,
 > SolverType!()
 {
+
     /// [Solver::initial_disco] setter. Returns self.
     pub fn initial_disco(self, initial_disco: impl Into<Vec<(T, usize)>>) -> Self {
         Self {
@@ -109,7 +125,7 @@ impl<
 
     pub fn rk<const S_: usize, const S2_: usize>(
         self,
-        new_rk: &'rk ExplicitRungeKuttaTable<S_, S2_, T>,
+        new_rk: ExplicitRungeKuttaTable<S_, S2_, T>,
     ) -> SolverType!(S => S_, S2 => S2_) {
         solver_set!(self, rk: new_rk)
     }
@@ -161,7 +177,6 @@ impl<
 
             stepsize = stepsize.min(t_end - state.t_curr);
         }
-
         self.events_on_stop.eval_curr(&state);
     }
 }

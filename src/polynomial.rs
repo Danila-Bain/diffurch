@@ -20,17 +20,17 @@ macro_rules! polynomial_closure {
 #[macro_export]
 macro_rules! polynomial_derivative_closure {
     ($type:ty) => {
-        move |_t: $type| { <$type>::from(0.) }
+        move |_t: $type| { <$type as num::NumCast>::from(0.).unwrap() }
     };
     ($type:ty, $coef:expr) => {
-        move |_t: $type| { <$type>::from(0.) }
+        move |_t: $type| { <$type as num::NumCast>::from(0.).unwrap() }
     };
     ($type:ty, $($coef:expr),+ $(,)?) => {
         move |t: $type| {
             let coef = [$($coef),+];
             let last = *coef.last().unwrap();
             coef.into_iter().enumerate().skip(1).rev().skip(1)
-            .fold(last * <$type>::from((coef.len() - 1) as f64), |acc: $type, (n, c): (usize, $type)| <$type>::from(n as f64) * c + t * acc)
+            .fold(last * <$type as num::NumCast>::from((coef.len() - 1) as f64).unwrap(), |acc: $type, (n, c): (usize, $type)| <$type as num::NumCast>::from(n as f64).unwrap() * c + t * acc)
         }
     };
 }
@@ -54,6 +54,7 @@ mod tests {
     // use super::*;
     #[test]
     fn empty_polynomial() {
+
         let p = polynomial![f64, 0.];
         assert_eq!((p.0)(0.), 0.);
         assert_eq!((p.0)(1.), 0.);
