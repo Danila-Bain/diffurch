@@ -183,7 +183,7 @@ pub struct StateFn<const N: usize, T, Output, F, const MUT: bool = false> {
     _phantom_f: std::marker::PhantomData<fn(&StateRef<T, N>) -> Output>,
 }
 
-impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: FnMut(&StateRef<T, N>) -> Output>
+impl<T, const N: usize, Output, F: FnMut(&StateRef<T, N>) -> Output>
     StateFn<N, T, Output, F, false>
 {
     pub fn new(f: F) -> Self {
@@ -194,12 +194,8 @@ impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: FnMut(&StateRef
     }
 }
 
-impl<
-    T: num::Float + std::fmt::Debug,
-    const N: usize,
-    Output,
-    F: FnMut(&mut StateRefMut<T, N>) -> Output,
-> StateFn<N, T, Output, F, true>
+impl<T, const N: usize, Output, F: FnMut(&mut StateRefMut<T, N>) -> Output>
+    StateFn<N, T, Output, F, true>
 {
     pub fn new_mut(f: F) -> Self {
         Self {

@@ -169,8 +169,16 @@ impl<
         while state.t_curr < t_end {
             state.make_step(&mut rhs, stepsize);
 
-            if (false) {
-            } else {
+            if (
+                false 
+                // 
+
+            ) { 
+                // state.undo_step();
+                // state.make_step(&mut rhs, t - state.t_curr);
+                // event.eval_mut(&mut state);
+            } 
+            else {
                 state.commit_step();
                 self.events_on_step.eval_mut(&mut state);
             }

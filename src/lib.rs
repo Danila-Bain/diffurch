@@ -4,6 +4,7 @@ pub mod initial_condition;
 pub mod solver;
 pub mod interval;
 pub mod state;
+pub mod loc;
 
 pub use state::{StateFn, StateRef, StateRefMut};
 pub use solver::{Solver};
