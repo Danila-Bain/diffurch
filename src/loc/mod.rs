@@ -15,9 +15,8 @@ pub mod detect;
 pub mod locate;
 /// Periodic events
 pub mod periodic;
-// /// Delay-propagation of discontinuities
-// pub mod propagation;
-//
+/// Delay-propagation of discontinuities
+pub mod propagation;
 //
 // pub use detection::Detect;
 // pub use location::Locate;

@@ -6,6 +6,8 @@ pub mod interval;
 pub mod state;
 pub mod loc;
 
+mod util;
+
 pub use state::{StateFn, StateRef, StateRefMut};
 pub use solver::{Solver};
 

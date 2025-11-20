@@ -17,7 +17,7 @@ pub struct State<'rk, const N: usize, const S: usize, const S2: usize, T, IC> {
     pub t_deque: VecDeque<T>,
     pub x_deque: VecDeque<[T; N]>,
     pub k_deque: VecDeque<[[T; N]; S]>,
-    pub disco_deque: VecDeque<T>,
+    pub disco_deque: VecDeque<(T, usize)>,
 }
 
 impl<
