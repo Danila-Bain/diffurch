@@ -92,7 +92,6 @@ impl<
     EventsOnLoc: HList + hlist2::ops::Append,
 > SolverType!()
 {
-
     /// [Solver::initial_disco] setter. Returns self.
     pub fn initial_disco(self, initial_disco: impl Into<Vec<(T, usize)>>) -> Self {
         Self {
@@ -145,6 +144,13 @@ impl<
         solver_set!(self, events_on_start: events_on_start.append(callback))
     }
 
+    pub fn on<L, C, V: Into<crate::loc::loc_callback::LocCallback<L, C>>>(
+        self,
+        loc_callback: V,
+    ) -> SolverType!(EventsOnLoc => EventsOnLoc::Output::<V>) {
+        solver_set!(self, events_on_loc: events_on_loc.append(loc_callback))
+    }
+
     #[allow(unused)]
     pub fn run(mut self)
     where
@@ -154,6 +160,8 @@ impl<
         EventsOnStart: crate::state::EvalMutStateFnHList<N, T, ()>,
         EventsOnStep: crate::state::EvalMutStateFnHList<N, T, ()>,
         EventsOnStop: crate::state::EvalMutStateFnHList<N, T, ()>,
+        EventsOnLoc: crate::loc::loc_hlist::HListLocateEarliest<N, T>
+            + crate::state::EvalMutStateFnHList<N, T, ()>,
     {
         let t_init = self.interval.start_bound();
         let t_end = self.interval.end_bound();
@@ -169,20 +177,14 @@ impl<
         while state.t_curr < t_end {
             state.make_step(&mut rhs, stepsize);
 
-            if (
-                false 
-                // 
-
-            ) { 
-                // state.undo_step();
-                // state.make_step(&mut rhs, t - state.t_curr);
-                // event.eval_mut(&mut state);
-            } 
-            else {
+            if let Some((index, time)) = self.events_on_loc.locate_earliest(&state) {
+                state.undo_step();
+                state.make_step(&mut rhs, time - state.t_curr);
+                self.events_on_loc.eval_mut_at_index(&mut state, index);
+            } else {
                 state.commit_step();
                 self.events_on_step.eval_mut(&mut state);
             }
-
             stepsize = stepsize.min(t_end - state.t_curr);
         }
         self.events_on_stop.eval_mut(&mut state);

@@ -77,6 +77,7 @@ name = "diffurch"
 version = "0.0.3"
 dependencies = [
  "hlist2",
+ "hlist2_trait_macro",
  "ndarray",
  "num",
  "num-traits",
@@ -87,7 +88,6 @@ dependencies = [
  "serde_json",
  "term_size",
  "textplots",
- "trait_hlist",
 ]
 
 [[package]]
@@ -156,6 +156,17 @@ name = "hlist2"
 version = "0.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7eb54f4bac1a3a7b45a3dcd8b60d78a2d0c06857695fb8a47b913e50f52c3ad"
+
+[[package]]
+name = "hlist2_trait_macro"
+version = "0.1.0"
+source = "git+https://github.com/Danila-Bain/hlist2_trait_macro.git#0c5ccef65845496649401d1fc7dc7bc1f508f638"
+dependencies = [
+ "hlist2",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "itoa"
@@ -551,16 +562,6 @@ version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
 dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "trait_hlist"
-version = "0.1.0"
-dependencies = [
- "hlist2",
  "proc-macro2",
  "quote",
  "syn",

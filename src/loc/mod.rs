@@ -17,6 +17,10 @@ pub mod locate;
 pub mod periodic;
 /// Delay-propagation of discontinuities
 pub mod propagation;
+
+pub mod loc_hlist;
+pub mod loc_callback;
+
 //
 // pub use detection::Detect;
 // pub use location::Locate;

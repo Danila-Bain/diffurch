@@ -13,4 +13,3 @@ pub use solver::{Solver};
 
 // pub mod callback;
 // pub mod filter;
-// pub mod collections;
