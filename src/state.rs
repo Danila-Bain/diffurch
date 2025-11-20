@@ -296,7 +296,7 @@ impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: FnMut(&StateRef
     }
 }
 
-trait_hlist::TraitHList! {
+hlist2_trait_macro::TraitHList! {
     pub EvalStateFnHList for trait EvalStateFn<const N: usize, T, Output> {
         fn eval_curr<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
             &mut self,
@@ -305,7 +305,7 @@ trait_hlist::TraitHList! {
     }
 }
 
-trait_hlist::TraitHList! {
+hlist2_trait_macro::TraitHList! {
     pub EvalMutStateFnHList for trait EvalMutStateFn<const N: usize, T, Output> {
         fn eval_mut<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
             &mut self,
