@@ -330,27 +330,87 @@ hlist2_trait_macro::TraitHList! {
 //
 // }
 
+#[macro_export]
+macro_rules! state_fn(
+    (
+        |
+            $(
+                $var:ident 
+                $(: 
+                    $($bind:ident)? 
+                    $(&$ref_bind:ident)? 
+                    $([$($coords:ident),*])?
+                    $(&[$($ref_coords:ident),*])?
+                )?
+            ),*
+        | $body:expr
+    ) => {
+        $crate::StateFn::new(|&$crate::StateRef{
+            $(
+                $var 
+                $(: $($bind)? 
+                    $(&$ref_bind)? 
+                    $([$($coords),*])?
+                    $(&[$($ref_coords),*])?
+                )?
+                ,
+            )* 
+            ..
+        }| $body)
+    }
+);
+#[macro_export]
+macro_rules! mut_state_fn(
+    (
+        |
+            $(
+                $var:ident 
+                $(: 
+                    $($bind:ident)? 
+                    $(&mut $ref_bind:ident)? 
+                    $([$($coords:ident),*])?
+                    $(&mut [$($ref_coords:ident),*])?
+                )?
+            ),*
+        | $body:expr
+    ) => {
+        $crate::StateFn::new_mut(|&mut $crate::StateRefMut{
+            $(
+                $var 
+                $(: $($bind)? 
+                    $(&mut $ref_bind)? 
+                    $([$($coords),*])?
+                    $(&mut [$($ref_coords),*])?
+                )?
+                ,
+            )* 
+            ..
+        }| $body)
+    }
+);
+
 #[cfg(test)]
 mod test {
     use super::*;
 
-    // #[test]
-    // fn basic_inference() {
-    //     let sigma = 0.;
-    //     let sum = StateFn::new(|state| {
-    //         let (t, [x, y]) = (state.t, state.x);
-    //         t + x + y + sigma
-    //     });
-    //     let s = State {
-    //         t_curr: 0.,
-    //         x_curr: [1., 2.],
-    //         t_prev: 0.,
-    //         x_prev: [-1., -2.],
-    //     };
-    //
-    //     assert_eq!(sum.eval(&s), 0. + 1. + 2.);
-    //     assert_eq!(sum.eval_prev(&s), 0. - 1. - 2.);
-    // }
+    #[test]
+    fn macro_state_fn() {
+        let rk = crate::rk::euler();
+        let state = State::new(0., [1., 2., 3.], &rk);
+        let mut f = state_fn!(|t, x: [x,y,z]| [t, x, y, z]);
+        assert_eq!(f.eval_curr(&state), [0., 1., 2., 3.]);
+    }
+    #[test]
+    fn macro_mut_state_fn() {
+        let rk = crate::rk::euler();
+        let mut state = State::new(0., [1., 2., 3.], &rk);
+        let mut f = mut_state_fn!(|t: &mut t, x: [x,y,z]| {
+            *y += 10.;
+            *z += 10.;
+            [t, *x, *y, *z]
+        });
+        assert_eq!(f.eval_mut(&mut state), [0., 1., 12., 13.]);
+    }
 
     #[test]
     fn lorenz() {
@@ -391,3 +451,4 @@ mod test {
         // panic!("{:?}, {:?}", state.t_curr, state.x_curr)
     }
 }
+
