@@ -13,10 +13,11 @@ pub struct Loc<F = (), D = (), L = ()> {
 pub mod detect;
 /// Location of events
 pub mod locate;
+/// Periodic events
+pub mod periodic;
 // /// Delay-propagation of discontinuities
 // pub mod propagation;
 //
-// pub mod periodic;
 //
 // pub use detection::Detect;
 // pub use location::Locate;
