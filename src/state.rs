@@ -163,7 +163,7 @@ pub struct StateRef<'s, T, const N: usize> {
     /// Time of a state
     pub t: T,
     /// Position of a state
-    pub x: [T; N],
+    pub x: &'s [T; N],
 
     pub h: &'s dyn Fn(T) -> [T; N],
 }
@@ -233,7 +233,7 @@ impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: FnMut(&StateRef
     ) -> Output {
         (self.f)(&StateRef {
             t: state.t_curr,
-            x: state.x_curr,
+            x: &state.x_curr,
             h: &|t: T| state.eval(t),
         })
     }
@@ -243,7 +243,7 @@ impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: FnMut(&StateRef
     ) -> Output {
         (self.f)(&StateRef {
             t: state.t_prev,
-            x: state.x_prev,
+            x: &state.x_prev,
             h: &|t: T| state.eval(t),
         })
     }
@@ -254,7 +254,7 @@ impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: FnMut(&StateRef
     ) -> Output {
         (self.f)(&StateRef {
             t: t,
-            x: state.eval(t),
+            x: &state.eval(t),
             h: &|t: T| state.eval(t),
         })
     }
@@ -335,10 +335,10 @@ macro_rules! state_fn(
     (
         |
             $(
-                $var:ident 
-                $(: 
-                    $($bind:ident)? 
-                    $(&$ref_bind:ident)? 
+                $var:ident
+                $(:
+                    $($bind:ident)?
+                    $(&$ref_bind:ident)?
                     $([$($coords:ident),*])?
                     $(&[$($ref_coords:ident),*])?
                 )?
@@ -347,14 +347,14 @@ macro_rules! state_fn(
     ) => {
         $crate::StateFn::new(|&$crate::StateRef{
             $(
-                $var 
-                $(: $($bind)? 
-                    $(&$ref_bind)? 
+                $var
+                $(: $($bind)?
+                    $(&$ref_bind)?
                     $([$($coords),*])?
                     $(&[$($ref_coords),*])?
                 )?
                 ,
-            )* 
+            )*
             ..
         }| $body)
     }
@@ -364,10 +364,10 @@ macro_rules! mut_state_fn(
     (
         |
             $(
-                $var:ident 
-                $(: 
-                    $($bind:ident)? 
-                    $(&mut $ref_bind:ident)? 
+                $var:ident
+                $(:
+                    $($bind:ident)?
+                    $(&mut $ref_bind:ident)?
                     $([$($coords:ident),*])?
                     $(&mut [$($ref_coords:ident),*])?
                 )?
@@ -376,14 +376,14 @@ macro_rules! mut_state_fn(
     ) => {
         $crate::StateFn::new_mut(|&mut $crate::StateRefMut{
             $(
-                $var 
-                $(: $($bind)? 
-                    $(&mut $ref_bind)? 
+                $var
+                $(: $($bind)?
+                    $(&mut $ref_bind)?
                     $([$($coords),*])?
                     $(&mut [$($ref_coords),*])?
                 )?
                 ,
-            )* 
+            )*
             ..
         }| $body)
     }
@@ -397,7 +397,19 @@ mod test {
     fn macro_state_fn() {
         let rk = crate::rk::euler();
         let state = State::new(0., [1., 2., 3.], &rk);
-        let mut f = state_fn!(|t, x: [x,y,z]| [t, x, y, z]);
+        let mut f = state_fn!(|t, x: &[x, y, z]| [t, x, y, z]);
+        assert_eq!(f.eval_curr(&state), [0., 1., 2., 3.]);
+        let mut f = crate::StateFn::new(
+            |&crate::StateRef {
+                 t, x, ..
+             }| [t, x[0], x[1], x[2]],
+        );
+        assert_eq!(f.eval_curr(&state), [0., 1., 2., 3.]);
+        let mut f = crate::StateFn::new(
+            |&crate::StateRef {
+                 t, x: &x, ..
+             }| [t, x[0], x[1], x[2]],
+        );
         assert_eq!(f.eval_curr(&state), [0., 1., 2., 3.]);
     }
     #[test]
@@ -451,4 +463,3 @@ mod test {
         // panic!("{:?}, {:?}", state.t_curr, state.x_curr)
     }
 }
-
