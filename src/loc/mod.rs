@@ -47,13 +47,13 @@ impl Loc {
     loc_constructor! {zero,         T,    Zero,        Bisection}
     loc_constructor! {above_zero,   T,    AboveZero,   Bisection}
     loc_constructor! {below_zero,   T,    BelowZero,   Bisection}
-    loc_constructor! {positive,     T,    Positive,    Bisection}
-    loc_constructor! {negative,     T,    Negative,    Bisection}
+    loc_constructor! {positive,     T,    Positive,    StepBegin}
+    loc_constructor! {negative,     T,    Negative,    StepBegin}
     loc_constructor! {switch,       bool, Switch,      Bisection}
     loc_constructor! {switch_true,  bool, SwitchTrue,  Bisection}
     loc_constructor! {switch_false, bool, SwitchFalse, Bisection}
-    loc_constructor! {is_true,      bool, IsTrue,      Bisection}
-    loc_constructor! {is_false,     bool, IsFalse,     Bisection}
+    loc_constructor! {is_true,      bool, IsTrue,      StepBegin}
+    loc_constructor! {is_false,     bool, IsFalse,     StepBegin}
 }
 
 impl<F, D, L> Loc<F, D, L> {

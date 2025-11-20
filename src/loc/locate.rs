@@ -13,75 +13,103 @@ pub trait Locate<const N: usize, T> {
     ) -> Option<T>;
 }
 
-// /// Trait for event location methods
-// pub trait Locate<const N: usize> {
-//     /// Locate the event if it is detected on the current step.
-//     ///
-//     /// Returns `None` if event were not detected.
-//     fn locate(&mut self, state: &impl State<N>) -> Option<f64>;
-// }
-
 /// Use the previous step time as the location of event
 pub struct StepBegin;
 /// Use the current step time as the location of event
 pub struct StepEnd;
 /// Use the middle between previous and current step time as the location of event
 pub struct StepMiddle;
-/// Use the linear interpolation as an approximation for the location of event for `f64`-valued
+/// Use the linear interpolation as an approximation for the location of event for float-valued
 /// detection functions (not supported for `bool` detection functions)
 pub struct Lerp;
-
-/// Use bisection method to find the location of event for `f64`-valued detection functions. See also: [BisectionBool].
+/// Use bisection method to find the location of event for float-valued detection functions. See also: [BisectionBool].
 pub struct Bisection;
-/// Use bisection method to find the location of event for `bool`-valued detection functions. See also: [Bisection].
+/// Use bisection method to find the location of event for bool-valued detection functions. See also: [Bisection].
 pub struct BisectionBool;
-/// Use regula falsi method to find the location of event for `f64`-valued detection functions. See also: [Bisection]. Current implementation is not as reliable as [Bisection].
+/// Use regula falsi method to find the location of event for float-valued detection functions. See also: [Bisection]. Current implementation is not as reliable as [Bisection].
 pub struct RegulaFalsi;
 
-// macro_rules! impl_locate(
-//     ($type:ty, $detect:ident, |$curr:ident $(, $prev:ident)?| $body:expr) => {
-//         impl<const N: usize, T: Float, L, F: EvalStateFn<N, T, $type>> Detect<N, T> for Loc<F, $detect, L> {
-//             fn detect<const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
-//                 &mut self,
-//                 state: &State<N, S, S2, T, IC>,
-//             ) -> bool {
-//                 let $curr = self.function.eval_curr(state);
-//                 $(let $prev = self.function.eval_prev(state);)?
-//                 $body
-//             }
-//         }
-//     }
-// );
-impl<const N: usize, T: Float, F, D> Locate<N, T> for Loc<F, D, StepBegin>
-where
-    Self: Detect<N, T>,
-{
-    fn locate<const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
-        &mut self,
-        state: &State<N, S, S2, T, IC>,
-    ) -> Option<T> {
-        self.detect(state).then(|| state.t_prev)
+macro_rules! impl_locate(
+    ($locate:ident, $(Output = $fn_output:ty,)? |$self:ident, $state:ident| $body:expr) => {
+        impl< const N: usize, T: Float, D, F $(: EvalStateFn<N, T, $fn_output>)?> Locate<N, T> for Loc<F, D, $locate> where Self: Detect<N, T>, {
+            fn locate<const S: usize, const S2: usize, IC: InitialCondition<N, T>>(&mut $self, $state: &State<N, S, S2, T, IC>) -> Option<T> {
+                $self.detect($state).then(|| $body)
+            }
+        }
     }
-}
-impl<const N: usize, T: Float, F, D> Locate<N, T> for Loc<F, D, StepEnd>
-where
-    Self: Detect<N, T>,
-{
-    fn locate<const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
-        &mut self,
-        state: &State<N, S, S2, T, IC>,
-    ) -> Option<T> {
-        self.detect(state).then(|| state.t_curr)
+);
+
+impl_locate!(StepBegin, |self, state| { state.t_prev });
+impl_locate!(StepEnd, |self, state| { state.t_curr });
+impl_locate!(StepMiddle, |self, state| {
+    T::from(0.5).unwrap() * (state.t_curr - state.t_prev)
+});
+impl_locate!(Lerp, Output = T, |self, state| {
+    let curr = self.function.eval_curr(state);
+    let prev = self.function.eval_prev(state);
+    (curr * state.t_prev - prev * state.t_curr) / (curr - prev)
+});
+impl_locate!(BisectionBool, Output = bool, |self, state| {
+    let mut l = state.t_prev;
+    let mut r = state.t_curr;
+
+    let mut m = T::from(0.5).unwrap() * (l + r);
+
+    // guarantee f(l) is false and f(r) is true
+    if self.function.eval_prev(state) {
+        std::mem::swap(&mut l, &mut r);
     }
-}
-impl<const N: usize, T: Float, F, D> Locate<N, T> for Loc<F, D, StepMiddle>
-where
-    Self: Detect<N, T>,
-{
-    fn locate<const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
-        &mut self,
-        state: &State<N, S, S2, T, IC>,
-    ) -> Option<T> {
-        self.detect(state).then(|| T::from(0.5).unwrap()*(state.t_curr - state.t_prev))
+
+    while (r - l).abs() > m * T::epsilon() {
+        match self.function.eval_at(state, m) {
+            false => l = m,
+            true => r = m,
+        }
+        m = T::from(0.5).unwrap() * (l + r);
     }
-}
+    T::max(l, r)
+});
+impl_locate!(Bisection, Output = T, |self, state| {
+    let mut l = state.t_prev;
+    let mut r = state.t_curr;
+
+    let mut m = T::from(0.5).unwrap() * (l + r);
+
+    // guarantee f(l) < 0 and f(r) > 0
+    if self.function.eval_curr(state) < T::zero() {
+        std::mem::swap(&mut l, &mut r);
+    }
+
+    while (r - l).abs() > m * T::epsilon() {
+        match self.function.eval_at(state, m) < T::zero() {
+            false => l = m,
+            true => r = m,
+        }
+        m = T::from(0.5).unwrap() * (l + r);
+    }
+    T::max(l, r)
+});
+impl_locate!(RegulaFalsi, Output = T, |self, state| {
+    let mut l = state.t_prev;
+    let mut r = state.t_curr;
+
+    let mut m = T::from(0.5).unwrap() * (l + r);
+
+    // guarantee f(l) < 0 and f(r) > 0
+    if self.function.eval_curr(state) < T::zero() {
+        std::mem::swap(&mut l, &mut r);
+    }
+
+    while (r - l).abs() > m * T::epsilon() {
+        let f_l = self.function.eval_at(state, l);
+        let f_r = self.function.eval_at(state, r);
+        m = (f_r * l - f_l * r) / (f_r - f_l);
+        let f_m = self.function.eval_at(state, m);
+        match f_m < T::zero() {
+            false => l = m,
+            true => r = m,
+        }
+    }
+    T::max(l, r)
+});
+
