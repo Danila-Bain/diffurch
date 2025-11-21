@@ -10,6 +10,7 @@ mod util;
 
 pub use state::{StateFn, StateRef, StateRefMut};
 pub use solver::{Solver};
+pub use loc::{Loc, periodic::Periodic};
 
 // pub mod callback;
 // pub mod filter;
