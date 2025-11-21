@@ -11,6 +11,9 @@ pub struct State<'rk, const N: usize, const S: usize, const S2: usize, T, IC> {
     pub x_curr: [T; N],
     pub x_prev: [T; N],
 
+    pub dx_curr: [T; N],
+    pub dx_prev: [T; N],
+
     pub rk: &'rk crate::rk::ExplicitRungeKuttaTable<S, S2, T>,
     pub k_curr: [[T; N]; S],
 
@@ -19,7 +22,6 @@ pub struct State<'rk, const N: usize, const S: usize, const S2: usize, T, IC> {
     pub k_deque: VecDeque<[[T; N]; S]>,
     pub disco_deque: VecDeque<(T, usize)>,
 }
-
 impl<
     'rk,
     T: num::Float + std::fmt::Debug,
@@ -43,6 +45,8 @@ impl<
             x_init,
             x_curr: x,
             x_prev: x,
+            dx_curr: [T::nan(); N],
+            dx_prev: [T::nan(); N],
             rk,
             k_curr: [[T::zero(); N]; S],
             t_deque: VecDeque::new(),
@@ -52,9 +56,9 @@ impl<
         }
     }
 
-    pub fn eval(&self, t: T) -> [T; N] {
+    pub fn eval<const D: usize>(&self, t: T) -> [T; N] {
         if t <= self.t_init {
-            self.x_init.eval::<0>(t)
+            self.x_init.eval::<D>(t)
         } else if self.t_prev <= t && t <= self.t_curr {
             let x_prev = self.x_prev;
             let k = self.k_curr;
@@ -62,14 +66,34 @@ impl<
             let t_next = self.t_curr;
             let t_step = t_next - t_prev;
             if t_step == T::zero() {
-                return x_prev;
+                match D {
+                    0 => {
+                        return self.x_prev;
+                    }
+                    1 => {
+                        return self.dx_prev;
+                    }
+                    _ => unimplemented!(),
+                }
             }
             let theta = (t - t_prev) / t_step;
-            return std::array::from_fn(|i| {
-                x_prev[i]
-                    + t_step
-                        * (0..S).fold(T::zero(), |acc, j| acc + (self.rk.bi[j].0)(theta) * k[j][i])
-            });
+            match D {
+                0 => {
+                    return std::array::from_fn(|i| {
+                        x_prev[i]
+                            + t_step
+                                * (0..S).fold(T::zero(), |acc, j| {
+                                    acc + (self.rk.bi[j].0)(theta) * k[j][i]
+                                })
+                    });
+                }
+                1 => {
+                    return std::array::from_fn(|i| {
+                        (0..S).fold(T::zero(), |acc, j| acc + (self.rk.bi[j].1)(theta) * k[j][i])
+                    });
+                }
+                _ => unimplemented!(),
+            }
         } else {
             let i = self.t_deque.partition_point(|t_i| t_i <= &t); // first i : t_seq[i] > t
             if i == 0 {
@@ -89,25 +113,44 @@ impl<
             let t_prev = self.t_deque[i - 1];
             let t_next = self.t_deque[i];
             let t_step = t_next - t_prev;
-            if t_step == T::zero() {
-                return *x_prev;
-            }
+            // if t_step == T::zero() {
+            //     return *x_prev;
+            // }
             let theta = (t - t_prev) / t_step;
 
-            return std::array::from_fn(|i| {
-                x_prev[i]
-                    + t_step
-                        * (0..S).fold(T::zero(), |acc, j| acc + (self.rk.bi[j].0)(theta) * k[j][i])
-            });
+            match D {
+                0 => {
+                    return std::array::from_fn(|i| {
+                        x_prev[i]
+                            + t_step
+                                * (0..S).fold(T::zero(), |acc, j| {
+                                    acc + (self.rk.bi[j].0)(theta) * k[j][i]
+                                })
+                    });
+                }
+                1 => {
+                    return std::array::from_fn(|i| {
+                        (0..S).fold(T::zero(), |acc, j| acc + (self.rk.bi[j].0)(theta) * k[j][i])
+                    });
+                }
+                _ => unimplemented!(),
+            }
         }
     }
 
     pub fn make_step(&mut self, rhs: &mut impl EvalStateFn<N, T, [T; N]>, t_step: T) {
+        if self.t_prev != self.t_curr {
+            self.k_curr[0] = self.dx_curr;
+        } else {
+            self.k_curr[0] = rhs.eval_curr(self);
+        }
+
         self.t_prev = self.t_curr;
         self.x_prev = self.x_curr;
+        self.dx_prev = self.dx_curr;
 
         let mut a_i = 0;
-        for i in 0..S {
+        for i in 1..S {
             self.t_curr = self.t_prev + self.rk.c[i] * t_step;
 
             self.x_curr = std::array::from_fn(|k| {
@@ -126,6 +169,7 @@ impl<
                 + t_step * (0..S).fold(T::zero(), |acc, j| acc + self.rk.b[j] * self.k_curr[j][k])
         });
         self.t_curr = self.t_prev + t_step;
+        self.dx_curr = rhs.eval_curr(self);
     }
 
     pub fn commit_step(&mut self) {
@@ -140,22 +184,24 @@ impl<
             self.x_deque.pop_front();
             self.k_deque.pop_front();
         }
-        // while let Some((t, _order)) = self.disco_seq.front()
-        //     && t < &t_tail
-        // {
-        //     self.disco_seq.pop_front();
-        // }
+        while let Some((t, _order)) = self.disco_deque.front()
+            && t < &t_tail
+        {
+            self.disco_deque.pop_front();
+        }
     }
 
     pub fn make_zero_step(&mut self) {
         self.t_prev = self.t_curr;
         self.x_prev = self.x_curr;
         self.k_curr = [[T::zero(); N]; S];
+        self.dx_curr = [T::zero(); N];
     }
 
     pub fn undo_step(&mut self) {
         self.t_curr = self.t_prev;
         self.x_curr = self.x_prev;
+        self.dx_curr = self.dx_prev;
     }
 }
 
@@ -165,6 +211,9 @@ pub struct StateRef<'s, T, const N: usize> {
     /// Position of a state
     pub x: &'s [T; N],
 
+    /// Derivative of a state
+    pub dx: &'s [T; N],
+
     pub h: &'s dyn Fn(T) -> [T; N],
 }
 
@@ -173,6 +222,8 @@ pub struct StateRefMut<'s, T, const N: usize> {
     pub t: &'s mut T,
     /// Reference to position of a state
     pub x: &'s mut [T; N],
+
+    pub dx: &'s [T; N],
 
     pub h: &'s dyn Fn(T) -> [T; N],
 }
@@ -234,7 +285,8 @@ impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: FnMut(&StateRef
         (self.f)(&StateRef {
             t: state.t_curr,
             x: &state.x_curr,
-            h: &|t: T| state.eval(t),
+            dx: &state.dx_curr,
+            h: &|t: T| state.eval::<0>(t),
         })
     }
     fn eval_prev<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
@@ -244,7 +296,8 @@ impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: FnMut(&StateRef
         (self.f)(&StateRef {
             t: state.t_prev,
             x: &state.x_prev,
-            h: &|t: T| state.eval(t),
+            dx: &state.dx_prev,
+            h: &|t: T| state.eval::<0>(t),
         })
     }
     fn eval_at<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
@@ -254,8 +307,9 @@ impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: FnMut(&StateRef
     ) -> Output {
         (self.f)(&StateRef {
             t: t,
-            x: &state.eval(t),
-            h: &|t: T| state.eval(t),
+            x: &state.eval::<0>(t),
+            dx: &state.eval::<1>(t),
+            h: &|t: T| state.eval::<0>(t),
         })
     }
 }
@@ -280,7 +334,8 @@ impl<
         (self.f)(&mut StateRefMut {
             t: &mut state.t_curr,
             x: &mut state.x_curr,
-            h: &|t: T| [t; N],
+            dx: &state.dx_curr,
+            h: &|_: T| [todo!(); N],
         })
     }
 }
@@ -399,17 +454,9 @@ mod test {
         let state = State::new(0., [1., 2., 3.], &rk);
         let mut f = state_fn!(|t, x: &[x, y, z]| [t, x, y, z]);
         assert_eq!(f.eval_curr(&state), [0., 1., 2., 3.]);
-        let mut f = crate::StateFn::new(
-            |&crate::StateRef {
-                 t, x, ..
-             }| [t, x[0], x[1], x[2]],
-        );
+        let mut f = crate::StateFn::new(|&crate::StateRef { t, x, .. }| [t, x[0], x[1], x[2]]);
         assert_eq!(f.eval_curr(&state), [0., 1., 2., 3.]);
-        let mut f = crate::StateFn::new(
-            |&crate::StateRef {
-                 t, x: &x, ..
-             }| [t, x[0], x[1], x[2]],
-        );
+        let mut f = crate::StateFn::new(|&crate::StateRef { t, x: &x, .. }| [t, x[0], x[1], x[2]]);
         assert_eq!(f.eval_curr(&state), [0., 1., 2., 3.]);
     }
     #[test]
