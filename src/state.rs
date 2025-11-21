@@ -339,8 +339,8 @@ macro_rules! state_fn(
                 $(:
                     $($bind:ident)?
                     $(&$ref_bind:ident)?
-                    $([$($coords:ident),*])?
-                    $(&[$($ref_coords:ident),*])?
+                    $([$($coords:pat),*])?
+                    $(&[$($ref_coords:pat),*])?
                 )?
             ),*
         | $body:expr
@@ -367,9 +367,9 @@ macro_rules! mut_state_fn(
                 $var:ident
                 $(:
                     $($bind:ident)?
-                    $(&mut $ref_bind:ident)?
-                    $([$($coords:ident),*])?
-                    $(&mut [$($ref_coords:ident),*])?
+                    $(&mut$ref_bind:ident)?
+                    $([$($coords:pat),*])?
+                    $(&mut[$($ref_coords:pat),*])?
                 )?
             ),*
         | $body:expr
