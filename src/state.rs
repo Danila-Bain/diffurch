@@ -225,7 +225,7 @@ pub struct StateRefMut<'s, T, const N: usize> {
 
     pub dx: &'s [T; N],
 
-    pub h: &'s dyn Fn(T) -> [T; N],
+    // pub h: &'s dyn Fn(T) -> [T; N],
 }
 
 #[allow(unused)]
@@ -335,7 +335,7 @@ impl<
             t: &mut state.t_curr,
             x: &mut state.x_curr,
             dx: &state.dx_curr,
-            h: &|_: T| [todo!(); N],
+            // h: &|_: T| [todo!(); N],
         })
     }
 }
