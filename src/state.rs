@@ -1,13 +1,26 @@
 use crate::initial_condition::InitialCondition;
 use std::collections::VecDeque;
 
-pub struct State<'rk, const N: usize, const S: usize, const S2: usize, T, IC> {
-    pub t_init: T,
-    pub t_curr: T,
-    pub t_prev: T,
+pub struct StateHistory<'rk, const N: usize, const S: usize, const S2: usize, T, IC> {
     pub t_span: T,
 
+    pub t_init: T,
     pub x_init: IC,
+
+    pub t_deque: VecDeque<T>,
+    pub x_deque: VecDeque<[T; N]>,
+    pub k_deque: VecDeque<[[T; N]; S]>,
+    pub disco_deque: VecDeque<(T, usize)>,
+
+    pub rk: &'rk crate::rk::ExplicitRungeKuttaTable<S, S2, T>,
+}
+
+pub struct State<'rk, const N: usize, const S: usize, const S2: usize, T, IC> {
+    pub history: StateHistory<'rk, N, S, S2, T, IC>,
+
+    pub t_curr: T,
+    pub t_prev: T,
+
     pub x_curr: [T; N],
     pub x_prev: [T; N],
 
@@ -16,12 +29,8 @@ pub struct State<'rk, const N: usize, const S: usize, const S2: usize, T, IC> {
 
     pub rk: &'rk crate::rk::ExplicitRungeKuttaTable<S, S2, T>,
     pub k_curr: [[T; N]; S],
-
-    pub t_deque: VecDeque<T>,
-    pub x_deque: VecDeque<[T; N]>,
-    pub k_deque: VecDeque<[[T; N]; S]>,
-    pub disco_deque: VecDeque<(T, usize)>,
 }
+
 impl<
     'rk,
     T: num::Float + std::fmt::Debug,
@@ -38,104 +47,29 @@ impl<
     ) -> Self {
         let x = x_init.eval::<0>(t_init);
         Self {
-            t_init,
             t_curr: t_init,
             t_prev: t_init,
-            t_span: T::zero(),
-            x_init,
             x_curr: x,
             x_prev: x,
             dx_curr: [T::nan(); N],
             dx_prev: [T::nan(); N],
             rk,
             k_curr: [[T::zero(); N]; S],
-            t_deque: VecDeque::new(),
-            x_deque: VecDeque::new(),
-            k_deque: VecDeque::new(),
-            disco_deque: VecDeque::new(),
+            history: StateHistory {
+                rk,
+                t_init,
+                t_span: T::zero(),
+                x_init,
+                t_deque: VecDeque::new(),
+                x_deque: VecDeque::new(),
+                k_deque: VecDeque::new(),
+                disco_deque: VecDeque::new(),
+            },
         }
     }
 
     pub fn eval<const D: usize>(&self, t: T) -> [T; N] {
-        if t <= self.t_init {
-            self.x_init.eval::<D>(t)
-        } else if self.t_prev <= t && t <= self.t_curr {
-            let x_prev = self.x_prev;
-            let k = self.k_curr;
-            let t_prev = self.t_prev;
-            let t_next = self.t_curr;
-            let t_step = t_next - t_prev;
-            if t_step == T::zero() {
-                match D {
-                    0 => {
-                        return self.x_prev;
-                    }
-                    1 => {
-                        return self.dx_prev;
-                    }
-                    _ => unimplemented!(),
-                }
-            }
-            let theta = (t - t_prev) / t_step;
-            match D {
-                0 => {
-                    return std::array::from_fn(|i| {
-                        x_prev[i]
-                            + t_step
-                                * (0..S).fold(T::zero(), |acc, j| {
-                                    acc + (self.rk.bi[j].0)(theta) * k[j][i]
-                                })
-                    });
-                }
-                1 => {
-                    return std::array::from_fn(|i| {
-                        (0..S).fold(T::zero(), |acc, j| acc + (self.rk.bi[j].1)(theta) * k[j][i])
-                    });
-                }
-                _ => unimplemented!(),
-            }
-        } else {
-            let i = self.t_deque.partition_point(|t_i| t_i <= &t); // first i : t_seq[i] > t
-            if i == 0 {
-                panic!(
-                    "Evaluation of state at {t:?} in deleted time range (before {:?}). Try setting .max_delay({:?}) or larger.",
-                    self.t_deque.front(),
-                    self.t_curr - t
-                );
-            } else if i == self.t_deque.len() {
-                panic!(
-                    "Evaluation of state in a not yet computed time range at {t:?} while state.t is {:?}.",
-                    self.t_curr
-                );
-            }
-            let x_prev = &self.x_deque[i - 1];
-            let k = &self.k_deque[i - 1];
-            let t_prev = self.t_deque[i - 1];
-            let t_next = self.t_deque[i];
-            let t_step = t_next - t_prev;
-            // if t_step == T::zero() {
-            //     return *x_prev;
-            // }
-            let theta = (t - t_prev) / t_step;
-
-            match D {
-                0 => {
-                    return std::array::from_fn(|i| {
-                        x_prev[i]
-                            + t_step
-                                * (0..S).fold(T::zero(), |acc, j| {
-                                    acc + (self.rk.bi[j].0)(theta) * k[j][i]
-                                })
-                    });
-                }
-                1 => {
-                    return std::array::from_fn(|i| {
-                        (0..S).fold(T::zero(), |acc, j| acc + (self.rk.bi[j].0)(theta) * k[j][i])
-                    });
-                }
-                _ => unimplemented!(),
-            }
-        }
+        self.history.eval::<D>(t)
     }
 
     pub fn make_step(&mut self, rhs: &mut impl EvalStateFn<N, T, [T; N]>, t_step: T) {
@@ -173,21 +107,21 @@ impl<
     }
 
     pub fn commit_step(&mut self) {
-        self.t_deque.push_back(self.t_curr);
-        self.x_deque.push_back(self.x_curr);
-        self.k_deque.push_back(self.k_curr);
-        let t_tail = self.t_prev - self.t_span;
-        while let Some(second_t) = self.t_deque.get(1)
+        self.history.t_deque.push_back(self.t_curr);
+        self.history.x_deque.push_back(self.x_curr);
+        self.history.k_deque.push_back(self.k_curr);
+        let t_tail = self.t_prev - self.history.t_span;
+        while let Some(second_t) = self.history.t_deque.get(1)
             && *second_t < t_tail
         {
-            self.t_deque.pop_front();
-            self.x_deque.pop_front();
-            self.k_deque.pop_front();
+            self.history.t_deque.pop_front();
+            self.history.x_deque.pop_front();
+            self.history.k_deque.pop_front();
         }
-        while let Some((t, _order)) = self.disco_deque.front()
+        while let Some((t, _order)) = self.history.disco_deque.front()
             && t < &t_tail
         {
-            self.disco_deque.pop_front();
+            self.history.disco_deque.pop_front();
         }
     }
 
@@ -202,6 +136,66 @@ impl<
         self.t_curr = self.t_prev;
         self.x_curr = self.x_prev;
         self.dx_curr = self.dx_prev;
+    }
+}
+
+impl<
+    'rk,
+    T: num::Float + std::fmt::Debug,
+    const N: usize,
+    const S: usize,
+    const S2: usize,
+    IC: InitialCondition<N, T>,
+> StateHistory<'rk, N, S, S2, T, IC>
+{
+    fn dense_output_formula<const D: usize>(
+        &self,
+        x_prev: &[T; N],
+        t_step: T,
+        theta: T,
+        k: &[[T; N]; S],
+    ) -> [T; N] {
+        match D {
+            0 => {
+                return std::array::from_fn(|i| {
+                    x_prev[i]
+                        + t_step
+                            * (0..S)
+                                .fold(T::zero(), |acc, j| acc + (self.rk.bi[j].0)(theta) * k[j][i])
+                });
+            }
+            1 => {
+                return std::array::from_fn(|i| {
+                    (0..S).fold(T::zero(), |acc, j| acc + (self.rk.bi[j].1)(theta) * k[j][i])
+                });
+            }
+            _ => unimplemented!(),
+        }
+    }
+    pub fn eval<const D: usize>(&self, t: T) -> [T; N] {
+        if t <= self.t_init {
+            self.x_init.eval::<D>(t)
+        } else {
+            let i = self.t_deque.partition_point(|t_i| t_i <= &t); // first i : t_seq[i] > t
+            if i == 0 {
+                panic!(
+                    "Evaluation of state at {t:?} in deleted time range (before {:?})",
+                    self.t_deque.front(),
+                );
+            } else if i == self.t_deque.len() {
+                panic!(
+                    "Evaluation of state in a not yet computed time range at {t:?} while most recent time in history is {:?}.",
+                    self.t_deque.front()
+                );
+            }
+            let x_prev = &self.x_deque[i - 1];
+            let k = &self.k_deque[i - 1];
+            let t_prev = self.t_deque[i - 1];
+            let t_next = self.t_deque[i];
+            let t_step = t_next - t_prev;
+            let theta = (t - t_prev) / t_step;
+            return self.dense_output_formula::<D>(&x_prev, t_step, theta, &k);
+        }
     }
 }
 
@@ -225,7 +219,7 @@ pub struct StateRefMut<'s, T, const N: usize> {
 
     pub dx: &'s [T; N],
 
-    // pub h: &'s dyn Fn(T) -> [T; N],
+    pub h: &'s dyn Fn(T) -> [T; N],
 }
 
 #[allow(unused)]
@@ -286,7 +280,7 @@ impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: FnMut(&StateRef
             t: state.t_curr,
             x: &state.x_curr,
             dx: &state.dx_curr,
-            h: &|t: T| state.eval::<0>(t),
+            h: &|t: T| state.history.eval::<0>(t),
         })
     }
     fn eval_prev<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
@@ -307,9 +301,9 @@ impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: FnMut(&StateRef
     ) -> Output {
         (self.f)(&StateRef {
             t: t,
-            x: &state.eval::<0>(t),
-            dx: &state.eval::<1>(t),
-            h: &|t: T| state.eval::<0>(t),
+            x: &state.history.eval::<0>(t),
+            dx: &state.history.eval::<1>(t),
+            h: &|t: T| state.history.eval::<0>(t),
         })
     }
 }
@@ -335,7 +329,7 @@ impl<
             t: &mut state.t_curr,
             x: &mut state.x_curr,
             dx: &state.dx_curr,
-            // h: &|_: T| [todo!(); N],
+            h: &|t: T| state.history.eval::<0>(t),
         })
     }
 }

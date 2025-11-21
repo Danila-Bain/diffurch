@@ -44,16 +44,16 @@ impl<const N: usize, T: Float, Delayed: EvalStateFn<N, T, T>, L> Detect<N, T>
 
         // detect if any element in state.disco_seq lies between prev and curr
         let partition_prev =
-            partition_point_linear(&state.disco_deque, propagator.t_index, |&(t, _order)| {
+            partition_point_linear(&state.history.disco_deque, propagator.t_index, |&(t, _order)| {
                 t <= prev
             });
         let partition_curr =
-            partition_point_linear(&state.disco_deque, partition_prev, |&(t, _order)| t <= curr);
+            partition_point_linear(&state.history.disco_deque, partition_prev, |&(t, _order)| t <= curr);
 
         if partition_prev != partition_curr {
             propagator.t_index = partition_prev.min(partition_curr);
             let (t_disco, t_order) = 
-                *state.disco_deque.get(propagator.t_index).unwrap();
+                *state.history.disco_deque.get(propagator.t_index).unwrap();
             propagator.t_disco = t_disco;
             propagator.t_order = t_order + propagator.smoothing_order;
             return true;
