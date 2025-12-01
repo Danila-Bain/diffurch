@@ -255,3 +255,80 @@ fn linear_const_3_complex() {
         }
     }
 }
+
+#[test]
+fn lorenz_lyapunov_exponents() {
+    use nalgebra::*;
+
+    let sigma = 10.;
+    let rho = 28.;
+    let beta = 8. / 3.;
+
+    let reference_lambdas = vector![0.90566, 0.00000, -14.57233];
+
+    for tmax in [100., 1000., 10_000., 100_000.] {
+        let mut lambdas = vector![0., 0., 0.];
+
+        Solver::new()
+            .stepsize(0.005)
+            .initial([
+                10., 15., 20., //
+                1., 0., 0., //
+                0., 1., 0., //
+                0., 0., 1., //
+            ])
+            .interval(0. ..tmax)
+            .equation(StateFn::new(|&StateRef::<f64, 12> { x, .. }| {
+                let [x, y, z, delta_x @ ..] = x;
+                let mut out = [0.; 12];
+
+                // Lorenz system right hand side
+                out[0..3].copy_from_slice(&[
+                    sigma * (y - x),   //
+                    x * (rho - z) - y, //
+                    x * y - beta * z,  //
+                ]);
+
+                // Matrix in variational equation
+                let df = matrix![
+                    -sigma, sigma, 0.;
+                    rho - z, -1., -x;
+                    *y, *x, -beta;
+                ];
+
+                let delta_x = Matrix3::from_column_slice(delta_x);
+                out[3..12].copy_from_slice((df * delta_x).as_slice());
+
+                return out;
+            }))
+            .on((
+                Periodic {
+                    period: 0.5,
+                    offset: 0.,
+                },
+                StateFn::new_mut(
+                    |&mut StateRefMut::<f64, 12> {
+                         x: [_, _, _, delta_x @ ..],
+                         ..
+                     }| {
+                        let (q, r) = Matrix3::from_column_slice(delta_x).qr().unpack();
+                        delta_x.copy_from_slice(q.as_slice());
+                        lambdas += r.diagonal().map(|r| r.abs().ln());
+                    },
+                ),
+            ))
+            .run();
+
+        lambdas /= tmax;
+
+        let error = (lambdas - reference_lambdas).amax();
+        dbg!(
+            tmax,
+            lambdas,
+            reference_lambdas,
+            lambdas - reference_lambdas,
+            error
+        );
+        assert!(error < 0.00007 + 50. / tmax);
+    }
+}
