@@ -11,22 +11,28 @@ pub struct Periodic<T> {
     pub offset: T,
 }
 
-impl<const N: usize, T: Float> Detect<N, T> for Periodic<T> {
+impl<const N: usize, T: Float + std::fmt::Debug> Detect<N, T> for Periodic<T> {
     fn detect<const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
         &mut self,
         state: &State<N, S, S2, T, IC>,
     ) -> bool {
-        ((state.t_prev - self.offset) / (self.period)).floor()
-            < ((state.t_curr - self.offset) / (self.period)).floor()
+        let prev = ((state.t_prev - self.offset) / (self.period)).floor();
+        let curr = ((state.t_curr - self.offset) / (self.period)).floor();
+        // dbg!(prev, state.t_prev/self.period, curr, state.t_curr/self.period);
+        return prev < curr;
     }
 }
-impl<const N: usize, T: Float> Locate<N, T> for Periodic<T> {
+impl<const N: usize, T: Float + std::fmt::Debug> Locate<N, T> for Periodic<T> {
     fn locate<const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
         &mut self,
         state: &State<N, S, S2, T, IC>,
     ) -> Option<T> {
-        self.detect(state).then(|| {
-            ((state.t_prev - self.offset) / self.period).ceil() * self.period + self.offset
-        })
+        if self.detect(state) {
+            let r =
+                ((state.t_curr - self.offset) / self.period).floor() * self.period + self.offset;
+            (r > state.t_prev).then_some(r)
+        } else {
+            None
+        }
     }
 }

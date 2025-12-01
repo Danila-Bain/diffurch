@@ -16,7 +16,7 @@ fn constant() {
         .interval(0. ..10.)
         .stepsize(0.25)
         .rk(rk::euler())
-        .on_step(StateFn::new(|&S { t, x, .. }| {
+        .on_step(StateFn::new(|&S { t, x: &x, .. }| {
             assert_eq!(x, solution(t))
         }))
         .run();
@@ -35,7 +35,7 @@ fn time() {
         .interval(0. ..10.)
         .rk(rk::midpoint())
         .stepsize(0.5)
-        .on_step(StateFn::new(|&S { t, x, .. }| {
+        .on_step(StateFn::new(|&S { t, x: &x, .. }| {
             tt.push(t);
             xx.push(x)
         }))
@@ -67,7 +67,7 @@ fn ode_harmonic() {
     let solution = |t: f64| t.sin();
 
     Solver::new()
-        .equation(StateFn::new(|&S { x: [x, dx], .. }| [dx, -1. * x]))
+        .equation(StateFn::new(|&S { x: &[x, dx], .. }| [dx, -1. * x]))
         .interval(0. ..10.)
         .initial([0., 1.])
         .rk(rk::rktp64())

@@ -363,6 +363,79 @@ hlist2_trait_macro::TraitHList! {
     }
 }
 
+pub trait IntoStateFn<const N: usize, T, Output>: Sized {
+    type Output: EvalStateFn<N, T, Output>;
+    fn into(self) -> Self::Output;
+}
+pub trait IntoMutStateFn<const N: usize, T, Output>: Sized {
+    type Output: EvalMutStateFn<N, T, Output>;
+    fn into(self) -> Self::Output;
+}
+
+// pub trait IntoStateFn<const N: usize, T, Output>: Sized {
+//     fn into(self) -> StateFn<N, T, Output, Self, false>;
+// }
+// pub trait IntoMutStateFn<const N: usize, T, Output>: Sized {
+//     fn into(self) -> StateFn<N, T, Output, Self, true>;
+// }
+
+impl<const N: usize, T: num::Float + std::fmt::Debug, Output, F: FnMut(&StateRef<T, N>) -> Output>
+    IntoStateFn<N, T, Output> for F
+{
+    type Output = StateFn<N, T, Output, Self, false>;
+    fn into(self) -> Self::Output {
+        StateFn::new(self)
+    }
+}
+impl<const N: usize, T: num::Float + std::fmt::Debug, Output, F: FnMut(&mut StateRefMut<T, N>) -> Output>
+    IntoMutStateFn<N, T, Output> for F
+{
+    type Output = StateFn<N, T, Output, Self, true> ;
+    fn into(self) -> Self::Output {
+        StateFn::new_mut(self)
+    }
+}
+
+impl<const N: usize, T: num::Float + std::fmt::Debug, Output, F: FnMut(&StateRef<T, N>) -> Output>
+    IntoStateFn<N, T, Output> for StateFn<N, T, Output, F, false>
+{
+    type Output = StateFn<N, T, Output, F, false>;
+    fn into(self) -> Self::Output {
+        self
+    }
+}
+impl<const N: usize, T: num::Float + std::fmt::Debug, Output, F: FnMut(&mut StateRefMut<T, N>) -> Output>
+    IntoMutStateFn<N, T, Output> for StateFn<N, T, Output, F, true>
+{
+    type Output = StateFn<N, T, Output, F, true>;
+    fn into(self) -> Self::Output {
+        self
+    }
+}
+
+
+// impl<T, const N: usize, Output, F: FnMut(&StateRef<T, N>) -> Output>
+//     StateFn<N, T, Output, F, false>
+// {
+//     pub fn new(f: F) -> Self {
+//         Self {
+//             f,
+//             _phantom_f: std::marker::PhantomData,
+//         }
+//     }
+// }
+//
+// impl<T, const N: usize, Output, F: FnMut(&mut StateRefMut<T, N>) -> Output>
+//     StateFn<N, T, Output, F, true>
+// {
+//     pub fn new_mut(f: F) -> Self {
+//         Self {
+//             f,
+//             _phantom_f: std::marker::PhantomData,
+//         }
+//     }
+// }
+
 // impl<T: num::Float + std::fmt::Debug,
 //     const N: usize,
 //     F: Fn(&StateRef<T, N>) -> (),

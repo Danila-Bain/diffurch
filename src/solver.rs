@@ -3,7 +3,7 @@ use hlist2::{HList, Nil};
 use num::Float;
 use replace::replace_ident;
 
-use crate::rk::ExplicitRungeKuttaTable;
+use crate::{loc::loc_callback::LocCallback, rk::ExplicitRungeKuttaTable};
 
 macro_rules! SolverType {
     () => {Solver<N, S, S2, T, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc> };
@@ -110,8 +110,11 @@ impl<
         Self { max_delay, ..self }
     }
 
-    pub fn equation<E>(self, new_equation: E) -> SolverType!(Equation => E) {
-        solver_set!(self, equation: new_equation)
+    pub fn equation<E>(self, new_equation: E) -> SolverType!(Equation => E::Output)
+    where
+        E: crate::state::IntoStateFn<N, T, [T; N]>,
+    {
+        solver_set!(self, equation: new_equation.into())
     }
 
     pub fn initial<I>(self, new_initial: I) -> SolverType!(Initial => I) {
@@ -144,11 +147,11 @@ impl<
         solver_set!(self, events_on_start: events_on_start.append(callback))
     }
 
-    pub fn on<L, C, V: Into<crate::loc::loc_callback::LocCallback<L, C>>>(
+    pub fn on<L, C, V: Into<LocCallback<L, C>>>(
         self,
         loc_callback: V,
-    ) -> SolverType!(EventsOnLoc => EventsOnLoc::Output::<V>) {
-        solver_set!(self, events_on_loc: events_on_loc.append(loc_callback))
+    ) -> SolverType!(EventsOnLoc => EventsOnLoc::Output::<LocCallback<L, C>>) {
+        solver_set!(self, events_on_loc: events_on_loc.append(loc_callback.into()))
     }
 
     #[allow(unused)]
@@ -180,7 +183,10 @@ impl<
             if let Some((index, time)) = self.events_on_loc.locate_earliest(&state) {
                 state.undo_step();
                 state.make_step(&mut rhs, time - state.t_curr);
+                state.commit_step();
+                state.make_zero_step();
                 self.events_on_loc.eval_mut_at_index(&mut state, index);
+                state.commit_step();
             } else {
                 state.commit_step();
                 self.events_on_step.eval_mut(&mut state);
