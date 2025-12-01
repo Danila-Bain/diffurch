@@ -11,6 +11,19 @@ pub struct Periodic<T> {
     pub offset: T,
 }
 
+impl<T: Float> Periodic<T> {
+    pub fn new(period: T) -> Self {
+        Periodic {
+            period,
+            offset: T::zero(),
+        }
+    }
+
+    pub fn with_offset(self, offset: T) -> Self {
+        Self { offset, ..self }
+    }
+}
+
 impl<const N: usize, T: Float + std::fmt::Debug> Detect<N, T> for Periodic<T> {
     fn detect<const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
         &mut self,
