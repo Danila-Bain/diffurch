@@ -24,7 +24,7 @@ impl<T: Float> Periodic<T> {
     }
 }
 
-impl<const N: usize, T: Float + std::fmt::Debug> Detect<N, T> for Periodic<T> {
+impl<const N: usize, T: Float> Detect<N, T> for Periodic<T> {
     fn detect<const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
         &mut self,
         state: &State<N, S, S2, T, IC>,
@@ -35,7 +35,7 @@ impl<const N: usize, T: Float + std::fmt::Debug> Detect<N, T> for Periodic<T> {
         return prev < curr;
     }
 }
-impl<const N: usize, T: Float + std::fmt::Debug> Locate<N, T> for Periodic<T> {
+impl<const N: usize, T: Float> Locate<N, T> for Periodic<T> {
     fn locate<const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
         &mut self,
         state: &State<N, S, S2, T, IC>,

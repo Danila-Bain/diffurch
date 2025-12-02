@@ -36,7 +36,7 @@ macro_rules! loc_constructor {
             f: F,
         ) -> Loc<impl EvalStateFn<N, T, $type>, detect::$detection, locate::$location>
         where
-            T: Float + std::fmt::Debug,
+            T: Float,
         {
             Loc {
                 function: StateFn::<N, T, $type, F, false>::new(f),

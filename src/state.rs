@@ -33,7 +33,7 @@ pub struct State<'rk, const N: usize, const S: usize, const S2: usize, T, IC> {
 
 impl<
     'rk,
-    T: num::Float + std::fmt::Debug,
+    T: num::Float,
     const N: usize,
     const S: usize,
     const S2: usize,
@@ -141,7 +141,7 @@ impl<
 
 impl<
     'rk,
-    T: num::Float + std::fmt::Debug,
+    T: num::Float,
     const N: usize,
     const S: usize,
     const S2: usize,
@@ -179,13 +179,15 @@ impl<
             let i = self.t_deque.partition_point(|t_i| t_i <= &t); // first i : t_seq[i] > t
             if i == 0 {
                 panic!(
-                    "Evaluation of state at {t:?} in deleted time range (before {:?})",
-                    self.t_deque.front(),
+                    "Evaluation of state at {:?} in deleted time range (before {:?})",
+                    maybe_debug::maybe_debug(&t),
+                    self.t_deque.front().map(maybe_debug::maybe_debug),
                 );
             } else if i == self.t_deque.len() {
                 panic!(
-                    "Evaluation of state in a not yet computed time range at {t:?} while most recent time in history is {:?}.",
-                    self.t_deque.front()
+                    "Evaluation of state in a not yet computed time range at {:?} while most recent time in history is {:?}.",
+                    maybe_debug::maybe_debug(&t),
+                    self.t_deque.front().map(maybe_debug::maybe_debug)
                 );
             }
             let x_prev = &self.x_deque[i - 1];
@@ -269,7 +271,7 @@ pub trait EvalStateFn<const N: usize, T, Output> {
     ) -> Output;
 }
 
-impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: FnMut(&StateRef<T, N>) -> Output>
+impl<T: num::Float, const N: usize, Output, F: FnMut(&StateRef<T, N>) -> Output>
     EvalStateFn<N, T, Output> for StateFn<N, T, Output, F, false>
 {
     fn eval_curr<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
@@ -315,7 +317,7 @@ pub trait EvalMutStateFn<const N: usize, T, Output> {
 }
 
 impl<
-    T: num::Float + std::fmt::Debug,
+    T: num::Float,
     const N: usize,
     Output,
     F: FnMut(&mut StateRefMut<T, N>) -> Output,
@@ -334,7 +336,7 @@ impl<
     }
 }
 
-impl<T: num::Float + std::fmt::Debug, const N: usize, Output, F: FnMut(&StateRef<T, N>) -> Output>
+impl<T: num::Float, const N: usize, Output, F: FnMut(&StateRef<T, N>) -> Output>
     EvalMutStateFn<N, T, Output> for StateFn<N, T, Output, F, false>
 {
     fn eval_mut<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
@@ -379,7 +381,7 @@ pub trait IntoMutStateFn<const N: usize, T, Output>: Sized {
 //     fn into(self) -> StateFn<N, T, Output, Self, true>;
 // }
 
-impl<const N: usize, T: num::Float + std::fmt::Debug, Output, F: FnMut(&StateRef<T, N>) -> Output>
+impl<const N: usize, T: num::Float, Output, F: FnMut(&StateRef<T, N>) -> Output>
     IntoStateFn<N, T, Output> for F
 {
     type Output = StateFn<N, T, Output, Self, false>;
@@ -387,16 +389,20 @@ impl<const N: usize, T: num::Float + std::fmt::Debug, Output, F: FnMut(&StateRef
         StateFn::new(self)
     }
 }
-impl<const N: usize, T: num::Float + std::fmt::Debug, Output, F: FnMut(&mut StateRefMut<T, N>) -> Output>
-    IntoMutStateFn<N, T, Output> for F
+impl<
+    const N: usize,
+    T: num::Float, 
+    Output,
+    F: FnMut(&mut StateRefMut<T, N>) -> Output,
+> IntoMutStateFn<N, T, Output> for F
 {
-    type Output = StateFn<N, T, Output, Self, true> ;
+    type Output = StateFn<N, T, Output, Self, true>;
     fn into(self) -> Self::Output {
         StateFn::new_mut(self)
     }
 }
 
-impl<const N: usize, T: num::Float + std::fmt::Debug, Output, F: FnMut(&StateRef<T, N>) -> Output>
+impl<const N: usize, T: num::Float, Output, F: FnMut(&StateRef<T, N>) -> Output>
     IntoStateFn<N, T, Output> for StateFn<N, T, Output, F, false>
 {
     type Output = StateFn<N, T, Output, F, false>;
@@ -404,15 +410,18 @@ impl<const N: usize, T: num::Float + std::fmt::Debug, Output, F: FnMut(&StateRef
         self
     }
 }
-impl<const N: usize, T: num::Float + std::fmt::Debug, Output, F: FnMut(&mut StateRefMut<T, N>) -> Output>
-    IntoMutStateFn<N, T, Output> for StateFn<N, T, Output, F, true>
+impl<
+    const N: usize,
+    T: num::Float,
+    Output,
+    F: FnMut(&mut StateRefMut<T, N>) -> Output,
+> IntoMutStateFn<N, T, Output> for StateFn<N, T, Output, F, true>
 {
     type Output = StateFn<N, T, Output, F, true>;
     fn into(self) -> Self::Output {
         self
     }
 }
-
 
 // impl<T, const N: usize, Output, F: FnMut(&StateRef<T, N>) -> Output>
 //     StateFn<N, T, Output, F, false>
@@ -436,7 +445,7 @@ impl<const N: usize, T: num::Float + std::fmt::Debug, Output, F: FnMut(&mut Stat
 //     }
 // }
 
-// impl<T: num::Float + std::fmt::Debug,
+// impl<T: num::Float,
 //     const N: usize,
 //     F: Fn(&StateRef<T, N>) -> (),
 //     Filter,
@@ -573,7 +582,5 @@ mod test {
         event.eval_mut(&mut state);
         assert_eq!(state.t_curr, 5.);
         assert_eq!(state.x_curr[0], 15.);
-
-        // panic!("{:?}, {:?}", state.t_curr, state.x_curr)
     }
 }

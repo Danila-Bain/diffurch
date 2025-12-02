@@ -82,7 +82,7 @@ impl<
     const N: usize,
     const S: usize,
     const S2: usize,
-    T: Float + std::fmt::Debug,
+    T: Float,
     Equation,
     Initial,
     Interval,

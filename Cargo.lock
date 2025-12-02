@@ -87,6 +87,7 @@ version = "0.0.3"
 dependencies = [
  "hlist2",
  "hlist2_trait_macro",
+ "maybe-debug",
  "nalgebra",
  "ndarray",
  "num",
@@ -306,6 +307,15 @@ checksum = "a06de3016e9fae57a36fd14dba131fccf49f74b40b7fbdb472f96e361ec71a08"
 dependencies = [
  "autocfg",
  "rawpointer",
+]
+
+[[package]]
+name = "maybe-debug"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44d913d512a2991799e57cc003648fb9b64cbdad81b646fbcb19dbbab853222e"
+dependencies = [
+ "rustversion",
 ]
 
 [[package]]
@@ -619,6 +629,12 @@ dependencies = [
  "linux-raw-sys",
  "windows-sys",
 ]
+
+[[package]]
+name = "rustversion"
+version = "1.0.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
 
 [[package]]
 name = "ryu"

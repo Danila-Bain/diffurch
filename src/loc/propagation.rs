@@ -89,5 +89,3 @@ Propagator<N, T, Delayed> {
         self.delayed.eval_at(state, t) - self.t_disco
     }
 }
-
-
