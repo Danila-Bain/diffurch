@@ -264,6 +264,7 @@ fn lorenz_lyapunov_exponents() {
     let rho = 28.;
     let beta = 8. / 3.;
 
+    // ecommons.cornell.edu/server/api/core/bitstreams/c0790d83-7dd3-44e9-964a-cb878542708d/content
     let reference_lambdas = vector![0.90566, 0.00000, -14.57233];
 
     for tmax in [100., 1000., 10_000., 100_000.] {
@@ -329,6 +330,7 @@ fn lorenz_lyapunov_exponents() {
             lambdas - reference_lambdas,
             error
         );
+        // 0.00007 is expected error of reference values
         assert!(error < 0.00007 + 50. / tmax);
     }
 }
