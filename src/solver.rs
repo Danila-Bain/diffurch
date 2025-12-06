@@ -110,10 +110,11 @@ impl<
         Self { max_delay, ..self }
     }
 
+    #[allow(unused_parens)]
     pub fn equation<F: FnMut(&crate::StateRef<T, N>) -> [T; N]>(
         self,
         new_equation: crate::state::StateFn<N, T, [T; N], F>,
-    ) -> SolverType!(Equation => crate::state::StateFn<N, T, [T; N], F>) {
+    ) -> SolverType!(Equation => (crate::state::StateFn<N, T, [T; N], F>)) {
         solver_set!(self, equation: new_equation)
     }
 
@@ -147,10 +148,11 @@ impl<
         solver_set!(self, events_on_start: events_on_start.append(callback))
     }
 
+    #[allow(unused_parens)]
     pub fn on<L, C, V: Into<LocCallback<L, C>>>(
         self,
         loc_callback: V,
-    ) -> SolverType!(EventsOnLoc => EventsOnLoc::Output::<LocCallback<L, C>>) {
+    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<L, C>>)) {
         solver_set!(self, events_on_loc: events_on_loc.append(loc_callback.into()))
     }
 
@@ -170,7 +172,7 @@ impl<
         let t_end = self.interval.end_bound();
 
         let mut rhs = self.equation;
-        let mut state = crate::state::State::new(t_init, self.initial, &self.rk);
+        let mut state = crate::state::State::new(t_init, self.max_delay, self.initial, &self.rk);
 
         let mut stepsize = self.stepsize;
 

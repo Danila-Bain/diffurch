@@ -42,6 +42,7 @@ impl<
 {
     pub fn new(
         t_init: T,
+        t_span: T,
         x_init: IC,
         rk: &'rk crate::rk::ExplicitRungeKuttaTable<S, S2, T>,
     ) -> Self {
@@ -58,7 +59,7 @@ impl<
             history: StateHistory {
                 rk,
                 t_init,
-                t_span: T::zero(),
+                t_span,
                 x_init,
                 t_deque: VecDeque::new(),
                 x_deque: VecDeque::new(),
@@ -187,7 +188,7 @@ impl<
                 panic!(
                     "Evaluation of state in a not yet computed time range at {:?} while most recent time in history is {:?}.",
                     maybe_debug::maybe_debug(&t),
-                    self.t_deque.front().map(maybe_debug::maybe_debug)
+                    self.t_deque.back().map(maybe_debug::maybe_debug)
                 );
             }
             let x_prev = &self.x_deque[i - 1];
@@ -527,7 +528,7 @@ mod test {
     #[test]
     fn macro_state_fn() {
         let rk = crate::rk::euler();
-        let state = State::new(0., [1., 2., 3.], &rk);
+        let state = State::new(0., 0., [1., 2., 3.], &rk);
         let mut f = state_fn!(|t, x: &[x, y, z]| [t, x, y, z]);
         assert_eq!(f.eval_curr(&state), [0., 1., 2., 3.]);
         let mut f = crate::StateFn::new(|&crate::StateRef { t, x, .. }| [t, x[0], x[1], x[2]]);
@@ -538,7 +539,7 @@ mod test {
     #[test]
     fn macro_mut_state_fn() {
         let rk = crate::rk::euler();
-        let mut state = State::new(0., [1., 2., 3.], &rk);
+        let mut state = State::new(0., 0., [1., 2., 3.], &rk);
         let mut f = mut_state_fn!(|t: &mut t, x: [x,y,z]| {
             *y += 10.;
             *z += 10.;
@@ -555,7 +556,7 @@ mod test {
 
         let rk = crate::rk::euler();
 
-        let mut state = State::new(0., [0., 0., 0.], &rk);
+        let mut state = State::new(0., 0., [0., 0., 0.], &rk);
 
         let mut lorenz_rhs = StateFn::new(|&StateRef { x: [x, y, z], .. }| {
             [sigma * (y - x), x * (rho - z) - y, x * y - beta * z]
