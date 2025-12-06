@@ -7,10 +7,10 @@ use crate::{loc::loc_callback::LocCallback, rk::ExplicitRungeKuttaTable};
 
 macro_rules! SolverType {
     () => {Solver<T, N, S, S2, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc> };
-    ($arg:ident => $replacement:expr) => {
+    ($arg:ident => $replacement:ty) => {
         replace_ident!($arg, $replacement, Solver<T, N, S, S2, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>)
     };
-    ($arg1:ident => $replacement1:expr, $arg2:ident => $replacement2:expr) => {
+    ($arg1:ident => $replacement1:ty, $arg2:ident => $replacement2:ty) => {
         replace_ident!($arg1, $replacement1,
             replace_ident!($arg2, $replacement2,
                 Solver<T, N, S, S2, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>
@@ -110,15 +110,11 @@ impl<
         Self { max_delay, ..self }
     }
 
-    pub fn equation<E>(
+    pub fn equation<F: FnMut(&crate::StateRef<T, N>) -> [T; N]>(
         self,
-        new_equation: E,
-    ) -> SolverType!(Equation => <E as crate::state::IntoStateFn<N, T, [T; N]>>::Output)
-    where
-        E: crate::state::IntoStateFn<N, T, [T; N]>,
-        // E: FnMut(&crate::StateRef<T, N>) -> [T; N], // for better closure argument types inference
-    {
-        solver_set!(self, equation: new_equation.into())
+        new_equation: crate::state::StateFn<N, T, [T; N], F>,
+    ) -> SolverType!(Equation => crate::state::StateFn<N, T, [T; N], F>) {
+        solver_set!(self, equation: new_equation)
     }
 
     pub fn initial<I>(self, new_initial: I) -> SolverType!(Initial => I) {
