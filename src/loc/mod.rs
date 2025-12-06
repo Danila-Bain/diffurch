@@ -21,18 +21,10 @@ pub mod propagation;
 pub mod loc_hlist;
 pub mod loc_callback;
 
-//
-// pub use detection::Detect;
-// pub use location::Locate;
-// pub use propagation::*;
-// pub use periodic::*;
-//
-// Loc::zero(|&StateRef{x, ..}| x[0] - x[1]).with(loc::Bisection)
-// Loc::zero_above(...
 
 macro_rules! loc_constructor {
     ($fn:ident, $type:ty, $detection:ident, $location:ident) => {
-        pub fn $fn<const N: usize, T, Output, F: FnMut(&StateRef<T, N>) -> $type>(
+        pub fn $fn<const N: usize, T, F: FnMut(&StateRef<T, N>) -> $type>(
             f: F,
         ) -> Loc<impl EvalStateFn<N, T, $type>, detect::$detection, locate::$location>
         where

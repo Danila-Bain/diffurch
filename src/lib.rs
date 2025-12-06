@@ -1,16 +1,17 @@
-pub mod rk;
-pub mod polynomial;
+pub mod delay;
 pub mod initial_condition;
-pub mod solver;
 pub mod interval;
-pub mod state;
 pub mod loc;
+pub mod polynomial;
+pub mod rk;
+pub mod solver;
+pub mod state;
 
 mod util;
 
-pub use state::{StateFn, StateRef, StateRefMut};
-pub use solver::{Solver};
 pub use loc::{Loc, periodic::Periodic};
+pub use solver::Solver;
+pub use state::{StateFn, StateRef, StateRefMut};
 
 // pub mod callback;
 // pub mod filter;
