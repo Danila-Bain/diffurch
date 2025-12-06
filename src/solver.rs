@@ -6,14 +6,14 @@ use replace::replace_ident;
 use crate::{loc::loc_callback::LocCallback, rk::ExplicitRungeKuttaTable};
 
 macro_rules! SolverType {
-    () => {Solver<N, S, S2, T, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc> };
+    () => {Solver<T, N, S, S2, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc> };
     ($arg:ident => $replacement:expr) => {
-        replace_ident!($arg, $replacement, Solver<N, S, S2, T, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>)
+        replace_ident!($arg, $replacement, Solver<T, N, S, S2, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>)
     };
     ($arg1:ident => $replacement1:expr, $arg2:ident => $replacement2:expr) => {
         replace_ident!($arg1, $replacement1,
             replace_ident!($arg2, $replacement2,
-                Solver<N, S, S2, T, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>
+                Solver<T, N, S, S2, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>
             )
         )
     };
@@ -36,10 +36,10 @@ macro_rules! solver_set {
 }
 
 pub struct Solver<
+    T = f64,
     const N: usize = 0,
     const S: usize = 0,
     const S2: usize = 0,
-    T = f64,
     Equation = (),
     Initial = (),
     Interval = (),
@@ -61,8 +61,8 @@ pub struct Solver<
     pub events_on_loc: EventsOnLoc,
 }
 
-impl<const N: usize, T: Float> Solver<N, 0, 0, T> {
-    pub fn new() -> Solver<N, 7, 21, T, (), (), (), Nil, Nil, Nil> {
+impl<const N: usize, T: Float> Solver<T, N, 0, 0> {
+    pub fn new() -> Solver<T, N, 7, 21, (), (), (), Nil, Nil, Nil> {
         Solver {
             equation: (),
             initial: (),
@@ -110,9 +110,13 @@ impl<
         Self { max_delay, ..self }
     }
 
-    pub fn equation<E>(self, new_equation: E) -> SolverType!(Equation => E::Output)
+    pub fn equation<E>(
+        self,
+        new_equation: E,
+    ) -> SolverType!(Equation => <E as crate::state::IntoStateFn<N, T, [T; N]>>::Output)
     where
         E: crate::state::IntoStateFn<N, T, [T; N]>,
+        // E: FnMut(&crate::StateRef<T, N>) -> [T; N], // for better closure argument types inference
     {
         solver_set!(self, equation: new_equation.into())
     }
