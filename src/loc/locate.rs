@@ -31,7 +31,8 @@ pub struct RegulaFalsi;
 
 macro_rules! impl_locate(
     ($locate:ident, $(Output = $fn_output:ty,)? |$self:ident, $state:ident| $body:expr) => {
-        impl< const N: usize, T: Float, D, F $(: EvalStateFn<N, T, $fn_output>)?> Locate<N, T> for Loc<F, D, $locate> where Self: Detect<N, T>, {
+        impl< const N: usize, T: Float, D, F $(: EvalStateFn<N, T, $fn_output>)?>
+            Locate<N, T> for Loc<F, D, $locate> where Self: Detect<N, T>, {
             fn locate<const S: usize, const S2: usize, IC: InitialCondition<N, T>>(&mut $self, $state: &State<N, S, S2, T, IC>) -> Option<T> {
                 $self.detect($state).then(|| $body)
             }
@@ -75,15 +76,14 @@ impl_locate!(Bisection, Output = T, |self, state| {
 
     let mut m = T::from(0.5).unwrap() * (l + r);
 
-    // guarantee f(l) < 0 and f(r) > 0
     if self.function.eval_curr(state) < T::zero() {
         std::mem::swap(&mut l, &mut r);
     }
 
     while (r - l).abs() > m * T::epsilon() {
         match self.function.eval_at(state, m) < T::zero() {
-            false => l = m,
-            true => r = m,
+            true => l = m,
+            false => r = m,
         }
         m = T::from(0.5).unwrap() * (l + r);
     }
@@ -112,4 +112,3 @@ impl_locate!(RegulaFalsi, Output = T, |self, state| {
     }
     T::max(l, r)
 });
-

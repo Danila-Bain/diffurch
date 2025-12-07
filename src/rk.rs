@@ -22,6 +22,33 @@ impl<const S: usize, const S2: usize, T> ExplicitRungeKuttaTable<S, S2, T> {
     }
 }
 
+impl<const S: usize, const S2: usize, T: Float> ExplicitRungeKuttaTable<S, S2, T> {
+    pub fn dense_output_formula<const D: usize, const N: usize>(
+        &self,
+        x_prev: &[T; N],
+        t_step: T,
+        theta: T,
+        k: &[[T; N]; S],
+    ) -> [T; N] {
+        match D {
+            0 => {
+                return std::array::from_fn(|i| {
+                    x_prev[i]
+                        + t_step
+                            * (0..S)
+                                .fold(T::zero(), |acc, j| acc + (self.bi[j].0)(theta) * k[j][i])
+                });
+            }
+            1 => {
+                return std::array::from_fn(|i| {
+                    (0..S).fold(T::zero(), |acc, j| acc + (self.bi[j].1)(theta) * k[j][i])
+                });
+            }
+            _ => unimplemented!(),
+        }
+    }
+}
+
 /// Euler method (<https://en.wikipedia.org/wiki/Euler_method>), with linear interpolation
 pub fn euler<T>() -> ExplicitRungeKuttaTable<1, 0, T>
 where

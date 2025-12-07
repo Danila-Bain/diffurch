@@ -70,7 +70,13 @@ impl<
     }
 
     pub fn eval<const D: usize>(&self, t: T) -> [T; N] {
-        self.history.eval::<D>(t)
+        if t >= self.t_prev && t < self.t_curr {
+            let t_step = self.t_curr - self.t_prev;
+            let theta = (t - self.t_prev)/t_step;
+            self.history.rk.dense_output_formula::<D, N>(&self.x_prev, t_step, theta, &self.k_curr)
+        }  else {
+            self.history.eval::<D>(t)
+        }
     }
 
     pub fn make_step(&mut self, rhs: &mut impl EvalStateFn<N, T, [T; N]>, t_step: T) {
@@ -149,30 +155,6 @@ impl<
     IC: InitialCondition<N, T>,
 > StateHistory<'rk, N, S, S2, T, IC>
 {
-    fn dense_output_formula<const D: usize>(
-        &self,
-        x_prev: &[T; N],
-        t_step: T,
-        theta: T,
-        k: &[[T; N]; S],
-    ) -> [T; N] {
-        match D {
-            0 => {
-                return std::array::from_fn(|i| {
-                    x_prev[i]
-                        + t_step
-                            * (0..S)
-                                .fold(T::zero(), |acc, j| acc + (self.rk.bi[j].0)(theta) * k[j][i])
-                });
-            }
-            1 => {
-                return std::array::from_fn(|i| {
-                    (0..S).fold(T::zero(), |acc, j| acc + (self.rk.bi[j].1)(theta) * k[j][i])
-                });
-            }
-            _ => unimplemented!(),
-        }
-    }
     pub fn eval<const D: usize>(&self, t: T) -> [T; N] {
         if t <= self.t_init {
             self.x_init.eval::<D>(t)
@@ -197,7 +179,7 @@ impl<
             let t_next = self.t_deque[i];
             let t_step = t_next - t_prev;
             let theta = (t - t_prev) / t_step;
-            return self.dense_output_formula::<D>(&x_prev, t_step, theta, &k);
+            return self.rk.dense_output_formula::<D, N>(&x_prev, t_step, theta, &k);
         }
     }
 }
@@ -283,7 +265,7 @@ impl<T: num::Float, const N: usize, Output, F: FnMut(&StateRef<T, N>) -> Output>
             t: state.t_curr,
             x: &state.x_curr,
             dx: &state.dx_curr,
-            h: &|t: T| state.history.eval::<0>(t),
+            h: &|t: T| state.eval::<0>(t),
         })
     }
     fn eval_prev<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
@@ -304,9 +286,9 @@ impl<T: num::Float, const N: usize, Output, F: FnMut(&StateRef<T, N>) -> Output>
     ) -> Output {
         (self.f)(&StateRef {
             t: t,
-            x: &state.history.eval::<0>(t),
-            dx: &state.history.eval::<1>(t),
-            h: &|t: T| state.history.eval::<0>(t),
+            x: &state.eval::<0>(t),
+            dx: &state.eval::<1>(t),
+            h: &|t: T| state.eval::<0>(t),
         })
     }
 }
@@ -585,3 +567,4 @@ mod test {
         assert_eq!(state.x_curr[0], 15.);
     }
 }
+
