@@ -7,11 +7,15 @@ use crate::{
 };
 use nalgebra::RealField;
 
-pub trait Locate<T: RealField + Copy, Y: RealVectorSpace<T>> {
-    fn locate<const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
-        &mut self,
-        state: &State<T, Y, S, I, IC>,
-    ) -> Option<T>;
+pub trait Locate<
+    T: RealField + Copy,
+    Y: RealVectorSpace<T>,
+    const S: usize,
+    const I: usize,
+    IC: InitialCondition<T, Y>,
+>
+{
+    fn locate(&mut self, state: &State<T, Y, S, I, IC>) -> Option<T>;
 }
 
 /// Use the previous step time as the location of event
@@ -32,9 +36,17 @@ pub struct RegulaFalsi;
 
 macro_rules! impl_locate(
     ($locate:ident, $(Output = $fn_output:ty,)? |$self:ident, $state:ident| $body:expr) => {
-        impl<T: RealField + Copy, Y: RealVectorSpace<T>, D, F $(: EvalStateFn<T, Y, $fn_output>)?>
-            Locate<T, Y> for Loc<F, D, $locate> where Self: Detect<T, Y>, {
-            fn locate<const S: usize, const I: usize, IC: InitialCondition<T, Y>>(&mut $self, $state: &State<T, Y, S, I, IC>) -> Option<T> {
+        impl<
+            T: RealField + Copy,
+            Y: RealVectorSpace<T>,
+            const S: usize,
+            const I: usize,
+            IC: InitialCondition<T, Y>,
+            D, 
+            F $(: EvalStateFn<T, Y, S, I, IC, $fn_output>)?
+        >
+            Locate<T, Y, S, I, IC> for Loc<F, D, $locate> where Self: Detect<T, Y, S, I, IC>, {
+            fn locate(&mut $self, $state: &State<T, Y, S, I, IC>) -> Option<T> {
                 $self.detect($state).then(|| $body)
             }
         }
@@ -103,7 +115,6 @@ impl_locate!(Bisection, Output = T, |self, state| {
 impl_locate!(RegulaFalsi, Output = T, |self, state| {
     let mut l = state.t_prev;
     let mut r = state.t_curr;
-
 
     // guarantee f(l) < 0 and f(r) > 0
     if self.function.eval_curr(state) < T::zero() {

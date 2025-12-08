@@ -114,7 +114,7 @@ impl<
     }
 
     #[allow(unused_parens)]
-    pub fn equation<F: FnMut(&crate::StateRef<T, Y>) -> Y>(
+    pub fn equation<F: FnMut(&crate::StateRef<T, Y, S, I, Initial>) -> Y>(
         self,
         new_equation: F, // crate::state::StateFn<T, Y, Y, F>,
     ) -> SolverType!(Equation => (crate::state::StateFn<T, Y, Y, F>)) {
@@ -143,7 +143,7 @@ impl<
     }
 
     #[allow(unused_parens)]
-    pub fn on_step<C: FnMut(&crate::StateRef<T, Y>)>(
+    pub fn on_step<C: FnMut(&crate::StateRef<T, Y, S, I, Initial>)>(
         self,
         callback: C,
     ) -> SolverType!(EventsOnStep => EventsOnStep::Output::<(crate::state::StateFn<T, Y, (), C>)>)
@@ -151,42 +151,50 @@ impl<
         solver_set!(self, events_on_step: events_on_step.append(crate::StateFn::new(callback)))
     }
 
-    pub fn on_stop<C>(self, callback: C) -> SolverType!(EventsOnStop => EventsOnStop::Output::<C>) {
-        solver_set!(self, events_on_stop: events_on_stop.append(callback))
-    }
-
-    pub fn on_start<C>(
+    #[allow(unused_parens)]
+    pub fn on_stop<C: FnMut(&crate::StateRef<T, Y, S, I, Initial>)>(
         self,
         callback: C,
-    ) -> SolverType!(EventsOnStart => EventsOnStart::Output::<C>) {
-        solver_set!(self, events_on_start: events_on_start.append(callback))
+    ) -> SolverType!(EventsOnStop => EventsOnStop::Output::<(crate::state::StateFn<T, Y, (), C>)>)
+    {
+        solver_set!(self, events_on_stop: events_on_stop.append(crate::StateFn::new(callback)))
     }
 
     #[allow(unused_parens)]
-    pub fn on<L, C, V: Into<LocCallback<L, C>>>(
+    pub fn on_start<C: FnMut(&crate::StateRef<T, Y, S, I, Initial>)>(
         self,
-        loc_callback: V,
+        callback: C,
+    ) -> SolverType!(EventsOnStart => EventsOnStart::Output::<(crate::state::StateFn<T, Y, (), C>)>)
+    {
+        solver_set!(self, events_on_start: events_on_start.append(crate::StateFn::new(callback)))
+    }
+
+    #[allow(unused_parens)]
+    pub fn on<L, C: FnMut(&crate::StateRef<T, Y, S, I, Initial>)>(
+        self,
+        loc: L,
+        callback: C,
     ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<L, C>>)) {
-        solver_set!(self, events_on_loc: events_on_loc.append(loc_callback.into()))
+        solver_set!(self, events_on_loc: events_on_loc.append(LocCallback(loc, callback)))
     }
 
     #[allow(unused)]
     pub fn run(mut self)
     where
-        Equation: crate::state::EvalStateFn<T, Y, Y>,
+        Equation: crate::state::EvalStateFn<T, Y, S, I, Initial, Y>,
         Interval: crate::interval::IntegrationInterval<T>,
         Initial: crate::initial_condition::InitialCondition<T, Y>,
-        EventsOnStart: crate::state::EvalMutStateFnHList<T, Y, ()>,
-        EventsOnStep: crate::state::EvalMutStateFnHList<T, Y, ()>,
-        EventsOnStop: crate::state::EvalMutStateFnHList<T, Y, ()>,
-        EventsOnLoc: crate::loc::loc_hlist::HListLocateEarliest<T, Y>
-            + crate::state::EvalMutStateFnHList<T, Y, ()>,
+        EventsOnStart: crate::state::EvalMutStateFnHList<T, Y, S, I, Initial, ()>,
+        EventsOnStep: crate::state::EvalMutStateFnHList<T, Y, S, I, Initial, ()>,
+        EventsOnStop: crate::state::EvalMutStateFnHList<T, Y, S, I, Initial, ()>,
+        EventsOnLoc: crate::loc::loc_hlist::HListLocateEarliest<T, Y, S, I, Initial>
+            + crate::state::EvalMutStateFnHList<T, Y, S, I, Initial, ()>,
     {
         let t_init = self.interval.start_bound();
         let t_end = self.interval.end_bound();
 
         let mut rhs = self.equation;
-        let mut state = crate::state::State::new(t_init, self.max_delay, self.initial, &self.rk);
+        let mut state = crate::state::State::new(t_init, self.max_delay, self.initial, self.rk);
 
         let mut stepsize = self.stepsize;
 

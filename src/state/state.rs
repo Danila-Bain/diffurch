@@ -1,3 +1,4 @@
+use impl_tools::autoimpl;
 use nalgebra::RealField;
 
 use crate::{
@@ -5,8 +6,9 @@ use crate::{
 };
 use std::collections::VecDeque;
 
+#[derive(Clone)]
+#[autoimpl(Debug ignore self.y_init where T: std::fmt::Debug, Y: std::fmt::Debug)]
 pub struct StateHistory<
-    'rk,
     T: RealField,
     Y: RealVectorSpace<T>,
     const S: usize,
@@ -23,18 +25,18 @@ pub struct StateHistory<
     pub k_deque: VecDeque<[Y; S]>,
     pub disco_deque: VecDeque<(T, usize)>,
 
-    pub rk: &'rk crate::rk::ButcherTableu<T, S, I>,
+    pub rk: crate::rk::ButcherTableu<T, S, I>,
 }
 
+#[derive(Debug)]
 pub struct State<
-    'rk,
     T: RealField + Copy,
     Y: RealVectorSpace<T>,
     const S: usize,
     const I: usize,
     IC,
 > {
-    pub history: StateHistory<'rk, T, Y, S, I, IC>,
+    pub history: StateHistory<T, Y, S, I, IC>,
 
     pub t_curr: T,
     pub t_prev: T,
@@ -45,24 +47,23 @@ pub struct State<
     pub dy_curr: Y,
     pub dy_prev: Y,
 
-    pub rk: &'rk crate::rk::ButcherTableu<T, S, I>,
+    pub rk: crate::rk::ButcherTableu<T, S, I>,
     pub k_curr: [Y; S],
 }
 
 impl<
-    'rk,
     T: RealField + Copy,
     Y: RealVectorSpace<T>,
     const S: usize,
     const I: usize,
     IC: InitialCondition<T, Y>,
-> State<'rk, T, Y, S, I, IC>
+> State<T, Y, S, I, IC>
 {
     pub fn new(
         t_init: T,
         t_span: T,
         y_init: IC,
-        rk: &'rk crate::rk::ButcherTableu<T, S, I>,
+        rk: crate::rk::ButcherTableu<T, S, I>,
     ) -> Self {
         let y = y_init.eval::<0>(t_init);
         Self {
@@ -99,7 +100,7 @@ impl<
         }
     }
 
-    pub fn make_step(&mut self, rhs: &mut impl EvalStateFn<T, Y, Y>, t_step: T) {
+    pub fn make_step(&mut self, rhs: &mut impl EvalStateFn<T, Y, S, I, IC, Y>, t_step: T) {
         if self.t_prev != self.t_curr {
             self.k_curr[0] = self.dy_curr;
         } else {
@@ -157,13 +158,12 @@ impl<
 }
 
 impl<
-    'rk,
     T: RealField + Copy,
     Y: RealVectorSpace<T>,
     const S: usize,
     const I: usize,
     IC: InitialCondition<T, Y>,
-> StateHistory<'rk, T, Y, S, I, IC>
+> StateHistory<T, Y, S, I, IC>
 {
     pub fn eval<const D: usize>(&self, t: T) -> Y {
         if t <= self.t_init {

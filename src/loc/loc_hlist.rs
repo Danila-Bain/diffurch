@@ -4,8 +4,15 @@ use crate::{
 use hlist2_trait_macro::TraitHList;
 use nalgebra::RealField;
 
-pub trait LocateEarliestImpl<T: RealField + Copy, Y: RealVectorSpace<T>> {
-    fn locate_earliest_impl<const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
+pub trait LocateEarliestImpl<
+    T: RealField + Copy,
+    Y: RealVectorSpace<T>,
+    const S: usize,
+    const I: usize,
+    IC: InitialCondition<T, Y>,
+>
+{
+    fn locate_earliest_impl(
         &mut self,
         state: &State<T, Y, S, I, IC>,
         self_index: &mut usize,
@@ -14,8 +21,16 @@ pub trait LocateEarliestImpl<T: RealField + Copy, Y: RealVectorSpace<T>> {
     );
 }
 
-impl<T: RealField + Copy, Y: RealVectorSpace<T>, L: Locate<T, Y>> LocateEarliestImpl<T, Y> for L {
-    fn locate_earliest_impl<const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
+impl<
+    T: RealField + Copy,
+    Y: RealVectorSpace<T>,
+    const S: usize,
+    const I: usize,
+    IC: InitialCondition<T, Y>,
+    L: Locate<T, Y, S, I, IC>,
+> LocateEarliestImpl<T, Y, S, I, IC> for L
+{
+    fn locate_earliest_impl(
         &mut self,
         state: &State<T, Y, S, I, IC>,
         self_index: &mut usize,
@@ -33,8 +48,15 @@ impl<T: RealField + Copy, Y: RealVectorSpace<T>, L: Locate<T, Y>> LocateEarliest
 }
 
 TraitHList! {
-    pub HListLocateEarliestImpl for trait LocateEarliestImpl<T: RealField + Copy, Y: RealVectorSpace<T>> {
-        fn locate_earliest_impl<const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
+    pub HListLocateEarliestImpl for
+        trait LocateEarliestImpl<
+            T: RealField + Copy,
+            Y: RealVectorSpace<T>,
+            const S: usize,
+            const I: usize,
+            IC: InitialCondition<T, Y>,
+        > {
+        fn locate_earliest_impl(
             &mut self,
             state: &State<T, Y, S, I, IC>,
             self_index: &mut usize,
@@ -44,20 +66,27 @@ TraitHList! {
     }
 }
 
-pub trait HListLocateEarliest<T: RealField + Copy, Y: RealVectorSpace<T>> {
-    fn locate_earliest<const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
-        &mut self,
-        state: &State<T, Y, S, I, IC>,
-    ) -> Option<(usize, T)>;
+pub trait HListLocateEarliest<
+    T: RealField + Copy,
+    Y: RealVectorSpace<T>,
+    const S: usize,
+    const I: usize,
+    IC: InitialCondition<T, Y>,
+>
+{
+    fn locate_earliest(&mut self, state: &State<T, Y, S, I, IC>) -> Option<(usize, T)>;
 }
 
-impl<T: RealField + Copy, Y: RealVectorSpace<T>, U: HListLocateEarliestImpl<T, Y>>
-    HListLocateEarliest<T, Y> for U
+impl<
+    T: RealField + Copy,
+    Y: RealVectorSpace<T>,
+    const S: usize,
+    const I: usize,
+    IC: InitialCondition<T, Y>,
+    U: HListLocateEarliestImpl<T, Y, S, I, IC>,
+> HListLocateEarliest<T, Y, S, I, IC> for U
 {
-    fn locate_earliest<const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
-        &mut self,
-        state: &State<T, Y, S, I, IC>,
-    ) -> Option<(usize, T)> {
+    fn locate_earliest(&mut self, state: &State<T, Y, S, I, IC>) -> Option<(usize, T)> {
         let mut index = 0;
         let mut earliest_time = None;
         self.locate_earliest_impl(state, &mut 0, &mut index, &mut earliest_time);

@@ -6,8 +6,8 @@ use crate::{
 };
 use nalgebra::RealField;
 
-pub trait Detect<T: RealField + Copy, Y: RealVectorSpace<T>> {
-    fn detect<const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
+pub trait Detect<T: RealField + Copy, Y: RealVectorSpace<T>, const S: usize, const I: usize, IC: InitialCondition<T, Y>> {
+    fn detect(
         &mut self,
         state: &State<T, Y, S, I, IC>,
     ) -> bool;
@@ -36,8 +36,16 @@ pub struct IsFalse;
 
 macro_rules! impl_detect(
     ($type:ty, $detect:ident, |$curr:ident $(, $prev:ident)?| $body:expr) => {
-        impl<T: RealField + Copy, Y: RealVectorSpace<T>, L, F: EvalStateFn<T, Y, $type>> Detect<T, Y> for Loc<F, $detect, L> {
-            fn detect<const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
+        impl<
+            T: RealField + Copy, 
+            Y: RealVectorSpace<T>, 
+            const S: usize,
+            const I: usize,
+            IC: InitialCondition<T, Y>,
+            L, 
+            F: EvalStateFn<T, Y, S, I, IC, $type>, 
+        > Detect<T, Y, S, I, IC> for Loc<F, $detect, L> {
+            fn detect(
                 &mut self,
                 state: &State<T, Y, S, I, IC>,
             ) -> bool {

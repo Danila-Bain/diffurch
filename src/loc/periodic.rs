@@ -4,7 +4,8 @@ use num::Float;
 use crate::{
     initial_condition::InitialCondition,
     loc::{detect::Detect, locate::Locate},
-    state::State, traits::RealVectorSpace,
+    state::State,
+    traits::RealVectorSpace,
 };
 
 pub struct Periodic<T> {
@@ -25,22 +26,30 @@ impl<T: Float> Periodic<T> {
     }
 }
 
-impl<T: RealField + Copy, Y: RealVectorSpace<T>> Detect<T, Y> for Periodic<T> {
-    fn detect<const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
-        &mut self,
-        state: &State<T, Y, S, I, IC>,
-    ) -> bool {
+impl<
+    T: RealField + Copy,
+    Y: RealVectorSpace<T>,
+    const S: usize,
+    const I: usize,
+    IC: InitialCondition<T, Y>,
+> Detect<T, Y, S, I, IC> for Periodic<T>
+{
+    fn detect(&mut self, state: &State<T, Y, S, I, IC>) -> bool {
         let prev = ((state.t_prev - self.offset) / (self.period)).floor();
         let curr = ((state.t_curr - self.offset) / (self.period)).floor();
         // dbg!(prev, state.t_prev/self.period, curr, state.t_curr/self.period);
         return prev < curr;
     }
 }
-impl<T: RealField + Copy, Y: RealVectorSpace<T>> Locate<T, Y> for Periodic<T> {
-    fn locate<const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
-        &mut self,
-        state: &State<T, Y, S, I, IC>,
-    ) -> Option<T> {
+impl<
+    T: RealField + Copy,
+    Y: RealVectorSpace<T>,
+    const S: usize,
+    const I: usize,
+    IC: InitialCondition<T, Y>,
+> Locate<T, Y, S, I, IC> for Periodic<T>
+{
+    fn locate(&mut self, state: &State<T, Y, S, I, IC>) -> Option<T> {
         if self.detect(state) {
             let r =
                 ((state.t_curr - self.offset) / self.period).floor() * self.period + self.offset;

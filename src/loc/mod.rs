@@ -1,5 +1,6 @@
 use crate::StateFn;
 use crate::StateRef;
+use crate::initial_condition::InitialCondition;
 use crate::state::EvalStateFn;
 use crate::traits::RealVectorSpace;
 use nalgebra::RealField;
@@ -25,9 +26,16 @@ pub mod loc_hlist;
 
 macro_rules! loc_constructor {
     ($fn:ident, $type:ty, $detection:ident, $location:ident) => {
-        pub fn $fn<T: RealField + Copy, Y: RealVectorSpace<T>, F: FnMut(&StateRef<T, Y>) -> $type>(
+        pub fn $fn<
+            T: RealField + Copy,
+            Y: RealVectorSpace<T>,
+            const S: usize,
+            const I: usize,
+            IC: InitialCondition<T, Y>,
+            F: FnMut(&StateRef<T, Y, S, I, IC>) -> $type,
+        >(
             f: F,
-        ) -> Loc<impl EvalStateFn<T, Y, $type>, detect::$detection, locate::$location>
+        ) -> Loc<impl EvalStateFn<T, Y, S, I, IC, $type>, detect::$detection, locate::$location>
         where
             T: Float,
         {

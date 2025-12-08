@@ -31,13 +31,17 @@ impl<T: RealField + Float, Delayed> Propagator<T, Delayed> {
     }
 }
 
-impl<T: RealField + Copy, Y: RealVectorSpace<T>, Delayed: EvalStateFn<T, Y, T>, L> Detect<T, Y>
-    for Loc<Propagator<T, Delayed>, Propagation, L>
+impl<
+    T: RealField + Copy,
+    Y: RealVectorSpace<T>,
+    const S: usize,
+    const I: usize,
+    IC: InitialCondition<T, Y>,
+    Delayed: EvalStateFn<T, Y, S, I, IC, T>,
+    L,
+> Detect<T, Y, S, I, IC> for Loc<Propagator<T, Delayed>, Propagation, L>
 {
-    fn detect<const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
-        &mut self,
-        state: &State<T, Y, S, I, IC>,
-    ) -> bool {
+    fn detect(&mut self, state: &State<T, Y, S, I, IC>) -> bool {
         let propagator = &mut self.function;
 
         let prev = propagator.delayed.eval_prev(state);
@@ -69,28 +73,22 @@ impl<T: RealField + Copy, Y: RealVectorSpace<T>, Delayed: EvalStateFn<T, Y, T>, 
 
 // When used by Locate trait, it will lead to location of points, where delayed argument
 // is equal to past discontinuity
-impl<T: RealField + Copy, Y: RealVectorSpace<T>, Delayed: EvalStateFn<T, Y, T>> EvalStateFn<T, Y, T>
-    for Propagator<T, Delayed>
+impl<
+    T: RealField + Copy,
+    Y: RealVectorSpace<T>,
+    const S: usize,
+    const I: usize,
+    IC: InitialCondition<T, Y>,
+    Delayed: EvalStateFn<T, Y, S, I, IC, T>,
+> EvalStateFn<T, Y, S, I, IC, T> for Propagator<T, Delayed>
 {
-    fn eval_curr<'s, const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
-        &mut self,
-        state: &'s State<T, Y, S, I, IC>,
-    ) -> T {
+    fn eval_curr(&mut self, state: &State<T, Y, S, I, IC>) -> T {
         self.delayed.eval_curr(state) - self.t_disco
     }
-
-    fn eval_prev<'s, const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
-        &mut self,
-        state: &'s State<T, Y, S, I, IC>,
-    ) -> T {
+    fn eval_prev(&mut self, state: &State<T, Y, S, I, IC>) -> T {
         self.delayed.eval_prev(state) - self.t_disco
     }
-
-    fn eval_at<'s, const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
-        &mut self,
-        state: &'s State<T, Y, S, I, IC>,
-        t: T,
-    ) -> T {
+    fn eval_at(&mut self, state: &State<T, Y, S, I, IC>, t: T) -> T {
         self.delayed.eval_at(state, t) - self.t_disco
     }
 }

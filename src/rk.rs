@@ -1,7 +1,7 @@
 use crate::traits::RealVectorSpace;
 use nalgebra::RealField;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct ButcherTableu<T, const S: usize, const I: usize = S> {
     pub order: usize,
     pub order_embedded: usize,
@@ -39,7 +39,7 @@ impl<T: RealField + Copy, const S: usize, const I: usize> ButcherTableu<T, S, I>
                     let mut b_i = T::zero();
                     for j in 1..I {
                         b_i +=
-                            self.bi[i][j] * theta.powi((j - 1) as i32) * T::from_usize(i).unwrap()
+                            self.bi[i][j] * theta.powi((j - 1) as i32) * T::from_usize(j).unwrap()
                     }
                     delta += k[i] * b_i;
                 }
