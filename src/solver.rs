@@ -6,14 +6,14 @@ use replace::replace_ident;
 use crate::{loc::loc_callback::LocCallback, rk::ButcherTableu, traits::RealVectorSpace};
 
 macro_rules! SolverType {
-    () => {Solver<T, S, I, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc> };
+    () => {Solver<T, Y, S, I, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc> };
     ($arg:ident => $replacement:ty) => {
-        replace_ident!($arg, $replacement, Solver<T, S, I, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>)
+        replace_ident!($arg, $replacement, Solver<T, Y, S, I, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>)
     };
     ($arg1:ident => $replacement1:ty, $arg2:ident => $replacement2:ty) => {
         replace_ident!($arg1, $replacement1,
             replace_ident!($arg2, $replacement2,
-                Solver<T, S, I, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>
+                Solver<T, Y, S, I, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>
             )
         )
     };
@@ -25,11 +25,11 @@ macro_rules! solver_set {
             replace_ident!(
                 $field, $field,
                 #[allow(unused_variables)]
-                let Solver { equation, initial, initial_disco, interval, max_delay, rk, stepsize, events_on_step, events_on_start, events_on_stop, events_on_loc, } = $self;
+                let Solver { equation, initial, initial_disco, interval, max_delay, rk, stepsize, events_on_step, events_on_start, events_on_stop, events_on_loc, _phantom_y } = $self;
             );
             replace_ident!(
                 $field, $field: $value,
-                Solver { equation, initial, initial_disco, interval, max_delay, rk, stepsize, events_on_step, events_on_start, events_on_stop, events_on_loc, }
+                Solver { equation, initial, initial_disco, interval, max_delay, rk, stepsize, events_on_step, events_on_start, events_on_stop, events_on_loc, _phantom_y }
             )
         }
     };
@@ -37,6 +37,7 @@ macro_rules! solver_set {
 
 pub struct Solver<
     T = f64,
+    Y = f64,
     const S: usize = 0,
     const I: usize = 0,
     Equation = (),
@@ -58,10 +59,12 @@ pub struct Solver<
     pub events_on_start: EventsOnStart,
     pub events_on_stop: EventsOnStop,
     pub events_on_loc: EventsOnLoc,
+    pub _phantom_y: std::marker::PhantomData<Y>,
 }
 
-impl<T: RealField + Copy> Solver<T, 0, 0> {
-    pub fn new() -> Solver<T, 7, 5, (), (), (), Nil, Nil, Nil> {
+impl Solver {
+    pub fn new<T: RealField + Copy, Y: RealVectorSpace<T>>()
+    -> Solver<T, Y, 7, 5, (), (), (), Nil, Nil, Nil> {
         Solver {
             equation: (),
             initial: (),
@@ -74,11 +77,13 @@ impl<T: RealField + Copy> Solver<T, 0, 0> {
             events_on_start: Nil,
             events_on_stop: Nil,
             events_on_loc: Nil,
+            _phantom_y: Default::default(),
         }
     }
 }
 impl<
     T: RealField + Copy,
+    Y: RealVectorSpace<T>,
     const S: usize,
     const I: usize,
     Equation,
@@ -109,18 +114,24 @@ impl<
     }
 
     #[allow(unused_parens)]
-    pub fn equation<F: FnMut(&crate::StateRef<T, Y>) -> Y, Y: RealVectorSpace<T>>(
+    pub fn equation<F: FnMut(&crate::StateRef<T, Y>) -> Y>(
         self,
-        new_equation: crate::state::StateFn<T, Y, Y, F>,
+        new_equation: F, // crate::state::StateFn<T, Y, Y, F>,
     ) -> SolverType!(Equation => (crate::state::StateFn<T, Y, Y, F>)) {
-        solver_set!(self, equation: new_equation)
+        solver_set!(self, equation: crate::StateFn::new(new_equation))
     }
 
-    pub fn initial<NewInitial>(self, new_initial: NewInitial) -> SolverType!(Initial => NewInitial) {
+    pub fn initial<NewInitial>(
+        self,
+        new_initial: NewInitial,
+    ) -> SolverType!(Initial => NewInitial) {
         solver_set!(self, initial: new_initial)
     }
 
-    pub fn interval<NewInterval>(self, new_interval: NewInterval) -> SolverType!(Interval => NewInterval) {
+    pub fn interval<NewInterval>(
+        self,
+        new_interval: NewInterval,
+    ) -> SolverType!(Interval => NewInterval) {
         solver_set!(self, interval: new_interval)
     }
 
@@ -131,8 +142,13 @@ impl<
         solver_set!(self, rk: new_rk)
     }
 
-    pub fn on_step<C>(self, callback: C) -> SolverType!(EventsOnStep => EventsOnStep::Output::<C>) {
-        solver_set!(self, events_on_step: events_on_step.append(callback))
+    #[allow(unused_parens)]
+    pub fn on_step<C: FnMut(&crate::StateRef<T, Y>)>(
+        self,
+        callback: C,
+    ) -> SolverType!(EventsOnStep => EventsOnStep::Output::<(crate::state::StateFn<T, Y, (), C>)>)
+    {
+        solver_set!(self, events_on_step: events_on_step.append(crate::StateFn::new(callback)))
     }
 
     pub fn on_stop<C>(self, callback: C) -> SolverType!(EventsOnStop => EventsOnStop::Output::<C>) {
@@ -155,9 +171,8 @@ impl<
     }
 
     #[allow(unused)]
-    pub fn run<Y>(mut self)
+    pub fn run(mut self)
     where
-        Y: RealVectorSpace<T>,
         Equation: crate::state::EvalStateFn<T, Y, Y>,
         Interval: crate::interval::IntegrationInterval<T>,
         Initial: crate::initial_condition::InitialCondition<T, Y>,

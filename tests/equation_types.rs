@@ -1,21 +1,20 @@
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]
-use StateRef as S;
-use diffurch::*;
+use diffurch::{initial_condition::InitialFunction, *};
 use nalgebra::*;
 
 #[test]
 fn constant() {
     let solution = |t: f64| vector![t, -t, 0.];
-    Solver::new()
-        .equation(StateFn::new(|&S { .. }| vector![1., -1., 0.]))
+    Solver::new::<f64, Vector3<f64>>()
+        .equation(|_| vector![1., -1., 0.])
         .initial([0., 0., 0.])
         .interval(0. ..10.)
         .stepsize(0.25)
         .rk(RK::euler())
-        .on_step(StateFn::new(|&S { t, y: &x, .. }| {
-            assert_eq!(x, solution(t))
-        }))
+        .on_step(|state| {
+            assert_eq!(*state.y, solution(state.t))
+        })
         .run();
 }
 
@@ -27,15 +26,15 @@ fn time() {
     let mut xx = vec![];
 
     Solver::new()
-        .equation(StateFn::new(|&S { t, .. }| vector![0., 1., t]))
+        .equation(|&StateRef { t, .. }| vector![0., 1., t])
         .initial([0., 0., 0.])
         .interval(0. ..10.)
         .rk(RK::midpoint())
         .stepsize(0.5)
-        .on_step(StateFn::new(|&S { t, y: &x, .. }| {
+        .on_step(|&StateRef { t, y: &x, .. }| {
             tt.push(t);
             xx.push(x)
-        }))
+        })
         .run();
 
     for (t, x) in tt.into_iter().zip(xx.into_iter()) {
@@ -51,15 +50,15 @@ fn time2() {
     let mut xx = vec![];
 
     Solver::new()
-        .equation(StateFn::new(|state| vector![0., 1., state.t]))
+        .equation(|state| vector![0., 1., state.t])
         .initial([0., 0., 0.])
         .interval(0. ..10.)
         .rk(RK::midpoint())
         .stepsize(0.5)
-        .on_step(StateFn::new(|&S { t, y: &x, .. }| {
+        .on_step(|&StateRef { t, y: &x, .. }| {
             tt.push(t);
             xx.push(x)
-        }))
+        })
         .run();
 
     for (t, x) in tt.into_iter().zip(xx.into_iter()) {
@@ -69,17 +68,17 @@ fn time2() {
 
 #[test]
 fn ode_exponent() {
-    let solution = |t: f64| vector![(-t).exp()];
+    let solution = |t: f64| (-t).exp();
 
     Solver::new()
-        .equation(StateFn::new(|state| -state.y))
-        .initial([1.])
+        .equation(|state| -state.y)
+        .initial(1.)
         .interval(0. ..10.)
         .rk(RK::rktp64())
         .stepsize(0.05)
-        .on_step(StateFn::new(|s: &StateRef<f64, Vector1<f64>>| {
-            assert!((s.y - solution(s.t)).amax() < 1e-14)
-        }))
+        .on_step(|s: &StateRef<f64, f64>| {
+            assert!((s.y - solution(s.t)).abs() < 1e-14)
+        })
         .run();
 }
 
@@ -87,29 +86,28 @@ fn ode_exponent() {
 fn ode_harmonic() {
     let solution = |t: f64| t.sin();
 
-    Solver::new()
-        .equation(StateFn::new(|state| {
-            let y : Vector2<f64> = *state.y;
-            vector![y[1], -y[0]]
-        }))
+    Solver::new::<f64, Vector2<f64>>()
+        .equation(|&StateRef {y: &pos, ..}| {
+            let [x, dx] = pos.into();
+            vector![dx, -x]
+        })
         .interval(0. ..10.)
         .initial([0., 1.])
         .rk(RK::rktp64())
         .stepsize(0.04)
-        // .on_step(StateFn::new(|&S { t, y: [x, _], .. }| {
-        //     // println!("{} =?= {}", x, solution(t));
-        //     assert!((x - solution(t)).abs() < 1e-13)
-        // }))
+        .on_step(|state| {
+            assert!((state.y.x - solution(state.t)).abs() < 1e-13)
+        })
         .run();
 }
-//
+
 // #[test]
 // fn odet_lin() {
 //     let sol = |t: f64| t.powi(-2);
 //
 //     Solver::new()
-//         .equation(StateFn::new(|&S { t, y: [x], .. }| [- 2. * x / t]))
-//         .initial(|t: f64| [sol(t)])
+//         .equation(|s| - 2. * s.y / s.t)
+//         .initial(InitialFunction(|t: f64| [sol(t)]))
 //         .interval(1. ..10.)
 //         .rk(rk::rktp64())
 //         .stepsize(0.02)
