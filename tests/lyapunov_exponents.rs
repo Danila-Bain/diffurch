@@ -9,25 +9,23 @@ use diffurch::{StateFn, StateRef, *};
 #[test]
 fn linear_1_const() {
     fn the_lyapunov_exponent(eigenvalue: f64, tmax: f64) -> f64 {
-        let equation = StateFn::new(|&StateRef { x: [x], .. }| [eigenvalue * x]);
-
         let mut lambda = 0.;
 
-        Solver::new()
-            .initial([1.])
+        Solver::new::<f64, f64>()
+            .initial(1.)
             .interval(0. ..tmax)
-            .equation(equation)
-            .on((
+            .equation(|state| state.y * eigenvalue)
+            .on_loc_mut(
                 Periodic {
                     period: 0.3,
                     offset: 0.,
                 },
-                StateFn::new_mut(|&mut StateRefMut::<f64, 1> { x: [x], .. }| {
-                    let norm = x.abs();
-                    *x /= norm;
+                |s| {
+                    let norm = s.y.abs();
+                    *s.y /= norm;
                     lambda += norm.ln();
-                }),
-            ))
+                },
+            )
             .run();
         return lambda / tmax;
     }
@@ -49,26 +47,23 @@ fn linear_1_const() {
 #[test]
 fn linear_1_sin() {
     fn the_lyapunov_exponent(eigenvalue: f64, tmax: f64) -> f64 {
-        let equation =
-            StateFn::new(|&StateRef { t, x: [x], .. }| [(1. + f64::sin(t)) * eigenvalue * x]);
-
         let mut lambda = 0.;
 
-        Solver::new()
-            .initial([1.])
+        Solver::new::<f64, f64>()
+            .initial(1.)
             .interval(0. ..tmax)
-            .equation(equation)
-            .on((
+            .equation(|s| (1. + f64::sin(s.t)) * eigenvalue * s.y)
+            .on_loc_mut(
                 Periodic {
                     period: 1.3,
                     offset: 0.,
                 },
-                StateFn::new_mut(|&mut StateRefMut::<f64, 1> { x: [x], .. }| {
-                    let norm = x.abs();
-                    *x /= norm;
+                |s| {
+                    let norm = s.y.abs();
+                    *s.y /= norm;
                     lambda += norm.ln();
-                }),
-            ))
+                },
+            )
             .run();
         return lambda / tmax;
     }
@@ -113,31 +108,25 @@ fn linear_const_3_real() {
 
         let mut lambdas = Vector3::from_row_slice(&[0., 0., 0.]);
 
-        Solver::new()
-            .initial([
-                1., 0., 0., //
-                0., 1., 0., //
-                0., 0., 1., //
+        Solver::new::<f64, Matrix3<f64>>()
+            .initial(matrix![
+                1., 0., 0.; //
+                0., 1., 0.; //
+                0., 0., 1.; //
             ])
             .interval(0. ..tmax)
-            .equation(StateFn::new(|&StateRef::<f64, 9> { x, .. }| {
-                let v = Matrix3::from_column_slice(x);
-                let mut f = [0.; 9];
-                f.copy_from_slice((a_matrix * v).as_slice());
-                return f;
-            }))
-            .on((
+            .equation(|s| a_matrix * s.y)
+            .on_loc_mut(
                 Periodic {
                     period: 1.,
                     offset: 0.,
                 },
-                StateFn::new_mut(|&mut StateRefMut::<f64, 9> { ref mut x, .. }| {
-                    let v = Matrix3::from_column_slice(&x[..]);
-                    let (q, r) = v.qr().unpack();
-                    x.copy_from_slice(q.as_slice());
+                |s| {
+                    let (q, r) = s.y.qr().unpack();
+                    *s.y = q;
                     lambdas += r.diagonal().map(|r| r.ln());
-                }),
-            ))
+                },
+            )
             .run();
 
         lambdas /= tmax;
@@ -197,31 +186,25 @@ fn linear_const_3_complex() {
 
         let mut lambdas = Vector3::from_row_slice(&[0., 0., 0.]);
 
-        Solver::new()
-            .initial([
-                1., 0., 0., //
-                0., 1., 0., //
-                0., 0., 1., //
+        Solver::new::<f64, Matrix3<f64>>()
+            .initial(matrix![
+                1., 0., 0.; //
+                0., 1., 0.; //
+                0., 0., 1.; //
             ])
             .interval(0. ..tmax)
-            .equation(StateFn::new(|&StateRef::<f64, 9> { x, .. }| {
-                let v = Matrix3::from_column_slice(x);
-                let mut f = [0.; 9];
-                f.copy_from_slice((a_matrix * v).as_slice());
-                return f;
-            }))
-            .on((
+            .equation(|s| a_matrix * s.y)
+            .on_loc_mut(
                 Periodic {
                     period: 1.,
                     offset: 0.,
                 },
-                StateFn::new_mut(|&mut StateRefMut::<f64, 9> { ref mut x, .. }| {
-                    let v = Matrix3::from_column_slice(&x[..]);
-                    let (q, r) = v.qr().unpack();
-                    x.copy_from_slice(q.as_slice());
-                    lambdas += r.diagonal().map(|r| r.ln());
-                }),
-            ))
+                |s| {
+                    let (q, r) = s.y.qr().unpack();
+                    *s.y = q;
+                    lambdas += r.diagonal().map(|r| r.abs().ln())
+                },
+            )
             .run();
 
         lambdas /= tmax;
@@ -270,54 +253,46 @@ fn lorenz_lyapunov_exponents() {
     for tmax in [100., 1000., 10_000., 100_000.] {
         let mut lambdas = vector![0., 0., 0.];
 
-        Solver::new()
+        Solver::new::<f64, Matrix3x4<f64>>()
             .stepsize(0.005)
-            .initial([
-                10., 15., 20., //
-                1., 0., 0., //
-                0., 1., 0., //
-                0., 0., 1., //
+            .initial(matrix![
+                10., 1., 0., 0.;
+                15., 0., 1., 0.;
+                20., 0., 0., 1.;
             ])
             .interval(0. ..tmax)
-            .equation(StateFn::new(|&StateRef::<f64, 12> { x, .. }| {
-                let [x, y, z, delta_x @ ..] = x;
-                let mut out = [0.; 12];
-
-                // Lorenz system right hand side
-                out[0..3].copy_from_slice(&[
-                    sigma * (y - x),   //
-                    x * (rho - z) - y, //
-                    x * y - beta * z,  //
-                ]);
-
-                // Matrix in variational equation
+            .equation(|s| {
+                let mut diff = Matrix3x4::<f64>::zeros();
+                let [x, y, z] = s.y.column(0).into();
+                let var = s.y.fixed_columns::<3>(1);
+                diff.set_column(
+                    0,
+                    &vector![
+                        sigma * (y - x),   //
+                        x * (rho - z) - y, //
+                        x * y - beta * z,  //
+                    ],
+                );
                 let df = matrix![
                     -sigma, sigma, 0.;
                     rho - z, -1., -x;
-                    *y, *x, -beta;
+                    y, x, -beta;
                 ];
-
-                let delta_x = Matrix3::from_column_slice(delta_x);
-                out[3..12].copy_from_slice((df * delta_x).as_slice());
-
-                return out;
-            }))
-            .on((
+                diff.fixed_columns_mut::<3>(1).copy_from(&(df * var));
+                diff
+            })
+            .on_loc_mut(
                 Periodic {
                     period: 0.5,
                     offset: 0.,
                 },
-                StateFn::new_mut(
-                    |&mut StateRefMut::<f64, 12> {
-                         x: [_, _, _, delta_x @ ..],
-                         ..
-                     }| {
-                        let (q, r) = Matrix3::from_column_slice(delta_x).qr().unpack();
-                        delta_x.copy_from_slice(q.as_slice());
-                        lambdas += r.diagonal().map(|r| r.abs().ln());
-                    },
-                ),
-            ))
+                |s| {
+                    let mut var = s.y.fixed_columns_mut::<3>(1);
+                    let (q, r) = var.clone_owned().qr().unpack();
+                    var.copy_from(&q);
+                    lambdas += r.diagonal().map(|r| r.abs().ln())
+                },
+            )
             .run();
 
         lambdas /= tmax;

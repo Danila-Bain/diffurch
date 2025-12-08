@@ -170,12 +170,21 @@ impl<
     }
 
     #[allow(unused_parens)]
-    pub fn on<L, C: FnMut(&crate::StateRef<T, Y, S, I, Initial>)>(
+    pub fn on_loc<L, C: FnMut(&crate::StateRef<T, Y, S, I, Initial>)>(
         self,
         loc: L,
         callback: C,
-    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<L, C>>)) {
-        solver_set!(self, events_on_loc: events_on_loc.append(LocCallback(loc, callback)))
+    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<L, (crate::state::StateFn<T, Y, (), C>)>>)) {
+        solver_set!(self, events_on_loc: events_on_loc.append(LocCallback(loc, crate::StateFn::new(callback))))
+    }
+    
+    #[allow(unused_parens)]
+    pub fn on_loc_mut<L, C: FnMut(&mut crate::StateRefMut<T, Y, S, I, Initial>)>(
+        self,
+        loc: L,
+        callback: C,
+    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<L, (crate::state::StateFn<T, Y, (), C, true>)>>)) {
+        solver_set!(self, events_on_loc: events_on_loc.append(LocCallback(loc, crate::StateFn::new_mut(callback))))
     }
 
     #[allow(unused)]

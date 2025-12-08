@@ -65,6 +65,23 @@ pub struct StateRefMut<
     history: &'s mut StateHistory<T, Y, S, I, IC>,
 }
 
+impl<
+    's,
+    T: RealField + Copy,
+    Y: RealVectorSpace<T>,
+    const S: usize,
+    const I: usize,
+    IC: InitialCondition<T, Y>,
+> StateRefMut<'s, T, Y, S, I, IC>
+{
+    pub fn y(&self, t: T) -> Y {
+        self.history.eval::<0>(t)
+    }
+    pub fn dy(&self, t: T) -> Y {
+        self.history.eval::<1>(t)
+    }
+}
+
 #[allow(unused)]
 pub struct StateFn<T, Y, Output, F, const MUT: bool = false> {
     f: F,
