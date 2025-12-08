@@ -1,15 +1,17 @@
+use nalgebra::RealField;
 use num::Float;
 
 use crate::{
     initial_condition::InitialCondition,
     loc::{Loc, detect::Detect},
     state::{EvalStateFn, State},
+    traits::RealVectorSpace,
     util::partition_point_linear,
 };
 
 pub struct Propagation;
 
-pub struct Propagator<const N: usize, T: Float, Delayed: EvalStateFn<N, T, T>> {
+pub struct Propagator<T, Delayed> {
     pub delayed: Delayed,
     pub smoothing_order: usize,
     pub t_disco: T,
@@ -17,7 +19,7 @@ pub struct Propagator<const N: usize, T: Float, Delayed: EvalStateFn<N, T, T>> {
     pub t_index: usize,
 }
 
-impl<const N: usize, T: Float, Delayed: EvalStateFn<N, T, T>> Propagator<N, T, Delayed> {
+impl<T: RealField + Float, Delayed> Propagator<T, Delayed> {
     pub fn new(delayed: Delayed, smoothing_order: usize) -> Self {
         Self {
             delayed,
@@ -29,13 +31,12 @@ impl<const N: usize, T: Float, Delayed: EvalStateFn<N, T, T>> Propagator<N, T, D
     }
 }
 
-
-impl<const N: usize, T: Float, Delayed: EvalStateFn<N, T, T>, L> Detect<N, T>
-    for Loc<Propagator<N, T, Delayed>, Propagation, L>
+impl<T: RealField + Copy, Y: RealVectorSpace<T>, Delayed: EvalStateFn<T, Y, T>, L> Detect<T, Y>
+    for Loc<Propagator<T, Delayed>, Propagation, L>
 {
-    fn detect<const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
+    fn detect<const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
         &mut self,
-        state: &State<N, S, S2, T, IC>,
+        state: &State<T, Y, S, I, IC>,
     ) -> bool {
         let propagator = &mut self.function;
 
@@ -43,17 +44,20 @@ impl<const N: usize, T: Float, Delayed: EvalStateFn<N, T, T>, L> Detect<N, T>
         let curr = propagator.delayed.eval_curr(state);
 
         // detect if any element in state.disco_seq lies between prev and curr
-        let partition_prev =
-            partition_point_linear(&state.history.disco_deque, propagator.t_index, |&(t, _order)| {
-                t <= prev
-            });
-        let partition_curr =
-            partition_point_linear(&state.history.disco_deque, partition_prev, |&(t, _order)| t <= curr);
+        let partition_prev = partition_point_linear(
+            &state.history.disco_deque,
+            propagator.t_index,
+            |&(t, _order)| t <= prev,
+        );
+        let partition_curr = partition_point_linear(
+            &state.history.disco_deque,
+            partition_prev,
+            |&(t, _order)| t <= curr,
+        );
 
         if partition_prev != partition_curr {
             propagator.t_index = partition_prev.min(partition_curr);
-            let (t_disco, t_order) = 
-                *state.history.disco_deque.get(propagator.t_index).unwrap();
+            let (t_disco, t_order) = *state.history.disco_deque.get(propagator.t_index).unwrap();
             propagator.t_disco = t_disco;
             propagator.t_order = t_order + propagator.smoothing_order;
             return true;
@@ -65,25 +69,26 @@ impl<const N: usize, T: Float, Delayed: EvalStateFn<N, T, T>, L> Detect<N, T>
 
 // When used by Locate trait, it will lead to location of points, where delayed argument
 // is equal to past discontinuity
-impl<const N: usize, T: Float, Delayed: EvalStateFn<N, T, T>> EvalStateFn<N, T, T> for
-Propagator<N, T, Delayed> {
-    fn eval_curr<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
+impl<T: RealField + Copy, Y: RealVectorSpace<T>, Delayed: EvalStateFn<T, Y, T>> EvalStateFn<T, Y, T>
+    for Propagator<T, Delayed>
+{
+    fn eval_curr<'s, const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
         &mut self,
-        state: &'s State<N, S, S2, T, IC>,
+        state: &'s State<T, Y, S, I, IC>,
     ) -> T {
         self.delayed.eval_curr(state) - self.t_disco
     }
 
-    fn eval_prev<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
+    fn eval_prev<'s, const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
         &mut self,
-        state: &'s State<N, S, S2, T, IC>,
+        state: &'s State<T, Y, S, I, IC>,
     ) -> T {
         self.delayed.eval_prev(state) - self.t_disco
     }
 
-    fn eval_at<'s, const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
+    fn eval_at<'s, const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
         &mut self,
-        state: &'s State<N, S, S2, T, IC>,
+        state: &'s State<T, Y, S, I, IC>,
         t: T,
     ) -> T {
         self.delayed.eval_at(state, t) - self.t_disco

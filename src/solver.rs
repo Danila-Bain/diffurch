@@ -1,19 +1,19 @@
 use hlist2::{HList, Nil};
 
-use num::Float;
+use nalgebra::RealField;
 use replace::replace_ident;
 
-use crate::{loc::loc_callback::LocCallback, rk::ExplicitRungeKuttaTable};
+use crate::{loc::loc_callback::LocCallback, rk::ButcherTableu, traits::RealVectorSpace};
 
 macro_rules! SolverType {
-    () => {Solver<T, N, S, S2, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc> };
+    () => {Solver<T, S, I, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc> };
     ($arg:ident => $replacement:ty) => {
-        replace_ident!($arg, $replacement, Solver<T, N, S, S2, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>)
+        replace_ident!($arg, $replacement, Solver<T, S, I, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>)
     };
     ($arg1:ident => $replacement1:ty, $arg2:ident => $replacement2:ty) => {
         replace_ident!($arg1, $replacement1,
             replace_ident!($arg2, $replacement2,
-                Solver<T, N, S, S2, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>
+                Solver<T, S, I, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>
             )
         )
     };
@@ -37,9 +37,8 @@ macro_rules! solver_set {
 
 pub struct Solver<
     T = f64,
-    const N: usize = 0,
     const S: usize = 0,
-    const S2: usize = 0,
+    const I: usize = 0,
     Equation = (),
     Initial = (),
     Interval = (),
@@ -52,7 +51,7 @@ pub struct Solver<
     pub initial: Initial,
     pub initial_disco: Vec<(T, usize)>,
     pub interval: Interval,
-    pub rk: crate::rk::ExplicitRungeKuttaTable<S, S2, T>,
+    pub rk: crate::rk::ButcherTableu<T, S, I>,
     pub stepsize: T,
     pub max_delay: T,
     pub events_on_step: EventsOnStep,
@@ -61,16 +60,16 @@ pub struct Solver<
     pub events_on_loc: EventsOnLoc,
 }
 
-impl<const N: usize, T: Float> Solver<T, N, 0, 0> {
-    pub fn new() -> Solver<T, N, 7, 21, (), (), (), Nil, Nil, Nil> {
+impl<T: RealField + Copy> Solver<T, 0, 0> {
+    pub fn new() -> Solver<T, 7, 5, (), (), (), Nil, Nil, Nil> {
         Solver {
             equation: (),
             initial: (),
             initial_disco: vec![],
             interval: (),
             max_delay: T::zero(),
-            rk: crate::rk::rktp64(),
-            stepsize: T::from(0.05).unwrap(),
+            rk: crate::rk::ButcherTableu::rktp64(),
+            stepsize: T::from_f64(0.05).unwrap(),
             events_on_step: Nil,
             events_on_start: Nil,
             events_on_stop: Nil,
@@ -79,10 +78,9 @@ impl<const N: usize, T: Float> Solver<T, N, 0, 0> {
     }
 }
 impl<
-    const N: usize,
+    T: RealField + Copy,
     const S: usize,
-    const S2: usize,
-    T: Float,
+    const I: usize,
     Equation,
     Initial,
     Interval,
@@ -111,25 +109,25 @@ impl<
     }
 
     #[allow(unused_parens)]
-    pub fn equation<F: FnMut(&crate::StateRef<T, N>) -> [T; N]>(
+    pub fn equation<F: FnMut(&crate::StateRef<T, Y>) -> Y, Y: RealVectorSpace<T>>(
         self,
-        new_equation: crate::state::StateFn<N, T, [T; N], F>,
-    ) -> SolverType!(Equation => (crate::state::StateFn<N, T, [T; N], F>)) {
+        new_equation: crate::state::StateFn<T, Y, Y, F>,
+    ) -> SolverType!(Equation => (crate::state::StateFn<T, Y, Y, F>)) {
         solver_set!(self, equation: new_equation)
     }
 
-    pub fn initial<I>(self, new_initial: I) -> SolverType!(Initial => I) {
+    pub fn initial<NewInitial>(self, new_initial: NewInitial) -> SolverType!(Initial => NewInitial) {
         solver_set!(self, initial: new_initial)
     }
 
-    pub fn interval<I>(self, new_interval: I) -> SolverType!(Interval => I) {
+    pub fn interval<NewInterval>(self, new_interval: NewInterval) -> SolverType!(Interval => NewInterval) {
         solver_set!(self, interval: new_interval)
     }
 
-    pub fn rk<const S_: usize, const S2_: usize>(
+    pub fn rk<const S_: usize, const I_: usize>(
         self,
-        new_rk: ExplicitRungeKuttaTable<S_, S2_, T>,
-    ) -> SolverType!(S => S_, S2 => S2_) {
+        new_rk: ButcherTableu<T, S_, I_>,
+    ) -> SolverType!(S => S_, I => I_) {
         solver_set!(self, rk: new_rk)
     }
 
@@ -157,16 +155,17 @@ impl<
     }
 
     #[allow(unused)]
-    pub fn run(mut self)
+    pub fn run<Y>(mut self)
     where
-        Equation: crate::state::EvalStateFn<N, T, [T; N]>,
+        Y: RealVectorSpace<T>,
+        Equation: crate::state::EvalStateFn<T, Y, Y>,
         Interval: crate::interval::IntegrationInterval<T>,
-        Initial: crate::initial_condition::InitialCondition<N, T>,
-        EventsOnStart: crate::state::EvalMutStateFnHList<N, T, ()>,
-        EventsOnStep: crate::state::EvalMutStateFnHList<N, T, ()>,
-        EventsOnStop: crate::state::EvalMutStateFnHList<N, T, ()>,
-        EventsOnLoc: crate::loc::loc_hlist::HListLocateEarliest<N, T>
-            + crate::state::EvalMutStateFnHList<N, T, ()>,
+        Initial: crate::initial_condition::InitialCondition<T, Y>,
+        EventsOnStart: crate::state::EvalMutStateFnHList<T, Y, ()>,
+        EventsOnStep: crate::state::EvalMutStateFnHList<T, Y, ()>,
+        EventsOnStop: crate::state::EvalMutStateFnHList<T, Y, ()>,
+        EventsOnLoc: crate::loc::loc_hlist::HListLocateEarliest<T, Y>
+            + crate::state::EvalMutStateFnHList<T, Y, ()>,
     {
         let t_init = self.interval.start_bound();
         let t_end = self.interval.end_bound();

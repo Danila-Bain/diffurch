@@ -1,6 +1,8 @@
 use crate::StateFn;
 use crate::StateRef;
 use crate::state::EvalStateFn;
+use crate::traits::RealVectorSpace;
+use nalgebra::RealField;
 use num::Float;
 
 pub struct Loc<F = (), D = (), L = ()> {
@@ -18,20 +20,19 @@ pub mod periodic;
 /// Delay-propagation of discontinuities
 pub mod propagation;
 
-pub mod loc_hlist;
 pub mod loc_callback;
-
+pub mod loc_hlist;
 
 macro_rules! loc_constructor {
     ($fn:ident, $type:ty, $detection:ident, $location:ident) => {
-        pub fn $fn<const N: usize, T, F: FnMut(&StateRef<T, N>) -> $type>(
+        pub fn $fn<T: RealField + Copy, Y: RealVectorSpace<T>, F: FnMut(&StateRef<T, Y>) -> $type>(
             f: F,
-        ) -> Loc<impl EvalStateFn<N, T, $type>, detect::$detection, locate::$location>
+        ) -> Loc<impl EvalStateFn<T, Y, $type>, detect::$detection, locate::$location>
         where
             T: Float,
         {
             Loc {
-                function: StateFn::<N, T, $type, F, false>::new(f),
+                function: StateFn::<T, Y, $type, F, false>::new(f),
                 detection: detect::$detection,
                 location: locate::$location,
             }

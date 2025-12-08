@@ -20,17 +20,17 @@ macro_rules! polynomial_closure {
 #[macro_export]
 macro_rules! polynomial_derivative_closure {
     ($type:ty) => {
-        move |_t: $type| { <$type as num::NumCast>::from(0.).unwrap() }
+        move |_t: $type| { $type::zero() }
     };
     ($type:ty, $coef:expr) => {
-        move |_t: $type| { <$type as num::NumCast>::from(0.).unwrap() }
+        move |_t: $type| { $type::zero() }
     };
     ($type:ty, $($coef:expr),+ $(,)?) => {
         move |t: $type| {
             let coef = [$($coef),+];
             let last = *coef.last().unwrap();
             coef.into_iter().enumerate().skip(1).rev().skip(1)
-            .fold(last * <$type as num::NumCast>::from((coef.len() - 1) as f64).unwrap(), |acc: $type, (n, c): (usize, $type)| <$type as num::NumCast>::from(n as f64).unwrap() * c + t * acc)
+            .fold(last * <$type as nalgebra::RealField>::from_f64((coef.len() - 1) as f64).unwrap(), |acc: $type, (n, c): (usize, $type)| <$type as nalgebra::RealField>::from_f64(n as f64).unwrap() * c + t * acc)
         }
     };
 }

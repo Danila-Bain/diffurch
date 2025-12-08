@@ -1,11 +1,12 @@
+use nalgebra::RealField;
 use num::Float;
 
-pub trait IntegrationInterval<T: Float> {
+pub trait IntegrationInterval<T: RealField> {
     fn start_bound(&self) -> T;
     fn end_bound(&self) -> T;
 }
 
-impl<T: Float, R: std::ops::RangeBounds<T>> IntegrationInterval<T> for R {
+impl<T: RealField + Float, R: std::ops::RangeBounds<T>> IntegrationInterval<T> for R {
     fn start_bound(&self) -> T {
         use std::ops::Bound::*;
 

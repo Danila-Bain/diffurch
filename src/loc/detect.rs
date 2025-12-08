@@ -2,13 +2,14 @@ use super::Loc;
 use crate::{
     initial_condition::InitialCondition,
     state::{EvalStateFn, State},
+    traits::RealVectorSpace,
 };
-use num::Float;
+use nalgebra::RealField;
 
-pub trait Detect<const N: usize, T> {
-    fn detect<const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
+pub trait Detect<T: RealField + Copy, Y: RealVectorSpace<T>> {
+    fn detect<const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
         &mut self,
-        state: &State<N, S, S2, T, IC>,
+        state: &State<T, Y, S, I, IC>,
     ) -> bool;
 }
 
@@ -35,10 +36,10 @@ pub struct IsFalse;
 
 macro_rules! impl_detect(
     ($type:ty, $detect:ident, |$curr:ident $(, $prev:ident)?| $body:expr) => {
-        impl<const N: usize, T: Float, L, F: EvalStateFn<N, T, $type>> Detect<N, T> for Loc<F, $detect, L> {
-            fn detect<const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
+        impl<T: RealField + Copy, Y: RealVectorSpace<T>, L, F: EvalStateFn<T, Y, $type>> Detect<T, Y> for Loc<F, $detect, L> {
+            fn detect<const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
                 &mut self,
-                state: &State<N, S, S2, T, IC>,
+                state: &State<T, Y, S, I, IC>,
             ) -> bool {
                   let $curr = self.function.eval_curr(state);
                 $(let $prev = self.function.eval_prev(state);)?

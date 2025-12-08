@@ -1,9 +1,10 @@
+use nalgebra::RealField;
 use num::Float;
 
 use crate::{
     initial_condition::InitialCondition,
     loc::{detect::Detect, locate::Locate},
-    state::State,
+    state::State, traits::RealVectorSpace,
 };
 
 pub struct Periodic<T> {
@@ -24,10 +25,10 @@ impl<T: Float> Periodic<T> {
     }
 }
 
-impl<const N: usize, T: Float> Detect<N, T> for Periodic<T> {
-    fn detect<const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
+impl<T: RealField + Copy, Y: RealVectorSpace<T>> Detect<T, Y> for Periodic<T> {
+    fn detect<const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
         &mut self,
-        state: &State<N, S, S2, T, IC>,
+        state: &State<T, Y, S, I, IC>,
     ) -> bool {
         let prev = ((state.t_prev - self.offset) / (self.period)).floor();
         let curr = ((state.t_curr - self.offset) / (self.period)).floor();
@@ -35,10 +36,10 @@ impl<const N: usize, T: Float> Detect<N, T> for Periodic<T> {
         return prev < curr;
     }
 }
-impl<const N: usize, T: Float> Locate<N, T> for Periodic<T> {
-    fn locate<const S: usize, const S2: usize, IC: InitialCondition<N, T>>(
+impl<T: RealField + Copy, Y: RealVectorSpace<T>> Locate<T, Y> for Periodic<T> {
+    fn locate<const S: usize, const I: usize, IC: InitialCondition<T, Y>>(
         &mut self,
-        state: &State<N, S, S2, T, IC>,
+        state: &State<T, Y, S, I, IC>,
     ) -> Option<T> {
         if self.detect(state) {
             let r =
