@@ -1,7 +1,11 @@
 use nalgebra::RealField;
 
 use crate::{initial_condition::InitialCondition, state::state::State, traits::RealVectorSpace};
+use impl_tools::autoimpl;
 
+#[autoimpl(Clone where T: Clone)]
+#[autoimpl(Copy where T: Copy)]
+#[autoimpl(Debug ignore self.h where T: std::fmt::Debug, Y: std::fmt::Debug)]
 pub struct StateRef<'s, T, Y> {
     /// Time of a state
     pub t: T,
@@ -14,6 +18,7 @@ pub struct StateRef<'s, T, Y> {
     pub h: &'s dyn Fn(T) -> Y,
 }
 
+#[autoimpl(Debug ignore self.h where T: std::fmt::Debug, Y: std::fmt::Debug)]
 pub struct StateRefMut<'s, T, Y> {
     /// Reference to time of a state
     pub t: &'s mut T,

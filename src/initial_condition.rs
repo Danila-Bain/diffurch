@@ -21,8 +21,7 @@ impl<T: RealField + Copy, Y: RealVectorSpace<T> + From<U>, U: Copy> InitialCondi
     }
 }
 
-struct InitialFunction<F>(F);
-
+pub struct InitialFunction<F>(pub F);
 /// For this type, the value is interpreted as an initial function. Calling [Self::eval] for `D >=
 /// 1` will panic.
 impl<T: RealField + Copy, F, Y: RealVectorSpace<T>> InitialCondition<T, Y> for InitialFunction<F>

@@ -32,10 +32,10 @@ nalgebra = "0.34.1"
 hlist2 = "0.0.15"
 num = "0.4.3"
 num-traits = "0.2.19"
-
 replace = { path="macros/replace" }
 # trait_hlist = { path="macros/trait_hlist" }
 hlist2_trait_macro = { git="https://github.com/Danila-Bain/hlist2_trait_macro.git" }
 maybe-debug = "0.1.0"
 nalgebra = "0.34.1"
+impl-tools = "0.11.4"
 
