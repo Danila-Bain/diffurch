@@ -44,7 +44,7 @@ macro_rules! impl_detect(
             IC: InitialCondition<T, Y>,
             L, 
             F: EvalStateFn<T, Y, S, I, IC, $type>, 
-        > Detect<T, Y, S, I, IC> for Loc<F, $detect, L> {
+        > Detect<T, Y, S, I, IC> for Loc<T, Y, S, I, IC, F, $detect, L> {
             fn detect(
                 &mut self,
                 state: &State<T, Y, S, I, IC>,

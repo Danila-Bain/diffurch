@@ -8,13 +8,7 @@ use std::collections::VecDeque;
 
 #[derive(Clone)]
 #[autoimpl(Debug ignore self.y_init where T: std::fmt::Debug, Y: std::fmt::Debug)]
-pub struct StateHistory<
-    T: RealField,
-    Y: RealVectorSpace<T>,
-    const S: usize,
-    const I: usize,
-    IC,
-> {
+pub struct StateHistory<T: RealField, Y: RealVectorSpace<T>, const S: usize, const I: usize, IC> {
     pub t_span: T,
 
     pub t_init: T,
@@ -28,14 +22,8 @@ pub struct StateHistory<
     pub rk: crate::rk::ButcherTableu<T, S, I>,
 }
 
-#[derive(Debug)]
-pub struct State<
-    T: RealField + Copy,
-    Y: RealVectorSpace<T>,
-    const S: usize,
-    const I: usize,
-    IC,
-> {
+#[autoimpl(Debug ignore self.history, self.rk, self.k_curr where T: std::fmt::Debug, Y: std::fmt::Debug)]
+pub struct State<T: RealField + Copy, Y: RealVectorSpace<T>, const S: usize, const I: usize, IC> {
     pub history: StateHistory<T, Y, S, I, IC>,
 
     pub t_curr: T,
@@ -59,12 +47,7 @@ impl<
     IC: InitialCondition<T, Y>,
 > State<T, Y, S, I, IC>
 {
-    pub fn new(
-        t_init: T,
-        t_span: T,
-        y_init: IC,
-        rk: crate::rk::ButcherTableu<T, S, I>,
-    ) -> Self {
+    pub fn new(t_init: T, t_span: T, y_init: IC, rk: crate::rk::ButcherTableu<T, S, I>) -> Self {
         let y = y_init.eval::<0>(t_init);
         Self {
             t_curr: t_init,
@@ -89,11 +72,10 @@ impl<
     }
 
     pub fn eval<const D: usize>(&self, t: T) -> Y {
-        if t >= self.t_prev && t < self.t_curr {
+        if t >= self.t_prev && t <= self.t_curr {
             let t_step = self.t_curr - self.t_prev;
             let theta = (t - self.t_prev) / t_step;
-            self.history
-                .rk
+            self.rk
                 .dense_output::<D, Y>(&self.y_prev, t_step, theta, &self.k_curr)
         } else {
             self.history.eval::<D>(t)

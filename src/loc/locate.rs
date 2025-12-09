@@ -45,7 +45,7 @@ macro_rules! impl_locate(
             D, 
             F $(: EvalStateFn<T, Y, S, I, IC, $fn_output>)?
         >
-            Locate<T, Y, S, I, IC> for Loc<F, D, $locate> where Self: Detect<T, Y, S, I, IC>, {
+            Locate<T, Y, S, I, IC> for Loc<T, Y, S, I, IC, F, D, $locate> where Self: Detect<T, Y, S, I, IC>, {
             fn locate(&mut $self, $state: &State<T, Y, S, I, IC>) -> Option<T> {
                 $self.detect($state).then(|| $body)
             }

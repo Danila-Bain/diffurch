@@ -39,7 +39,7 @@ impl<
     IC: InitialCondition<T, Y>,
     Delayed: EvalStateFn<T, Y, S, I, IC, T>,
     L,
-> Detect<T, Y, S, I, IC> for Loc<Propagator<T, Delayed>, Propagation, L>
+> Detect<T, Y, S, I, IC> for Loc<T, Y, S, I, IC, Propagator<T, Delayed>, Propagation, L>
 {
     fn detect(&mut self, state: &State<T, Y, S, I, IC>) -> bool {
         let propagator = &mut self.function;

@@ -80,6 +80,9 @@ impl<
     pub fn dy(&self, t: T) -> Y {
         self.history.eval::<1>(t)
     }
+    pub fn stop_integration(&mut self) {
+        *self.t = T::max_value().unwrap();
+    }
 }
 
 #[allow(unused)]

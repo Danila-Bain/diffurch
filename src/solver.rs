@@ -3,7 +3,10 @@ use hlist2::{HList, Nil};
 use nalgebra::RealField;
 use replace::replace_ident;
 
-use crate::{loc::loc_callback::LocCallback, rk::ButcherTableu, traits::RealVectorSpace};
+use crate::{
+    Loc, initial_condition::InitialCondition, loc::loc_callback::LocCallback, rk::ButcherTableu,
+    traits::RealVectorSpace,
+};
 
 macro_rules! SolverType {
     () => {Solver<T, Y, S, I, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc> };
@@ -170,24 +173,61 @@ impl<
     }
 
     #[allow(unused_parens)]
-    pub fn on_loc<L, C: FnMut(&crate::StateRef<T, Y, S, I, Initial>)>(
+    pub fn on_loc<
+        LocF: FnMut(&crate::StateRef<T, Y, S, I, Initial>) -> Output,
+        Output,
+        LocLocate,
+        LocDetect,
+        CallbackF: FnMut(&crate::StateRef<T, Y, S, I, Initial>),
+    >(
         self,
-        loc: L,
-        callback: C,
-    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<L, (crate::state::StateFn<T, Y, (), C>)>>)) {
+        loc: Loc<T, Y, S, I, Initial, LocF, LocLocate, LocDetect>,
+        callback: CallbackF,
+    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<Loc<T, Y, S, I, Initial, LocF, LocLocate, LocDetect>, (crate::state::StateFn<T, Y, (), CallbackF>)>>))
+    {
         solver_set!(self, events_on_loc: events_on_loc.append(LocCallback(loc, crate::StateFn::new(callback))))
     }
-    
+
     #[allow(unused_parens)]
     pub fn on_loc_mut<L, C: FnMut(&mut crate::StateRefMut<T, Y, S, I, Initial>)>(
         self,
         loc: L,
         callback: C,
-    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<L, (crate::state::StateFn<T, Y, (), C, true>)>>)) {
+    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<L, (crate::state::StateFn<T, Y, (), C, true>)>>))
+    {
         solver_set!(self, events_on_loc: events_on_loc.append(LocCallback(loc, crate::StateFn::new_mut(callback))))
     }
 
-    #[allow(unused)]
+    #[allow(unused_parens)]
+    pub fn on_zero<
+        LocF: FnMut(&crate::StateRef<T, Y, S, I, Initial>) -> T,
+        CallbackF: FnMut(&crate::StateRef<T, Y, S, I, Initial>),
+    >(
+        self,
+        loc: LocF,
+        callback: CallbackF,
+    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<Loc<T, Y, S, I, Initial, crate::state::StateFn<T, Y, T, LocF>, crate::loc::detect::Zero, crate::loc::locate::Bisection>, (crate::state::StateFn<T, Y, (), CallbackF>)>>))
+    where
+        Initial: InitialCondition<T, Y>,
+    {
+        solver_set!(self, events_on_loc: events_on_loc.append(LocCallback(Loc::zero(loc), crate::StateFn::new(callback))))
+    }
+    
+    #[allow(unused_parens)]
+    pub fn on_zero_mut<
+        LocF: FnMut(&crate::StateRef<T, Y, S, I, Initial>) -> T,
+        CallbackF: FnMut(&mut crate::StateRefMut<T, Y, S, I, Initial>),
+    >(
+        self,
+        loc: LocF,
+        callback: CallbackF,
+    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<Loc<T, Y, S, I, Initial, crate::state::StateFn<T, Y, T, LocF>, crate::loc::detect::Zero, crate::loc::locate::Bisection>, (crate::state::StateFn<T, Y, (), CallbackF, true>)>>))
+    where
+        Initial: InitialCondition<T, Y>,
+    {
+        solver_set!(self, events_on_loc: events_on_loc.append(LocCallback(Loc::zero(loc), crate::StateFn::new_mut(callback))))
+    }
+
     pub fn run(mut self)
     where
         Equation: crate::state::EvalStateFn<T, Y, S, I, Initial, Y>,
