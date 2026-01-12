@@ -26,6 +26,9 @@ pub struct StateRef<
     /// Derivative of a state
     pub dy: &'s Y,
 
+    /// Time of a state at the begining of the step
+    pub t_prev: T,
+
     history: &'s StateHistory<T, Y, S, I, IC>,
 }
 
@@ -143,6 +146,7 @@ impl<
     fn eval_curr(&mut self, state: &State<T, Y, S, I, IC>) -> Output {
         (self.f)(&StateRef {
             t: state.t_curr,
+            t_prev: state.t_prev,
             y: &state.y_curr,
             dy: &state.dy_curr,
             history: &state.history,
@@ -151,6 +155,7 @@ impl<
     fn eval_prev(&mut self, state: &State<T, Y, S, I, IC>) -> Output {
         (self.f)(&StateRef {
             t: state.t_prev,
+            t_prev: state.t_prev,
             y: &state.y_prev,
             dy: &state.dy_prev,
             history: &state.history,
@@ -159,6 +164,7 @@ impl<
     fn eval_at(&mut self, state: &State<T, Y, S, I, IC>, t: T) -> Output {
         (self.f)(&StateRef {
             t: t,
+            t_prev: t, 
             y: &state.eval::<0>(t),
             dy: &state.eval::<1>(t),
             history: &state.history,

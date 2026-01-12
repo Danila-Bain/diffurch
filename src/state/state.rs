@@ -129,7 +129,8 @@ impl<
         self.t_prev = self.t_curr;
         self.y_prev = self.y_curr;
         self.k_curr = [Y::zero(); S];
-        self.dy_curr = Y::zero();
+        // self.dy_curr = Y::zero();
+        // self.dy_curr = self.dy_curr;
     }
 
     pub fn undo_step(&mut self) {
