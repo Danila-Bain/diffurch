@@ -38,4 +38,5 @@ hlist2_trait_macro = { git="https://github.com/Danila-Bain/hlist2_trait_macro.gi
 maybe-debug = "0.1.0"
 nalgebra = "0.34.1"
 impl-tools = "0.11.4"
+derive_more = { version = "2.1.1", features = ["add", "add_assign", "display", "eq", "mul", "mul_assign", "not"] }
 
