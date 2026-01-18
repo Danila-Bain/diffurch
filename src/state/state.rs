@@ -35,6 +35,8 @@ pub struct State<T: RealField + Copy, Y: RealVectorSpace<T>, const S: usize, con
     pub dy_curr: Y,
     pub dy_prev: Y,
 
+    pub e_curr: Y,
+
     pub rk: crate::rk::ButcherTableu<T, S, I>,
     pub k_curr: [Y; S],
 }
@@ -56,6 +58,7 @@ impl<
             y_prev: y,
             dy_curr: Y::zero(),
             dy_prev: Y::zero(),
+            e_curr: Y::zero(),
             rk,
             k_curr: [Y::zero(); S],
             history: StateHistory {
@@ -104,6 +107,8 @@ impl<
             + (0..S).fold(Y::zero(), |acc, j| acc + self.k_curr[j] * self.rk.b[j]) * t_step;
         self.t_curr = self.t_prev + t_step;
         self.dy_curr = rhs.eval_curr(self);
+
+        self.e_curr = (0..S).fold(Y::zero(), |acc, j| acc + self.k_curr[j] * (self.rk.b2[j] - self.rk.b[j])) * t_step;
     }
 
     pub fn commit_step(&mut self) {

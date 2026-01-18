@@ -121,6 +121,7 @@ dependencies = [
  "hlist2",
  "hlist2_trait_macro",
  "impl-tools",
+ "maths-traits",
  "maybe-debug",
  "nalgebra",
  "ndarray",
@@ -356,6 +357,15 @@ name = "linux-raw-sys"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd945864f07fe9f5371a27ad7b52a172b4b499999f1d97574c9fa68373937e12"
+
+[[package]]
+name = "maths-traits"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22f026e1cd0e5f4d5a794e119ba9b3caeef6de22b2d772606b59dda2cdd52d5c"
+dependencies = [
+ "num-traits",
+]
 
 [[package]]
 name = "matrixmultiply"

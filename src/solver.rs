@@ -4,19 +4,23 @@ use nalgebra::RealField;
 use replace::replace_ident;
 
 use crate::{
-    Loc, initial_condition::InitialCondition, loc::loc_callback::LocCallback, rk::ButcherTableu,
+    Loc,
+    initial_condition::InitialCondition,
+    loc::loc_callback::LocCallback,
+    rk::ButcherTableu,
+    stepsize::{FixedStepsize, StepStatus, StepsizeController},
     traits::RealVectorSpace,
 };
 
 macro_rules! SolverType {
-    () => {Solver<T, Y, S, I, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc> };
+    () => {Solver<T, Y, S, I, Equation, Initial, Interval, Stepsize, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc> };
     ($arg:ident => $replacement:ty) => {
-        replace_ident!($arg, $replacement, Solver<T, Y, S, I, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>)
+        replace_ident!($arg, $replacement, Solver<T, Y, S, I, Equation, Initial, Interval, Stepsize, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>)
     };
     ($arg1:ident => $replacement1:ty, $arg2:ident => $replacement2:ty) => {
         replace_ident!($arg1, $replacement1,
             replace_ident!($arg2, $replacement2,
-                Solver<T, Y, S, I, Equation, Initial, Interval, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>
+                Solver<T, Y, S, I, Equation, Initial, Interval, Stepsize, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>
             )
         )
     };
@@ -46,6 +50,7 @@ pub struct Solver<
     Equation = (),
     Initial = (),
     Interval = (),
+    Stepsize = (),
     EventsOnStep: HList = Nil,
     EventsOnStart: HList = Nil,
     EventsOnStop: HList = Nil,
@@ -56,7 +61,7 @@ pub struct Solver<
     pub initial_disco: Vec<(T, usize)>,
     pub interval: Interval,
     pub rk: crate::rk::ButcherTableu<T, S, I>,
-    pub stepsize: T,
+    pub stepsize: Stepsize,
     pub max_delay: T,
     pub events_on_step: EventsOnStep,
     pub events_on_start: EventsOnStart,
@@ -67,7 +72,7 @@ pub struct Solver<
 
 impl Solver {
     pub fn new<T: RealField + Copy, Y: RealVectorSpace<T>>()
-    -> Solver<T, Y, 7, 5, (), (), (), Nil, Nil, Nil> {
+    -> Solver<T, Y, 7, 5, (), (), (), FixedStepsize<T>, Nil, Nil, Nil> {
         Solver {
             equation: (),
             initial: (),
@@ -75,7 +80,7 @@ impl Solver {
             interval: (),
             max_delay: T::zero(),
             rk: crate::rk::ButcherTableu::rktp64(),
-            stepsize: T::from_f64(0.05).unwrap(),
+            stepsize: FixedStepsize(T::from_f64(0.05).unwrap()),
             events_on_step: Nil,
             events_on_start: Nil,
             events_on_stop: Nil,
@@ -92,6 +97,7 @@ impl<
     Equation,
     Initial,
     Interval,
+    Stepsize,
     EventsOnStep: HList + hlist2::ops::Append,
     EventsOnStart: HList + hlist2::ops::Append,
     EventsOnStop: HList + hlist2::ops::Append,
@@ -107,8 +113,11 @@ impl<
     }
 
     /// [Solver::stepsize] setter. Returns self.
-    pub fn stepsize(self, stepsize: T) -> Self {
-        Self { stepsize, ..self }
+    pub fn stepsize<NewStepsize>(
+        self,
+        new_stepsize: NewStepsize,
+    ) -> SolverType!(Stepsize => NewStepsize) {
+        solver_set!(self, stepsize: new_stepsize)
     }
 
     /// [Solver::max_delay] setter. Returns self.
@@ -212,7 +221,7 @@ impl<
     {
         solver_set!(self, events_on_loc: events_on_loc.append(LocCallback(Loc::zero(loc), crate::StateFn::new(callback))))
     }
-    
+
     #[allow(unused_parens)]
     pub fn on_zero_mut<
         LocF: FnMut(&crate::StateRef<T, Y, S, I, Initial>) -> T,
@@ -233,6 +242,7 @@ impl<
         Equation: crate::state::EvalStateFn<T, Y, S, I, Initial, Y>,
         Interval: crate::interval::IntegrationInterval<T>,
         Initial: crate::initial_condition::InitialCondition<T, Y>,
+        Stepsize: StepsizeController<T, Y>,
         EventsOnStart: crate::state::EvalMutStateFnHList<T, Y, S, I, Initial, ()>,
         EventsOnStep: crate::state::EvalMutStateFnHList<T, Y, S, I, Initial, ()>,
         EventsOnStop: crate::state::EvalMutStateFnHList<T, Y, S, I, Initial, ()>,
@@ -251,7 +261,12 @@ impl<
         self.events_on_step.eval_mut(&mut state);
 
         while state.t_curr < t_end {
-            state.make_step(&mut rhs, stepsize);
+            state.make_step(&mut rhs, stepsize.get().min(t_end - state.t_curr));
+
+            while matches!(stepsize.update(&state.e_curr), StepStatus::Rejected) {
+                state.undo_step();
+                state.make_step(&mut rhs, stepsize.get().min(t_end - state.t_curr));
+            }
 
             if let Some((index, time)) = self.events_on_loc.locate_earliest(&state) {
                 state.undo_step();
@@ -259,12 +274,9 @@ impl<
                 state.commit_step();
                 state.make_zero_step();
                 self.events_on_loc.eval_mut_at_index(&mut state, index);
-                state.commit_step();
-            } else {
-                state.commit_step();
-                self.events_on_step.eval_mut(&mut state);
             }
-            stepsize = stepsize.min(t_end - state.t_curr);
+            state.commit_step();
+            self.events_on_step.eval_mut(&mut state);
         }
         self.events_on_stop.eval_mut(&mut state);
     }
