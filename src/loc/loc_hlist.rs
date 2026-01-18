@@ -90,9 +90,6 @@ impl<
         let mut index = 0;
         let mut earliest_time = None;
         self.locate_earliest_impl(state, &mut 0, &mut index, &mut earliest_time);
-        let Some(earliest_time) = earliest_time else {
-            return None;
-        };
-        Some((index, earliest_time))
+        Some((index, earliest_time?))
     }
 }
