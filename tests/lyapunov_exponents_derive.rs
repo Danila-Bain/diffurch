@@ -39,7 +39,7 @@ fn lorenz_lyapunov_exponents() {
         let mut lambdas = vector![0., 0., 0.];
 
         Solver::new::<f64, State>()
-            .stepsize(FixedStepsize(0.005))
+            .stepsize((0.005))
             .initial(State {
                 state: vector![10., 15., 20.],
                 variation: Matrix3::identity(),

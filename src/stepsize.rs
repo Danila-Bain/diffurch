@@ -14,16 +14,15 @@ pub enum StepStatus {
     Accepted,
 }
 
-pub struct FixedStepsize<T>(pub T);
-impl<T: Copy, Y> StepsizeController<T, Y> for FixedStepsize<T> {
+impl<T: Copy, Y> StepsizeController<T, Y> for T {
     fn init(&mut self) {}
 
     fn get(&self) -> T {
-        self.0
+        *self
     }
 
     fn set(&mut self, new_stepsize: T) {
-        self.0 = new_stepsize;
+        *self = new_stepsize;
     }
 
     fn update(&mut self, _: &Y) -> StepStatus {
@@ -62,8 +61,8 @@ where
     fn update(&mut self, error: &Y) -> StepStatus {
         let err = error
             .into_iter()
-            .zip(self.atol.into_iter())
-            .zip(self.rtol.into_iter())
+            .zip(&self.atol)
+            .zip(&self.rtol)
             .map(|((&err, &atol), &rtol)| err.abs() / (atol + err.abs() * rtol))
             .reduce(T::max)
             .unwrap_or(T::zero());
@@ -71,7 +70,7 @@ where
         let factor =
             self.fac * (T::one() / err).powf(T::one() / T::from_u32(self.order + 1).unwrap());
         let factor = factor.clamp(self.fac_range.start, self.fac_range.end);
-        self.stepsize = self.stepsize * factor;
+        self.stepsize *= factor;
 
         match err >= T::one() {
             true => StepStatus::Rejected,

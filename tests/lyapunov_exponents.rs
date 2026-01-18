@@ -254,7 +254,7 @@ fn lorenz_lyapunov_exponents() {
         let mut lambdas = vector![0., 0., 0.];
 
         Solver::new::<f64, Matrix3x4<f64>>()
-            .stepsize(FixedStepsize(0.005))
+            .stepsize((0.005))
             .initial(matrix![
                 10., 1., 0., 0.;
                 15., 0., 1., 0.;
