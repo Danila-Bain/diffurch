@@ -31,13 +31,13 @@ impl<T: Copy, Y> StepsizeController<T, Y> for T {
 }
 
 pub struct AutomaticStepsize<T, Y> {
-    stepsize: T,
-    atol: Y,
-    rtol: Y,
-    order: u32,
-    fac: T,
-    fac_range: std::ops::Range<T>,
-    initial_stepsize: Option<T>,
+    pub stepsize: T,
+    pub atol: Y,
+    pub rtol: Y,
+    pub order: u32,
+    pub fac: T,
+    pub fac_range: std::ops::Range<T>,
+    pub initial_stepsize: Option<T>,
 }
 
 impl<T, Y> AutomaticStepsize<T, Y> {}
