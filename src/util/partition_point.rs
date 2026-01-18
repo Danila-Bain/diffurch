@@ -29,7 +29,7 @@ pub fn partition_point_linear<T, P: FnMut(&T) -> bool>(
     mut pred: P,
 ) -> usize {
     if deque.is_empty() {
-        return 0;
+        0
     } else {
         let mut i = start.min(deque.len() - 1);
         if pred(deque.get(i).unwrap()) {
@@ -47,7 +47,7 @@ pub fn partition_point_linear<T, P: FnMut(&T) -> bool>(
                 i -= 1;
             }
         }
-        return i;
+        i
     }
 }
 

@@ -15,7 +15,7 @@ pub trait InitialCondition<T: RealField + Copy, Y: RealVectorSpace<T>> {
 impl<T: RealField + Copy, Y: RealVectorSpace<T> + From<U>, U: Copy> InitialCondition<T, Y> for U {
     fn eval<const D: usize>(&self, _t: T) -> Y {
         match D {
-            0 => self.clone().into(),
+            0 => (*self).into(),
             _ => Y::zero(),
         }
     }

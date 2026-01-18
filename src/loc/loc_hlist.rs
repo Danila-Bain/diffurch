@@ -93,6 +93,6 @@ impl<
         let Some(earliest_time) = earliest_time else {
             return None;
         };
-        return Some((index, earliest_time));
+        Some((index, earliest_time))
     }
 }

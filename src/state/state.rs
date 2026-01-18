@@ -177,7 +177,7 @@ impl<
             let t_next = self.t_deque[i];
             let t_step = t_next - t_prev;
             let theta = (t - t_prev) / t_step;
-            return self.rk.dense_output::<D, Y>(&x_prev, t_step, theta, &k);
+            self.rk.dense_output::<D, Y>(x_prev, t_step, theta, k)
         }
     }
 }

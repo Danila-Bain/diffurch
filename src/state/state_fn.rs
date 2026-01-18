@@ -163,7 +163,7 @@ impl<
     }
     fn eval_at(&mut self, state: &State<T, Y, S, I, IC>, t: T) -> Output {
         (self.f)(&StateRef {
-            t: t,
+            t,
             t_prev: t, 
             y: &state.eval::<0>(t),
             dy: &state.eval::<1>(t),

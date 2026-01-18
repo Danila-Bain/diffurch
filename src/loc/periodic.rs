@@ -38,7 +38,7 @@ impl<
         let prev = ((state.t_prev - self.offset) / (self.period)).floor();
         let curr = ((state.t_curr - self.offset) / (self.period)).floor();
         // dbg!(prev, state.t_prev/self.period, curr, state.t_curr/self.period);
-        return prev < curr;
+        prev < curr
     }
 }
 impl<

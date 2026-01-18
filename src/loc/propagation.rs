@@ -64,9 +64,9 @@ impl<
             let (t_disco, t_order) = *state.history.disco_deque.get(propagator.t_index).unwrap();
             propagator.t_disco = t_disco;
             propagator.t_order = t_order + propagator.smoothing_order;
-            return true;
+            true
         } else {
-            return false;
+            false
         }
     }
 }

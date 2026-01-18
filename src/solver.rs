@@ -8,7 +8,7 @@ use crate::{
     initial_condition::InitialCondition,
     loc::loc_callback::LocCallback,
     rk::ButcherTableu,
-    stepsize::{FixedStepsize, StepStatus, StepsizeController},
+    stepsize::{StepStatus, StepsizeController},
     traits::RealVectorSpace,
 };
 
@@ -72,7 +72,7 @@ pub struct Solver<
 
 impl Solver {
     pub fn new<T: RealField + Copy, Y: RealVectorSpace<T>>()
-    -> Solver<T, Y, 7, 5, (), (), (), FixedStepsize<T>, Nil, Nil, Nil> {
+    -> Solver<T, Y, 7, 5, (), (), (), T, Nil, Nil, Nil> {
         Solver {
             equation: (),
             initial: (),
@@ -80,7 +80,7 @@ impl Solver {
             interval: (),
             max_delay: T::zero(),
             rk: crate::rk::ButcherTableu::rktp64(),
-            stepsize: FixedStepsize(T::from_f64(0.05).unwrap()),
+            stepsize: T::from_f64(0.05).unwrap(),
             events_on_step: Nil,
             events_on_start: Nil,
             events_on_stop: Nil,
