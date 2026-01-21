@@ -32,6 +32,7 @@ impl<T: Copy, Y> StepsizeController<T, Y> for T {
 
 pub struct AutomaticStepsize<T, Y> {
     pub stepsize: T,
+    pub stepsize_range: std::ops::Range<T>,
     pub atol: Y,
     pub rtol: Y,
     pub order: u32,
@@ -71,11 +72,13 @@ where
             self.fac * (T::one() / err).powf(T::one() / T::from_u32(self.order + 1).unwrap());
         let factor = factor.clamp(self.fac_range.start, self.fac_range.end);
         self.stepsize *= factor;
+        self.stepsize = self
+            .stepsize
+            .clamp(self.stepsize_range.start, self.stepsize_range.end);
 
         match err >= T::one() {
             true => StepStatus::Rejected,
             false => StepStatus::Accepted,
         }
     }
-
 }
