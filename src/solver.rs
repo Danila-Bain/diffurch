@@ -268,7 +268,7 @@ impl<
                 state.make_step(&mut rhs, stepsize.get().min(t_end - state.t_curr));
             }
 
-            if let Some((index, time)) = self.events_on_loc.locate_earliest(&state) {
+            if let Some((index, time)) = self.events_on_loc.locate_earliest(&state) && time > state.t_curr {
                 state.undo_step();
                 state.make_step(&mut rhs, time - state.t_curr);
                 state.commit_step();
