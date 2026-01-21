@@ -7,15 +7,14 @@ use diffurch::*;
 fn constant_1() {
     let mut ts = vec![];
 
-    Solver::new()
-        .equation(state_fn!(|| [0.]))
-        .initial([0.])
+    Solver::new::<f64, f64>()
+        .initial(0.)
+        .equation(|_| 0.)
         .initial_disco([(0., 0)])
-        .neutral_delay(1.)
+        // .neutral_delay(1.)
         .interval(0. ..5.)
-        .rk(&rk::EULER)
         .stepsize(0.75)
-        .on_step(event!(|t| ts.push(t)))
+        .on_step(|s| ts.push(s.t))
         .run();
 
     assert_eq!(
@@ -29,16 +28,16 @@ fn constant_2() {
     let mut ts = vec![];
 
     let stepsize = 7. / 8.;
-    Solver::new()
-        .equation(state_fn!(|| [0.]))
-        .initial([0.])
-        .initial_disco([(0., 0)])
-        .neutral_delay(1.)
-        .neutral_delay(1.25)
-        .interval(0. ..5.)
-        .rk(&rk::EULER)
+    Solver::new::<f64, f64>()
+        .rk(RK::euler())
         .stepsize(stepsize)
-        .on_step(event!(|t| ts.push(t)))
+        .initial(0.)
+        .equation(|_| 0.)
+        .initial_disco([(0., 0)])
+        // .neutral_delay(1.)
+        // .neutral_delay(1.25)
+        .interval(0. ..5.)
+        .on_step(|s| ts.push(s.t))
         .run();
 
     assert_eq!(
@@ -53,15 +52,15 @@ fn constant_2() {
 fn constant_1_smoothing() {
     let mut ts = vec![];
 
-    Solver::new()
-        .equation(state_fn!(|| [0.]))
-        .initial([0.])
+    Solver::new::<f64, f64>()
+        .rk(RK::rk4())
+        .initial(0.)
+        .equation(|_| 0.)
         .initial_disco([(0., 0)])
-        .delay(1.)
+        // .delay(1.)
         .interval(0. ..6.)
-        .rk(&rk::CLASSIC4)
         .stepsize(0.75)
-        .on_step(event!(|t| ts.push(t)))
+        .on_step(|s| ts.push(s.t))
         .run();
 
     assert_eq!(
@@ -76,14 +75,14 @@ fn pantograph() {
     let stepsize = 0.123456789101112;
 
     Solver::new()
-        .equation(state_fn!(|| [0.]))
-        .neutral_delay(state_fn!(|t| t / 2.))
-        .initial([0.])
+        .rk(RK::rk4())
+        .stepsize(stepsize)
+        .initial(0.)
+        .equation(|_| 0.)
         .initial_disco([(1., 0)])
         .interval(1. ..2f64.powi(10))
-        .rk(&rk::CLASSIC4)
-        .stepsize(stepsize)
-        .on_step(event!(|t| ts.push(t)))
+        // .neutral_delay(state_fn!(|t| t / 2.))
+        .on_step(|s| ts.push(s.t))
         .run();
 
     for i in 1..=10 {
