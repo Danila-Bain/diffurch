@@ -8,10 +8,11 @@ fn constant_1() {
     let mut ts = vec![];
 
     Solver::new::<f64, f64>()
+        .rk(RK::euler())
         .initial(0.)
         .equation(|_| 0.)
         .initial_disco([(0., 0)])
-        // .neutral_delay(1.)
+        .with_const_delay(1., 0)
         .interval(0. ..5.)
         .stepsize(0.75)
         .on_step(|s| ts.push(s.t))
@@ -34,9 +35,10 @@ fn constant_2() {
         .initial(0.)
         .equation(|_| 0.)
         .initial_disco([(0., 0)])
-        // .neutral_delay(1.)
-        // .neutral_delay(1.25)
         .interval(0. ..5.)
+        .with_const_delay(1., 0)
+        .with_const_delay(1.25, 0)
+        .max_delay(1.25)
         .on_step(|s| ts.push(s.t))
         .run();
 
@@ -56,8 +58,8 @@ fn constant_1_smoothing() {
         .rk(RK::rk4())
         .initial(0.)
         .equation(|_| 0.)
-        .initial_disco([(0., 0)])
-        // .delay(1.)
+        .initial_disco([(0., 1)])
+        .with_const_delay(1., 1)
         .interval(0. ..6.)
         .stepsize(0.75)
         .on_step(|s| ts.push(s.t))
@@ -81,8 +83,9 @@ fn pantograph() {
         .equation(|_| 0.)
         .initial_disco([(1., 0)])
         .interval(1. ..2f64.powi(10))
-        // .neutral_delay(state_fn!(|t| t / 2.))
+        .with_delayed_argument(|s| s.t / 2., 0)
         .on_step(|s| ts.push(s.t))
+        .max_delay(f64::INFINITY)
         .run();
 
     for i in 1..=10 {

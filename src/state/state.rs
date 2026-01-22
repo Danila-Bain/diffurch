@@ -49,7 +49,7 @@ impl<
     IC: InitialCondition<T, Y>,
 > State<T, Y, S, I, IC>
 {
-    pub fn new(t_init: T, t_span: T, y_init: IC, rk: crate::rk::ButcherTableu<T, S, I>) -> Self {
+    pub fn new(t_init: T, t_span: T, y_init: IC, disco_init: VecDeque<(T, usize)>, rk: crate::rk::ButcherTableu<T, S, I>) -> Self {
         let y = y_init.eval::<0>(t_init);
         Self {
             t_curr: t_init,
@@ -69,7 +69,7 @@ impl<
                 t_deque: VecDeque::from([t_init]),
                 y_deque: VecDeque::from([y]),
                 k_deque: VecDeque::new(),
-                disco_deque: VecDeque::new(),
+                disco_deque: disco_init,
             },
         }
     }

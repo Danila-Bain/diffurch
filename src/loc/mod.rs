@@ -1,6 +1,8 @@
 use crate::StateFn;
 use crate::StateRef;
 use crate::initial_condition::InitialCondition;
+use crate::loc::propagation::Propagation;
+use crate::loc::propagation::Propagator;
 use crate::traits::RealVectorSpace;
 use nalgebra::RealField;
 
@@ -65,6 +67,18 @@ impl<
     loc_constructor! {switch_false, bool, SwitchFalse, Bisection}
     loc_constructor! {is_true,      bool, IsTrue,      StepBegin}
     loc_constructor! {is_false,     bool, IsFalse,     StepBegin}
+
+    pub fn propagated_discontinuity<F: FnMut(&StateRef<T, Y, S, I, IC>) -> T>(
+        delayed: F,
+        smoothing_order: usize
+    ) -> Loc<T, Y, S, I, IC, Propagator<T, StateFn<T, Y, T, F, false>>, Propagation, locate::Bisection> {
+        Loc {
+            function: Propagator::new(StateFn::<T, Y, T, F, false>::new(delayed), smoothing_order),
+            detection: Propagation,
+            location: locate::Bisection,
+            _state: std::marker::PhantomData,
+        }
+    }
 }
 
 impl<

@@ -6,8 +6,13 @@ use replace::replace_ident;
 use crate::{
     Loc,
     initial_condition::InitialCondition,
-    loc::loc_callback::LocCallback,
+    loc::{
+        loc_callback::LocCallback,
+        locate::Bisection,
+        propagation::{Propagation, Propagator},
+    },
     rk::ButcherTableu,
+    state::EvalStateFn,
     stepsize::{StepStatus, StepsizeController},
     traits::RealVectorSpace,
 };
@@ -198,6 +203,45 @@ impl<
     }
 
     #[allow(unused_parens)]
+    pub fn with_delayed_argument<Delayed: FnMut(&crate::StateRef<T, Y, S, I, Initial>) -> T>(
+        self,
+        delayed: Delayed,
+        smoothing_order: usize,
+    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<Loc<T, Y, S, I, Initial, Propagator<T, crate::state::StateFn<T, Y, T, Delayed, false>>, Propagation, Bisection>>))
+    where
+        Y: From<Initial>,
+        Initial: InitialCondition<T, Y>,
+    {
+        solver_set!(self, events_on_loc: events_on_loc.append(Loc::propagated_discontinuity(delayed, smoothing_order)))
+    }
+
+    #[allow(unused_parens)]
+    pub fn with_const_delay(
+        self,
+        delay: T,
+        smoothing_order: usize,
+    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<Loc<T, Y, S, I, Initial, Propagator<T, impl EvalStateFn<T, Y, S, I, Initial, T>>, Propagation, Bisection>>))
+    where
+        Y: From<Initial>,
+        Initial: InitialCondition<T, Y>,
+    {
+        self.with_delayed_argument(move |s| s.t - delay, smoothing_order)
+    }
+
+    // #[allow(unused_parens)]
+    // pub fn with_delay<Delay: Fn(&crate::StateRef<T, Y, S, I, Initial>) -> T>(
+    //     self,
+    //     delay: Delay,
+    //     smoothing_order: usize,
+    // ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<Loc<T, Y, S, I, Initial, Propagator<T, impl FnMut(&crate::StateRef<T, Y, S, I, Initial>) -> T>, Propagation, Bisection>, ()>>))
+    // where
+    //     Y: From<Initial>,
+    //     Initial: InitialCondition<T, Y>,
+    // {
+    //     self.with_delayed_argument(move |s| s.t - delay(s), smoothing_order)
+    // }
+
+    #[allow(unused_parens)]
     pub fn on_loc_mut<L, C: FnMut(&mut crate::StateRefMut<T, Y, S, I, Initial>)>(
         self,
         loc: L,
@@ -253,7 +297,13 @@ impl<
         let t_end = self.interval.end_bound();
 
         let mut rhs = self.equation;
-        let mut state = crate::state::State::new(t_init, self.max_delay, self.initial, self.rk);
+        let mut state = crate::state::State::new(
+            t_init,
+            self.max_delay,
+            self.initial,
+            self.initial_disco.into(),
+            self.rk,
+        );
 
         let mut stepsize = self.stepsize;
 
@@ -263,12 +313,15 @@ impl<
         while state.t_curr < t_end {
             state.make_step(&mut rhs, stepsize.get().min(t_end - state.t_curr));
 
-            while matches!(stepsize.update(&state.e_curr), StepStatus::Rejected) {
+            // WHO ADDS PROPAGATED DISCONTINUITY TO THE DISCONTINUITY LIST???
+            while stepsize.update(&state.e_curr) == StepStatus::Rejected {
                 state.undo_step();
                 state.make_step(&mut rhs, stepsize.get().min(t_end - state.t_curr));
             }
 
-            if let Some((index, time)) = self.events_on_loc.locate_earliest(&state) && time > state.t_curr {
+            if let Some((index, time)) = self.events_on_loc.locate_earliest(&state)
+                && time > state.t_prev
+            {
                 state.undo_step();
                 state.make_step(&mut rhs, time - state.t_curr);
                 state.commit_step();

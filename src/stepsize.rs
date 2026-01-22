@@ -9,6 +9,7 @@ pub trait StepsizeController<T, Y> {
     fn update(&mut self, error: &Y) -> StepStatus;
 }
 
+#[derive(Clone, Copy, PartialEq)]
 pub enum StepStatus {
     Rejected,
     Accepted,

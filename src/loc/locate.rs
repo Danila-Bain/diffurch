@@ -101,6 +101,7 @@ impl_locate!(Bisection, Output = T, |self, state| {
     let mut w = (r - l).abs();
     let mut w_prev = T::from_f64(2.).unwrap() * w;
 
+
     while w < w_prev {
         w_prev = w;
         match self.function.eval_at(state, m) < T::zero() {
