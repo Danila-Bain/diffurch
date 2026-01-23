@@ -209,7 +209,6 @@ impl<
         smoothing_order: usize,
     ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<Loc<T, Y, S, I, Initial, Propagator<T, crate::state::StateFn<T, Y, T, Delayed, false>>, Propagation, Bisection>>))
     where
-        Y: From<Initial>,
         Initial: InitialCondition<T, Y>,
     {
         solver_set!(self, events_on_loc: events_on_loc.append(Loc::propagated_discontinuity(delayed, smoothing_order)))
@@ -222,7 +221,6 @@ impl<
         smoothing_order: usize,
     ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<Loc<T, Y, S, I, Initial, Propagator<T, impl EvalStateFn<T, Y, S, I, Initial, T>>, Propagation, Bisection>>))
     where
-        Y: From<Initial>,
         Initial: InitialCondition<T, Y>,
     {
         self.with_delayed_argument(move |s| s.t - delay, smoothing_order)
@@ -235,7 +233,6 @@ impl<
     //     smoothing_order: usize,
     // ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<Loc<T, Y, S, I, Initial, Propagator<T, impl FnMut(&crate::StateRef<T, Y, S, I, Initial>) -> T>, Propagation, Bisection>, ()>>))
     // where
-    //     Y: From<Initial>,
     //     Initial: InitialCondition<T, Y>,
     // {
     //     self.with_delayed_argument(move |s| s.t - delay(s), smoothing_order)

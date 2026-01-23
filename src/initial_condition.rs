@@ -12,7 +12,7 @@ pub trait InitialCondition<T: RealField + Copy, Y: RealVectorSpace<T>> {
 }
 
 /// For this type, the value is interpreted as a constant function. All its derivatives are zero
-impl<T: RealField + Copy, Y: RealVectorSpace<T> + From<U>, U: Copy> InitialCondition<T, Y> for U {
+impl<T: RealField + Copy, Y: RealVectorSpace<T>, U: Copy> InitialCondition<T, Y> for U where Y: From<U> {
     fn eval<const D: usize>(&self, _t: T) -> Y {
         match D {
             0 => (*self).into(),
