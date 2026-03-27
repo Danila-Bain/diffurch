@@ -1,32 +1,30 @@
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]
 use diffurch::*;
+use nalgebra::{Vector3, matrix};
 
 // Solving linear 3-dimensional system, which produces consecutive
-// fibonacci numbers at integer times.
+// fibonacci numbers at integer values of t.
 //
 // On the construction of equation, see comments below.
 
 fn main() {
     // magic matrix of the system (see derivation below)
-    let a = [
-        [-0.21520447048200203, 0.43040894096400406, 3.141592653589793],
-        [0.43040894096400406, 0.21520447048200203, -1.941611038725466],
-        [-2.2732777998989695, 1.4049629462081452, -0.4812118250596034],
+    let a = matrix![
+        -0.21520447048200203, 0.43040894096400406, 3.141592653589793;
+        0.43040894096400406, 0.21520447048200203, -1.941611038725466;
+        -2.2732777998989695, 1.4049629462081452, -0.4812118250596034;
     ];
 
-    Solver::new()
-        // linear system of differential equations
-        .equation(state_fn!(|[x, y, z]| [
-            /* x' = */ a[0][0] * x + a[0][1] * y + a[0][2] * z,
-            /* y' = */ a[1][0] * x + a[1][1] * y + a[1][2] * z,
-            /* z' = */ a[2][0] * x + a[2][1] * y + a[2][2] * z,
-        ]))
-        .initial([1., 1., 0.]) // [f_0, f_1, 0.]
+    Solver::new::<f64, Vector3<f64>>()
+        .initial([0., 1., 0.]) // [f_0, f_1, 0.]
+        .equation(|&StateRef { y, .. }| a * y)
         .interval(0. ..50.)
-        .stepsize(1. / 256.) // avoid rounding errors in time step by choosing exactly
-        // representible number
-        .on_step(event!(|t, [x, _y, _z]| println!("f_{t:0.0} = {x:0.0}")).separated_by(0.9999))
+        .stepsize(0.1) 
+        .on_loc(
+            Periodic::new(1.),
+            |&StateRef { t, y: v, .. }| println!("f_{:02} = {:14.2}", t, v.x),
+        ) 
         .run();
 }
 

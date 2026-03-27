@@ -8,7 +8,7 @@ use crate::{
     initial_condition::InitialCondition,
     loc::{
         loc_callback::LocCallback,
-        locate::Bisection,
+        locate::{Bisection, Locate},
         propagation::{Propagation, Propagator},
     },
     rk::ButcherTableu,
@@ -188,16 +188,19 @@ impl<
 
     #[allow(unused_parens)]
     pub fn on_loc<
-        LocF: FnMut(&crate::StateRef<T, Y, S, I, Initial>) -> Output,
-        Output,
-        LocLocate,
-        LocDetect,
+        // LocF: FnMut(&crate::StateRef<T, Y, S, I, Initial>) -> Output,
+        // Output,
+        // LocLocate,
+        // LocDetect,
+        LocF: Locate<T, Y, S, I, Initial>,
         CallbackF: FnMut(&crate::StateRef<T, Y, S, I, Initial>),
     >(
         self,
-        loc: Loc<T, Y, S, I, Initial, LocF, LocLocate, LocDetect>,
+        loc: LocF,
         callback: CallbackF,
-    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<Loc<T, Y, S, I, Initial, LocF, LocLocate, LocDetect>, (crate::state::StateFn<T, Y, (), CallbackF>)>>))
+    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<LocF, (crate::state::StateFn<T, Y, (), CallbackF>)>>))
+    where
+        Initial: InitialCondition<T, Y>,
     {
         solver_set!(self, events_on_loc: events_on_loc.append(LocCallback(loc, crate::StateFn::new(callback))))
     }

@@ -23,6 +23,7 @@ pub mod periodic;
 pub mod propagation;
 
 pub mod filter;
+pub use filter::Filter;
 
 pub mod loc_callback;
 pub mod loc_hlist;
@@ -59,11 +60,11 @@ impl<
     IC: InitialCondition<T, Y>,
 > Loc<T, Y, S, I, IC>
 {
-    pub fn all() -> Loc<T, Y, S, I, IC, (), detect::All, locate::StepBegin> {
+    pub fn all() -> Loc<T, Y, S, I, IC, (), detect::All, locate::StepEnd> {
         Loc {
             function: (),
             detection: detect::All,
-            location: locate::StepBegin,
+            location: locate::StepEnd,
             _state: std::marker::PhantomData,
         }
     }

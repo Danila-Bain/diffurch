@@ -11,7 +11,7 @@ pub mod stepsize;
 
 mod util;
 
-pub use loc::{Loc, periodic::Periodic};
+pub use loc::{Loc, periodic::Periodic, Filter};
 pub use solver::Solver;
 pub use state::{StateFn, StateRef, StateRefMut};
 pub use initial_condition::InitFn;
