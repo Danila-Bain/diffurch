@@ -47,15 +47,8 @@ impl<
     const S: usize,
     const I: usize,
     IC: InitialCondition<T, Y>,
-> Locate<T, Y, S, I, IC> for Periodic<T>
-{
-    fn locate(&mut self, state: &State<T, Y, S, I, IC>) -> Option<T> {
-        if self.detect(state) {
-            let r =
-                ((state.t_curr - self.offset) / self.period).floor() * self.period + self.offset;
-            (r > state.t_prev).then_some(r)
-        } else {
-            None
-        }
+> Locate<T, Y, S, I, IC> for Periodic<T> {
+    fn locate(&mut self, state: &State<T, Y, S, I, IC>) -> T {
+        ((state.t_curr - self.offset) / self.period).floor() * self.period + self.offset
     }
 }

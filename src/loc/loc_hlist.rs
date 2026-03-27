@@ -37,7 +37,7 @@ impl<
         earliest_index: &mut usize,
         earliest_time: &mut Option<T>,
     ) {
-        if let Some(self_time) = self.locate(state)
+        if let Some(self_time) = self.detect_and_locate(state)
             && earliest_time.is_none_or(|t| self_time < t)
         {
             *earliest_index = *self_index;

@@ -1,5 +1,25 @@
 #set raw(lang: "rust")
 
+= Orthogonal parts
+
+== Interval specification
+
+`.interval(10)` implies from 0 to 10
+`.interval(10. .. 100.)` implies from 10 to 100
+
+== Initial condition
+
+`.initial([0, 1, 3])`
+`.initial(Init::point([0, 1, 3]))`
+`.initial(Init::function(|t| [0, 3, 5]))`
+`.initial(Init::function(|t| [0, 3 * t, 5]).derivative(|t| [0, 3, 0])`
+
+== Events
+
+`.on_step(|s| ...)`
+`.on(Loc::zero(|s| ...).separated_by(0.999).filter(|s| ...), |s| ...)`
+
+
 = Usage example
 
 ```

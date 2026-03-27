@@ -2,7 +2,7 @@ use nalgebra::RealField;
 
 use crate::{
     initial_condition::InitialCondition,
-    loc::locate::Locate,
+    loc::{detect::Detect, locate::Locate},
     state::{EvalMutStateFn, EvalStateFn, State},
     traits::RealVectorSpace,
 };
@@ -23,9 +23,24 @@ impl<
     IC: InitialCondition<T, Y>,
     L: Locate<T, Y, S, I, IC>,
     Other,
+> Detect<T, Y, S, I, IC> for LocCallback<L, Other>
+{
+    fn detect(&mut self, state: &State<T, Y, S, I, IC>) -> bool {
+        self.0.detect(state)
+    }
+}
+
+impl<
+    T: RealField + Copy,
+    Y: RealVectorSpace<T>,
+    const S: usize,
+    const I: usize,
+    IC: InitialCondition<T, Y>,
+    L: Locate<T, Y, S, I, IC>,
+    Other,
 > Locate<T, Y, S, I, IC> for LocCallback<L, Other>
 {
-    fn locate(&mut self, state: &State<T, Y, S, I, IC>) -> Option<T> {
+    fn locate(&mut self, state: &State<T, Y, S, I, IC>) -> T {
         self.0.locate(state)
     }
 }

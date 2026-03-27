@@ -22,6 +22,8 @@ pub mod periodic;
 /// Delay-propagation of discontinuities
 pub mod propagation;
 
+pub mod filter;
+
 pub mod loc_callback;
 pub mod loc_hlist;
 
@@ -57,6 +59,14 @@ impl<
     IC: InitialCondition<T, Y>,
 > Loc<T, Y, S, I, IC>
 {
+    pub fn all() -> Loc<T, Y, S, I, IC, (), detect::All, locate::StepBegin> {
+        Loc {
+            function: (),
+            detection: detect::All,
+            location: locate::StepBegin,
+            _state: std::marker::PhantomData,
+        }
+    }
     loc_constructor! {zero,         T,    Zero,        Bisection}
     loc_constructor! {above_zero,   T,    AboveZero,   Bisection}
     loc_constructor! {below_zero,   T,    BelowZero,   Bisection}
@@ -70,8 +80,17 @@ impl<
 
     pub fn propagated_discontinuity<F: FnMut(&StateRef<T, Y, S, I, IC>) -> T>(
         delayed: F,
-        smoothing_order: usize
-    ) -> Loc<T, Y, S, I, IC, Propagator<T, StateFn<T, Y, T, F, false>>, Propagation, locate::Bisection> {
+        smoothing_order: usize,
+    ) -> Loc<
+        T,
+        Y,
+        S,
+        I,
+        IC,
+        Propagator<T, StateFn<T, Y, T, F, false>>,
+        Propagation,
+        locate::Bisection,
+    > {
         Loc {
             function: Propagator::new(StateFn::<T, Y, T, F, false>::new(delayed), smoothing_order),
             detection: Propagation,

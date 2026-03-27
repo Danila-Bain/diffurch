@@ -13,9 +13,12 @@ pub trait Locate<
     const S: usize,
     const I: usize,
     IC: InitialCondition<T, Y>,
->
+>: Detect<T, Y, S, I, IC>
 {
-    fn locate(&mut self, state: &State<T, Y, S, I, IC>) -> Option<T>;
+    fn locate(&mut self, state: &State<T, Y, S, I, IC>) -> T;
+    fn detect_and_locate(&mut self, state: &State<T, Y, S, I, IC>) -> Option<T> {
+        self.detect(state).then(|| self.locate(state))
+    }
 }
 
 /// Use the previous step time as the location of event
@@ -42,19 +45,19 @@ macro_rules! impl_locate(
             const S: usize,
             const I: usize,
             IC: InitialCondition<T, Y>,
-            D, 
+            D,
             F $(: EvalStateFn<T, Y, S, I, IC, $fn_output>)?
         >
             Locate<T, Y, S, I, IC> for Loc<T, Y, S, I, IC, F, D, $locate> where Self: Detect<T, Y, S, I, IC>, {
-            fn locate(&mut $self, $state: &State<T, Y, S, I, IC>) -> Option<T> {
-                $self.detect($state).then(|| $body)
+            fn locate(&mut $self, $state: &State<T, Y, S, I, IC>) -> T {
+                $body
             }
         }
     }
 );
 
-impl_locate!(StepBegin, |self, state| { state.t_prev });
-impl_locate!(StepEnd, |self, state| { state.t_curr });
+impl_locate!(StepBegin, |self, state| state.t_prev);
+impl_locate!(StepEnd, |self, state| state.t_curr);
 impl_locate!(StepMiddle, |self, state| {
     T::from_f64(0.5).unwrap() * (state.t_curr - state.t_prev)
 });
@@ -100,7 +103,6 @@ impl_locate!(Bisection, Output = T, |self, state| {
 
     let mut w = (r - l).abs();
     let mut w_prev = T::from_f64(2.).unwrap() * w;
-
 
     while w < w_prev {
         w_prev = w;

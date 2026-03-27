@@ -171,13 +171,13 @@ impl<
                     self.t_deque.back().map(maybe_debug::maybe_debug)
                 );
             }
-            let x_prev = &self.y_deque[i - 1];
+            let y_prev = &self.y_deque[i - 1];
             let k = &self.k_deque[i - 1];
             let t_prev = self.t_deque[i - 1];
             let t_next = self.t_deque[i];
             let t_step = t_next - t_prev;
             let theta = (t - t_prev) / t_step;
-            self.rk.dense_output::<D, Y>(x_prev, t_step, theta, k)
+            self.rk.dense_output::<D, Y>(y_prev, t_step, theta, k)
         }
     }
 }

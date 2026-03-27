@@ -6,13 +6,19 @@ use crate::{
 };
 use nalgebra::RealField;
 
-pub trait Detect<T: RealField + Copy, Y: RealVectorSpace<T>, const S: usize, const I: usize, IC: InitialCondition<T, Y>> {
-    fn detect(
-        &mut self,
-        state: &State<T, Y, S, I, IC>,
-    ) -> bool;
+pub trait Detect<
+    T: RealField + Copy,
+    Y: RealVectorSpace<T>,
+    const S: usize,
+    const I: usize,
+    IC: InitialCondition<T, Y>,
+>
+{
+    fn detect(&mut self, state: &State<T, Y, S, I, IC>) -> bool;
 }
 
+/// Detection method marker for always returning true in detect method.
+pub struct All;
 /// Detection method marker for detection of change of sign of the state function.
 pub struct Zero;
 /// Detection method marker for detection of state function value becoming positive.
@@ -34,16 +40,31 @@ pub struct IsTrue;
 /// Detection method marker for detection of state function value being `false`.
 pub struct IsFalse;
 
+impl<
+    T: RealField + Copy,
+    Y: RealVectorSpace<T>,
+    const S: usize,
+    const I: usize,
+    IC: InitialCondition<T, Y>,
+    L,
+    F,
+> Detect<T, Y, S, I, IC> for Loc<T, Y, S, I, IC, F, All, L>
+{
+    fn detect(&mut self, _state: &State<T, Y, S, I, IC>) -> bool {
+        true
+    }
+}
+
 macro_rules! impl_detect(
     ($type:ty, $detect:ident, |$curr:ident $(, $prev:ident)?| $body:expr) => {
         impl<
-            T: RealField + Copy, 
-            Y: RealVectorSpace<T>, 
+            T: RealField + Copy,
+            Y: RealVectorSpace<T>,
             const S: usize,
             const I: usize,
             IC: InitialCondition<T, Y>,
-            L, 
-            F: EvalStateFn<T, Y, S, I, IC, $type>, 
+            L,
+            F: EvalStateFn<T, Y, S, I, IC, $type>,
         > Detect<T, Y, S, I, IC> for Loc<T, Y, S, I, IC, F, $detect, L> {
             fn detect(
                 &mut self,
@@ -57,15 +78,12 @@ macro_rules! impl_detect(
     }
 );
 
-impl_detect!(T, Zero, |curr, prev| {
-    curr >= T::zero() && prev < T::zero() || curr <= T::zero() && prev > T::zero()
-});
-impl_detect!(T, AboveZero, |curr, prev| {
-    curr >= T::zero() && prev < T::zero()
-});
-impl_detect!(T, BelowZero, |curr, prev| {
-    curr <= T::zero() && prev > T::zero()
-});
+impl_detect!(T, Zero, |curr, prev| curr >= T::zero() && prev < T::zero()
+    || curr <= T::zero() && prev > T::zero());
+impl_detect!(T, AboveZero, |curr, prev| curr >= T::zero()
+    && prev < T::zero());
+impl_detect!(T, BelowZero, |curr, prev| curr <= T::zero()
+    && prev > T::zero());
 impl_detect!(T, Positive, |curr| curr >= T::zero());
 impl_detect!(T, Negative, |curr| curr <= T::zero());
 impl_detect!(bool, Switch, |curr, prev| curr != prev);

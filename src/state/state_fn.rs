@@ -29,6 +29,8 @@ pub struct StateRef<
     /// Time of a state at the begining of the step
     pub t_prev: T,
 
+    pub y_prev: &'s Y,
+
     history: &'s StateHistory<T, Y, S, I, IC>,
 }
 
@@ -64,6 +66,10 @@ pub struct StateRefMut<
     pub y: &'s mut Y,
 
     pub dy: &'s Y,
+
+    pub t_prev: T,
+
+    pub y_prev: &'s Y,
 
     history: &'s mut StateHistory<T, Y, S, I, IC>,
 }
@@ -163,6 +169,7 @@ impl<
             t: state.t_curr,
             t_prev: state.t_prev,
             y: &state.y_curr,
+            y_prev: &state.y_prev,
             dy: &state.dy_curr,
             history: &state.history,
         })
@@ -172,16 +179,20 @@ impl<
             t: state.t_prev,
             t_prev: state.t_prev,
             y: &state.y_prev,
+            y_prev: &state.y_prev,
             dy: &state.dy_prev,
             history: &state.history,
         })
     }
     fn eval_at(&mut self, state: &State<T, Y, S, I, IC>, t: T) -> Output {
+        let y = &state.eval::<0>(t);
+        let dy = &state.eval::<1>(t);
         (self.f)(&StateRef {
             t,
             t_prev: t,
-            y: &state.eval::<0>(t),
-            dy: &state.eval::<1>(t),
+            y,
+            y_prev: y,
+            dy,
             history: &state.history,
         })
     }
@@ -222,7 +233,9 @@ impl<
     fn eval_mut(&mut self, state: &mut State<T, Y, S, I, IC>) -> Output {
         (self.f)(&mut StateRefMut {
             t: &mut state.t_curr,
+            t_prev: state.t_prev,
             y: &mut state.y_curr,
+            y_prev: &state.y_prev,
             dy: &state.dy_curr,
             history: &mut state.history,
         })
