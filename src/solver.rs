@@ -4,9 +4,10 @@ use nalgebra::RealField;
 use replace::replace_ident;
 
 use crate::{
-    Loc,
+    Loc, StateRef,
     initial_condition::InitialCondition,
     loc::{
+        LocMaker,
         loc_callback::LocCallback,
         locate::{Bisection, Locate},
         propagation::{Propagation, Propagator},
@@ -206,6 +207,54 @@ impl<
     }
 
     #[allow(unused_parens)]
+    pub fn on_loc_exact_loc_type<
+        LocF: FnMut(&crate::StateRef<T, Y, S, I, Initial>) -> Output,
+        Output,
+        LocLocate,
+        LocDetect,
+        // LocF: Locate<T, Y, S, I, Initial>,
+        CallbackF: FnMut(&crate::StateRef<T, Y, S, I, Initial>),
+    >(
+        self,
+        loc: Loc<T, Y, S, I, Initial, LocF, LocDetect, LocLocate>,
+        callback: CallbackF,
+    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<Loc<T,Y,S,I,Initial,LocF,LocDetect,LocLocate>, (crate::state::StateFn<T, Y, (), CallbackF>)>>))
+    where
+        Initial: InitialCondition<T, Y>,
+    {
+        solver_set!(self, events_on_loc: events_on_loc.append(LocCallback(loc, crate::StateFn::new(callback))))
+    }
+
+    #[allow(unused_parens)]
+    pub fn on_loc_generic<
+        DetectionLocation: LocMaker,
+        // LocF: FnMut(&crate::StateRef<T, Y, S, I, Initial>) -> Output,
+        // Output,
+        // LocLocate,
+        // LocDetect,
+        // // LocF: Locate<T, Y, S, I, Initial>,
+        CallbackF: FnMut(&crate::StateRef<T, Y, S, I, Initial>),
+        LocFn: FnMut(&StateRef<T, Y, S, I, Initial>) -> DetectionLocation::FunctionOutput<T>,
+    >(
+        self,
+        loc_fn: LocFn,
+        callback: CallbackF,
+    ) -> SolverType!(EventsOnLoc => (
+        EventsOnLoc::Output::<LocCallback<DetectionLocation::LocOutput<T, Y, S, I, Initial, LocFn>, 
+        (crate::state::StateFn<T, Y, (), CallbackF>)>>))
+    where
+        Initial: InitialCondition<T, Y>,
+    {
+        solver_set!(
+        self,
+        events_on_loc:
+            events_on_loc.append(
+                LocCallback(DetectionLocation::make::<T,Y,S,I,Initial,LocFn>(loc_fn), crate::StateFn::new(callback))
+                )
+            )
+    }
+
+    #[allow(unused_parens)]
     pub fn with_delayed_argument<Delayed: FnMut(&crate::StateRef<T, Y, S, I, Initial>) -> T>(
         self,
         delayed: Delayed,
@@ -219,13 +268,14 @@ impl<
 
     #[allow(unused_parens)]
     pub fn with_const_delay(
-        self,
+        mut self,
         delay: T,
         smoothing_order: usize,
     ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<Loc<T, Y, S, I, Initial, Propagator<T, impl EvalStateFn<T, Y, S, I, Initial, T>>, Propagation, Bisection>>))
     where
         Initial: InitialCondition<T, Y>,
     {
+        self.max_delay = self.max_delay.max(delay);
         self.with_delayed_argument(move |s| s.t - delay, smoothing_order)
     }
 

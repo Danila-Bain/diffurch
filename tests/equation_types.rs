@@ -95,6 +95,7 @@ fn ode_harmonic() {
         .run();
 }
 
+
 #[test]
 fn odet_lin() {
     let sol = |t: f64| t.powi(-2);
@@ -103,7 +104,7 @@ fn odet_lin() {
         .rk(RK::rktp64())
         .stepsize(0.02)
         .interval(1. ..10.)
-        .initial(InitFn(sol, ()))
+        .initial( InitFn(sol, ()) )
         .equation(|s| -2. * s.y / s.t)
         .on_step(|&StateRef { t, y, .. }| {
             // println!("{}", ((x - sol(t))/sol(t)).abs());

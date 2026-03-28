@@ -20,7 +20,7 @@
 - Rename `Equation::with_delay` method into `Equation::max_delay`
 - Add methods like `Equation::delay` to specify delays in the equation (for discontinuity propagation and history length inference)
 - Restructure `Loc` struct into tuple struct `Loc(StateFunction, DetectionMethod, LocationMethod)` (pseudocode)
-- Add experimental propagation of discontinuities, that takes into account
+- Add experimental propagation of discontinuities
 
 
 # Version 0.0.2

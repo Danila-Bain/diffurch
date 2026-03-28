@@ -19,6 +19,26 @@
 `.on_step(|s| ...)`
 `.on(Loc::zero(|s| ...).separated_by(0.999).filter(|s| ...), |s| ...)`
 
+= Issues
+
+
+In the following code it is requried to specify `Y` generic parameter despite it
+can be accessed from context
+` <...>
+  .on_loc(
+      Loc::below_zero(|s: &StateRef<_, Vector2<f64>, _, _, _>| s.y[0] - (-1.)),
+      |s| t0 = Some(s.t),
+  )
+  .on_loc_mut(
+      Loc::<_, Vector2<f64>,_,_,_>::above_zero(|s| s.y[0] - (-1.)),
+      |s| {
+          t1 = Some(*s.t);
+          v1 = Some(s.y[1] / alpha);
+          s.stop_integration();
+      },
+  )
+  .run()
+`
 
 = Usage example
 
