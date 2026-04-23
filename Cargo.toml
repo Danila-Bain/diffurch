@@ -26,12 +26,14 @@ term_size = "0.3.2"
 ndarray = "0.16.1"
 serde_json = "1.0.140"
 rayon = "1.10.0"
+plotters = "0.3.7"
 
 [dependencies]
 hlist2 = "0.0.15"
 num = "0.4.3"
 num-traits = "0.2.19"
 replace = { path="macros/replace" }
+derive_state = { path="macros/derive_state" }
 # trait_hlist = { path="macros/trait_hlist" }
 hlist2_trait_macro = { git="https://github.com/Danila-Bain/hlist2_trait_macro.git" }
 maybe-debug = "0.1.0"

@@ -12,7 +12,7 @@ fn constant() {
         .initial([0., 0., 0.])
         .interval(0. ..10.)
         .equation(|_| vector![1., -1., 0.])
-        .on_step(|state| assert_eq!(*state.y, solution(state.t)))
+        .on_step(|state| assert_eq!(*state.p, solution(state.t)))
         .run();
 }
 
@@ -29,7 +29,7 @@ fn time() {
         .stepsize(0.5)
         .initial([0., 0., 0.])
         .equation(|&StateRef { t, .. }| vector![0., 1., t])
-        .on_step(|&StateRef { t, y: &x, .. }| {
+        .on_step(|&StateRef { t, p: &x, .. }| {
             tt.push(t);
             xx.push(x)
         })
@@ -53,7 +53,7 @@ fn time2() {
         .rk(RK::midpoint())
         .stepsize(0.5)
         .equation(|state| vector![0., 1., state.t])
-        .on_step(|&StateRef { t, y: &x, .. }| {
+        .on_step(|&StateRef { t, p: &x, .. }| {
             tt.push(t);
             xx.push(x)
         })
@@ -73,8 +73,8 @@ fn ode_exponent() {
         .interval(0. ..10.)
         .rk(RK::rktp64())
         .stepsize(0.05)
-        .equation(|state| -state.y)
-        .on_step(|s| assert!((s.y - solution(s.t)).abs() < 1e-14))
+        .equation(|state| -state.p)
+        .on_step(|s| assert!((s.p - solution(s.t)).abs() < 1e-14))
         .run();
 }
 
@@ -86,15 +86,14 @@ fn ode_harmonic() {
         .rk(RK::rktp64())
         .stepsize(0.04)
         .initial([0., 1.])
-        .equation(|&StateRef { y: &pos, .. }| {
+        .equation(|&StateRef { p: &pos, .. }| {
             let [x, dx] = pos.into();
             vector![dx, -x]
         })
         .interval(0. ..10.)
-        .on_step(|state| assert!((state.y.x - solution(state.t)).abs() < 1e-13))
+        .on_step(|state| assert!((state.p.x - solution(state.t)).abs() < 1e-13))
         .run();
 }
-
 
 #[test]
 fn odet_lin() {
@@ -104,9 +103,9 @@ fn odet_lin() {
         .rk(RK::rktp64())
         .stepsize(0.02)
         .interval(1. ..10.)
-        .initial( InitFn(sol, ()) )
-        .equation(|s| -2. * s.y / s.t)
-        .on_step(|&StateRef { t, y, .. }| {
+        .initial(InitFn(sol, ()))
+        .equation(|s| -2. * s.p / s.t)
+        .on_step(|&StateRef { t, p: y, .. }| {
             // println!("{}", ((x - sol(t))/sol(t)).abs());
             assert!((y - sol(t)).abs() < 1e-13)
         })
@@ -129,9 +128,9 @@ fn dde_sin() {
         .initial(InitFn(sol, ()))
         .interval(0. ..10.)
         .stepsize(0.02)
-        .equation(|s| a * s.y + b * s.y(s.t - tau))
+        .equation(|s| a * s.p + b * s.p(s.t - tau))
         .on_step(|s| {
-            assert!((s.y - sol(s.t)).abs() < 1e-11);
+            assert!((s.p - sol(s.t)).abs() < 1e-11);
         })
         .run();
 }
@@ -148,12 +147,12 @@ fn ndde_sin() {
 
     Solver::new::<f64, f64>()
         .initial(InitFn(|t: f64| (k * t).sin(), |t: f64| k * (k * t).cos()))
-        .equation(|s| a * s.y(s.t - tau) + b * s.dy(s.t - tau))
+        .equation(|s| a * s.p(s.t - tau) + b * s.d(s.t - tau))
         .interval(0. ..10.)
         .max_delay(tau)
         .stepsize(0.02)
         .on_step(|s| {
-            assert!((s.y - sol(s.t)).abs() < 1e-11);
+            assert!((s.p - sol(s.t)).abs() < 1e-11);
         })
         .run();
 }

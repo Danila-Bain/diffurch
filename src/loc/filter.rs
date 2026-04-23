@@ -212,14 +212,16 @@ pub trait Filter<
     }
     fn on_times(
         self,
-        iter: impl IntoIterator<Item=usize>
+        iter: impl IntoIterator<Item = usize>,
     ) -> FilterAfterDetection<T, Y, S, I, IC, Self, impl EvalStateFn<T, Y, S, I, IC, bool>> {
-        let mut i : usize = 0;
+        let mut i: usize = 0;
         let mut iter = iter.into_iter().peekable();
         FilterAfterDetection {
             loc: self,
             filter: StateFn::new(move |_s| {
-                if let Some(next) = iter.peek() && i == *next {
+                if let Some(next) = iter.peek()
+                    && i == *next
+                {
                     iter.next();
                     i += 1;
                     true

@@ -14,15 +14,15 @@ fn linear_1_const() {
         Solver::new::<f64, f64>()
             .initial(1.)
             .interval(0. ..tmax)
-            .equation(|state| state.y * eigenvalue)
+            .equation(|state| state.p * eigenvalue)
             .on_loc_mut(
                 Periodic {
                     period: 0.3,
                     offset: 0.,
                 },
                 |s| {
-                    let norm = s.y.abs();
-                    *s.y /= norm;
+                    let norm = s.p.abs();
+                    *s.p /= norm;
                     lambda += norm.ln();
                 },
             )
@@ -52,15 +52,15 @@ fn linear_1_sin() {
         Solver::new::<f64, f64>()
             .initial(1.)
             .interval(0. ..tmax)
-            .equation(|s| (1. + f64::sin(s.t)) * eigenvalue * s.y)
+            .equation(|s| (1. + f64::sin(s.t)) * eigenvalue * s.p)
             .on_loc_mut(
                 Periodic {
                     period: 1.3,
                     offset: 0.,
                 },
                 |s| {
-                    let norm = s.y.abs();
-                    *s.y /= norm;
+                    let norm = s.p.abs();
+                    *s.p /= norm;
                     lambda += norm.ln();
                 },
             )
@@ -115,15 +115,15 @@ fn linear_const_3_real() {
                 0., 0., 1.; //
             ])
             .interval(0. ..tmax)
-            .equation(|s| a_matrix * s.y)
+            .equation(|s| a_matrix * s.p)
             .on_loc_mut(
                 Periodic {
                     period: 1.,
                     offset: 0.,
                 },
                 |s| {
-                    let (q, r) = s.y.qr().unpack();
-                    *s.y = q;
+                    let (q, r) = s.p.qr().unpack();
+                    *s.p = q;
                     lambdas += r.diagonal().map(|r| r.ln());
                 },
             )
@@ -193,15 +193,15 @@ fn linear_const_3_complex() {
                 0., 0., 1.; //
             ])
             .interval(0. ..tmax)
-            .equation(|s| a_matrix * s.y)
+            .equation(|s| a_matrix * s.p)
             .on_loc_mut(
                 Periodic {
                     period: 1.,
                     offset: 0.,
                 },
                 |s| {
-                    let (q, r) = s.y.qr().unpack();
-                    *s.y = q;
+                    let (q, r) = s.p.qr().unpack();
+                    *s.p = q;
                     lambdas += r.diagonal().map(|r| r.abs().ln())
                 },
             )
@@ -263,8 +263,8 @@ fn lorenz_lyapunov_exponents() {
             .interval(0. ..tmax)
             .equation(|s| {
                 let mut diff = Matrix3x4::<f64>::zeros();
-                let [x, y, z] = s.y.column(0).into();
-                let var = s.y.fixed_columns::<3>(1);
+                let [x, y, z] = s.p.column(0).into();
+                let var = s.p.fixed_columns::<3>(1);
                 diff.set_column(
                     0,
                     &vector![
@@ -287,7 +287,7 @@ fn lorenz_lyapunov_exponents() {
                     offset: 0.,
                 },
                 |s| {
-                    let mut var = s.y.fixed_columns_mut::<3>(1);
+                    let mut var = s.p.fixed_columns_mut::<3>(1);
                     let (q, r) = var.clone_owned().qr().unpack();
                     var.copy_from(&q);
                     lambdas += r.diagonal().map(|r| r.abs().ln())

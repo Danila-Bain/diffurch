@@ -21,15 +21,15 @@ pub struct StateRef<
     /// Time of a state
     pub t: T,
     /// Position of a state
-    pub y: &'s Y,
+    pub p: &'s Y,
 
     /// Derivative of a state
-    pub dy: &'s Y,
+    pub d: &'s Y,
 
     /// Time of a state at the begining of the step
     pub t_prev: T,
 
-    pub y_prev: &'s Y,
+    pub p_prev: &'s Y,
 
     history: &'s StateHistory<T, Y, S, I, IC>,
 }
@@ -43,10 +43,10 @@ impl<
     IC: InitialCondition<T, Y>,
 > StateRef<'s, T, Y, S, I, IC>
 {
-    pub fn y(&self, t: T) -> Y {
+    pub fn p(&self, t: T) -> Y {
         self.history.eval::<0>(t)
     }
-    pub fn dy(&self, t: T) -> Y {
+    pub fn d(&self, t: T) -> Y {
         self.history.eval::<1>(t)
     }
 }
@@ -63,13 +63,13 @@ pub struct StateRefMut<
     /// Reference to time of a state
     pub t: &'s mut T,
     /// Reference to position of a state
-    pub y: &'s mut Y,
+    pub p: &'s mut Y,
 
-    pub dy: &'s Y,
+    pub d: &'s Y,
 
     pub t_prev: T,
 
-    pub y_prev: &'s Y,
+    pub p_prev: &'s Y,
 
     history: &'s mut StateHistory<T, Y, S, I, IC>,
 }
@@ -83,14 +83,17 @@ impl<
     IC: InitialCondition<T, Y>,
 > StateRefMut<'s, T, Y, S, I, IC>
 {
-    pub fn y(&self, t: T) -> Y {
+    pub fn p(&self, t: T) -> Y {
         self.history.eval::<0>(t)
     }
-    pub fn dy(&self, t: T) -> Y {
+    pub fn d(&self, t: T) -> Y {
         self.history.eval::<1>(t)
     }
-    pub fn stop_integration(&mut self) {
-        *self.t = T::max_value().unwrap();
+    pub fn stop_integration(&mut self)
+    where
+        T: num::Float,
+    {
+        *self.t = T::infinity();
     }
 }
 
@@ -168,9 +171,9 @@ impl<
         (self.f)(&StateRef {
             t: state.t_curr,
             t_prev: state.t_prev,
-            y: &state.y_curr,
-            y_prev: &state.y_prev,
-            dy: &state.dy_curr,
+            p: &state.p_curr,
+            p_prev: &state.p_prev,
+            d: &state.d_curr,
             history: &state.history,
         })
     }
@@ -178,9 +181,9 @@ impl<
         (self.f)(&StateRef {
             t: state.t_prev,
             t_prev: state.t_prev,
-            y: &state.y_prev,
-            y_prev: &state.y_prev,
-            dy: &state.dy_prev,
+            p: &state.p_prev,
+            p_prev: &state.p_prev,
+            d: &state.d_prev,
             history: &state.history,
         })
     }
@@ -190,9 +193,9 @@ impl<
         (self.f)(&StateRef {
             t,
             t_prev: t,
-            y,
-            y_prev: y,
-            dy,
+            p: y,
+            p_prev: y,
+            d: dy,
             history: &state.history,
         })
     }
@@ -234,9 +237,9 @@ impl<
         (self.f)(&mut StateRefMut {
             t: &mut state.t_curr,
             t_prev: state.t_prev,
-            y: &mut state.y_curr,
-            y_prev: &state.y_prev,
-            dy: &state.dy_curr,
+            p: &mut state.p_curr,
+            p_prev: &state.p_prev,
+            d: &state.d_curr,
             history: &mut state.history,
         })
     }

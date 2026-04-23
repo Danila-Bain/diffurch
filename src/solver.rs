@@ -207,41 +207,26 @@ impl<
     }
 
     #[allow(unused_parens)]
-    pub fn on_loc_exact_loc_type<
-        LocF: FnMut(&crate::StateRef<T, Y, S, I, Initial>) -> Output,
-        Output,
-        LocLocate,
-        LocDetect,
-        // LocF: Locate<T, Y, S, I, Initial>,
-        CallbackF: FnMut(&crate::StateRef<T, Y, S, I, Initial>),
-    >(
+    pub fn on_loc_mut<L, C: FnMut(&mut crate::StateRefMut<T, Y, S, I, Initial>)>(
         self,
-        loc: Loc<T, Y, S, I, Initial, LocF, LocDetect, LocLocate>,
-        callback: CallbackF,
-    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<Loc<T,Y,S,I,Initial,LocF,LocDetect,LocLocate>, (crate::state::StateFn<T, Y, (), CallbackF>)>>))
-    where
-        Initial: InitialCondition<T, Y>,
+        loc: L,
+        callback: C,
+    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<L, (crate::state::StateFn<T, Y, (), C, true>)>>))
     {
-        solver_set!(self, events_on_loc: events_on_loc.append(LocCallback(loc, crate::StateFn::new(callback))))
+        solver_set!(self, events_on_loc: events_on_loc.append(LocCallback(loc, crate::StateFn::new_mut(callback))))
     }
 
     #[allow(unused_parens)]
-    pub fn on_loc_generic<
+    pub fn on<
         DetectionLocation: LocMaker,
-        // LocF: FnMut(&crate::StateRef<T, Y, S, I, Initial>) -> Output,
-        // Output,
-        // LocLocate,
-        // LocDetect,
-        // // LocF: Locate<T, Y, S, I, Initial>,
-        CallbackF: FnMut(&crate::StateRef<T, Y, S, I, Initial>),
-        LocFn: FnMut(&StateRef<T, Y, S, I, Initial>) -> DetectionLocation::FunctionOutput<T>,
+       
     >(
         self,
-        loc_fn: LocFn,
-        callback: CallbackF,
+        loc_fn: impl FnMut(&StateRef<T, Y, S, I, Initial>) -> DetectionLocation::FunctionOutput<T>,
+        callback: impl FnMut(&crate::StateRef<T, Y, S, I, Initial>),
     ) -> SolverType!(EventsOnLoc => (
-        EventsOnLoc::Output::<LocCallback<DetectionLocation::LocOutput<T, Y, S, I, Initial, LocFn>, 
-        (crate::state::StateFn<T, Y, (), CallbackF>)>>))
+        EventsOnLoc::Output::<LocCallback<DetectionLocation::LocOutput<T, Y, S, I, Initial, impl FnMut(&StateRef<T, Y, S, I, Initial>) -> DetectionLocation::FunctionOutput<T>>, 
+        (crate::state::StateFn<T, Y, (), impl FnMut(&crate::StateRef<T, Y, S, I, Initial>)>)>>))
     where
         Initial: InitialCondition<T, Y>,
     {
@@ -249,7 +234,31 @@ impl<
         self,
         events_on_loc:
             events_on_loc.append(
-                LocCallback(DetectionLocation::make::<T,Y,S,I,Initial,LocFn>(loc_fn), crate::StateFn::new(callback))
+                LocCallback(DetectionLocation::make::<T,Y,S,I,Initial,_>(loc_fn), crate::StateFn::new(callback))
+                )
+            )
+    }
+
+
+    #[allow(unused_parens)]
+    pub fn on_mut<
+        DetectionLocation: LocMaker,
+       
+    >(
+        self,
+        loc_fn: impl FnMut(&StateRef<T, Y, S, I, Initial>) -> DetectionLocation::FunctionOutput<T>,
+        callback: impl FnMut(&mut crate::StateRefMut<T, Y, S, I, Initial>),
+    ) -> SolverType!(EventsOnLoc => (
+        EventsOnLoc::Output::<LocCallback<DetectionLocation::LocOutput<T, Y, S, I, Initial, impl FnMut(&StateRef<T, Y, S, I, Initial>) -> DetectionLocation::FunctionOutput<T>>, 
+        (crate::state::StateFn<T, Y, (), impl FnMut(&mut crate::StateRefMut<T, Y, S, I, Initial>), true>)>>))
+    where
+        Initial: InitialCondition<T, Y>,
+    {
+        solver_set!(
+        self,
+        events_on_loc:
+            events_on_loc.append(
+                LocCallback(DetectionLocation::make::<T,Y,S,I,Initial,_>(loc_fn), crate::StateFn::new_mut(callback))
                 )
             )
     }
@@ -291,45 +300,7 @@ impl<
     //     self.with_delayed_argument(move |s| s.t - delay(s), smoothing_order)
     // }
 
-    #[allow(unused_parens)]
-    pub fn on_loc_mut<L, C: FnMut(&mut crate::StateRefMut<T, Y, S, I, Initial>)>(
-        self,
-        loc: L,
-        callback: C,
-    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<L, (crate::state::StateFn<T, Y, (), C, true>)>>))
-    {
-        solver_set!(self, events_on_loc: events_on_loc.append(LocCallback(loc, crate::StateFn::new_mut(callback))))
-    }
 
-    #[allow(unused_parens)]
-    pub fn on_zero<
-        LocF: FnMut(&crate::StateRef<T, Y, S, I, Initial>) -> T,
-        CallbackF: FnMut(&crate::StateRef<T, Y, S, I, Initial>),
-    >(
-        self,
-        loc: LocF,
-        callback: CallbackF,
-    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<Loc<T, Y, S, I, Initial, crate::state::StateFn<T, Y, T, LocF>, crate::loc::detect::Zero, crate::loc::locate::Bisection>, (crate::state::StateFn<T, Y, (), CallbackF>)>>))
-    where
-        Initial: InitialCondition<T, Y>,
-    {
-        solver_set!(self, events_on_loc: events_on_loc.append(LocCallback(Loc::zero(loc), crate::StateFn::new(callback))))
-    }
-
-    #[allow(unused_parens)]
-    pub fn on_zero_mut<
-        LocF: FnMut(&crate::StateRef<T, Y, S, I, Initial>) -> T,
-        CallbackF: FnMut(&mut crate::StateRefMut<T, Y, S, I, Initial>),
-    >(
-        self,
-        loc: LocF,
-        callback: CallbackF,
-    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<Loc<T, Y, S, I, Initial, crate::state::StateFn<T, Y, T, LocF>, crate::loc::detect::Zero, crate::loc::locate::Bisection>, (crate::state::StateFn<T, Y, (), CallbackF, true>)>>))
-    where
-        Initial: InitialCondition<T, Y>,
-    {
-        solver_set!(self, events_on_loc: events_on_loc.append(LocCallback(Loc::zero(loc), crate::StateFn::new_mut(callback))))
-    }
 
     pub fn run(mut self)
     where

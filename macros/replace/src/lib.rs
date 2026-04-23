@@ -21,10 +21,8 @@ extern crate proc_macro;
 
 use proc_macro::{Group, Ident, TokenStream, TokenTree, token_stream};
 
-
 #[proc_macro]
 pub fn replace_ident(input: TokenStream) -> TokenStream {
-
     // dbg!(&input);
     let mut it = input.into_iter();
 

@@ -1,36 +1,22 @@
 // const ROOT: &str = env!("CARGO_MANIFEST_DIR");
 // const MODULE: &str = module_path!();
 
+// use derive_more::*;
+use derive_state::State;
 use diffurch::*;
 use nalgebra::*;
-use derive_more::*;
 
 #[test]
 fn lorenz_lyapunov_exponents() {
-
     let sigma = 10.;
     let rho = 28.;
     let beta = 8. / 3.;
 
-
-    #[derive(Clone, Copy, Debug, Sub, AddAssign, Add, Mul, Div, Neg, Default)]
+    #[derive(State)]
     struct State {
         state: Vector3<f64>,
         variation: Matrix3<f64>,
     }
-    impl num_traits::identities::Zero for State {
-        fn zero() -> Self {
-            Self {
-                state: num_traits::identities::zero(),
-                variation: num_traits::identities::zero(),
-            }
-        }
-
-        fn is_zero(&self) -> bool {
-            self.state.is_zero() && self.variation.is_zero()
-        }
-    }
-    impl traits::RealVectorSpace<f64> for State {}
 
     // ecommons.cornell.edu/server/api/core/bitstreams/c0790d83-7dd3-44e9-964a-cb878542708d/content
     let reference_lambdas = vector![0.90566, 0.00000, -14.57233];
@@ -45,8 +31,8 @@ fn lorenz_lyapunov_exponents() {
                 variation: Matrix3::identity(),
             })
             .interval(0. ..tmax)
-            .equation(|s| {
-                let [x, y, z] = s.y.state.into();
+            .equation(|StateRef { p, .. }| {
+                let [x, y, z] = p.state.into();
 
                 let f = vector![
                     sigma * (y - x),   //
@@ -59,10 +45,10 @@ fn lorenz_lyapunov_exponents() {
                     rho - z, -1., -x;
                     y, x, -beta;
                 ];
-                
-                State{
+
+                State {
                     state: f,
-                    variation: df * s.y.variation
+                    variation: df * p.variation,
                 }
             })
             .on_loc_mut(
@@ -71,8 +57,8 @@ fn lorenz_lyapunov_exponents() {
                     offset: 0.,
                 },
                 |s| {
-                    let (q, r) = s.y.variation.qr().unpack();
-                    s.y.variation.copy_from(&q);
+                    let (q, r) = s.p.variation.qr().unpack();
+                    s.p.variation.copy_from(&q);
                     lambdas += r.diagonal().map(|r| r.abs().ln())
                 },
             )

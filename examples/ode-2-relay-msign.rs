@@ -1,56 +1,38 @@
-#![allow(incomplete_features)]
-#![feature(generic_const_exprs)]
-
-use diffurch::*;
+use diffurch::{Solver, loc::detect::Zero};
 
 fn main() {
-    let mut points1 = vec![];
-    let mut points2 = vec![];
-
-    let interval = 0.5..20.5;
-
+    let mut points = vec![];
+    let interval = 0.5..10.5;
     let solution = |t: f64| {
-        let t = t;
-        [
+        nalgebra::vector![
             (t - t.floor()) * (t - t.ceil()) * ((t * 0.5).fract() - 0.5).signum(),
             ((t * 0.5).fract() - 0.5).signum() * (t - t.ceil() + t - t.floor()),
         ]
     };
 
-    Solver::new()
-        .equation(state_fn!(|_, [_, dx], [x, _]| [
-            dx,
-            -2. * x.prev().signum()
-        ]))
+    Solver::new::<f64, nalgebra::Vector2<f64>>()
         .initial([0.25, 0.])
+        .equation(|s| nalgebra::vector![s.p.y, -2. * s.p_prev.x.signum()])
         .interval(interval.clone())
-        .rk(&rk::RK98)
-        .stepsize(0.3)
-        .on(
-            Loc::new(state_fn!(|t, [x, _]| {
-                println!("try: {x} at {t}");
-                x
-            }))
-            .sign()
-            .bisection(),
-            event!(),
-        )
-        .on_step(event!(|t, [x, _dx]| points1.push((t as f32, x as f32))).subdivide(10))
-        .on_step(event!(|t, [x, _dx]| points2.push((t, x).into())).subdivide(10))
-        .on_step(event!(|t, [x, dx]| {
-            println!("step: {t}");
-            dbg!(t, x, dx, (x - solution(t)[0]).abs())
-        }))
+        .stepsize(0.09)
+        .on::<Zero>(|s| s.p.x, |_| {})
+        .on_step(|s| {
+            points.push((s.t, s.p.x));
+            dbg!(s.t, (s.p - solution(s.t)).abs());
+        })
         .run();
 
-    use textplots::*;
-    Chart::new(160, 80, interval.start as f32, interval.end as f32)
-        .lineplot(&Shape::Lines(&points1))
-        .display();
-
-    let mut plot = pgfplots::axis::plot::Plot2D::new();
-    plot.coordinates = points2;
-    pgfplots::Picture::from(plot)
-        .show_pdf(pgfplots::Engine::PdfLatex)
+    use plotters::prelude::*;
+    let root = BitMapBackend::new("sign-relay-2.png", (600, 200)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+    let mut chart = ChartBuilder::on(&root)
+        .margin(15)
+        .set_left_and_bottom_label_area_size(20)
+        .build_cartesian_2d(interval, -0.27..0.27)
         .unwrap();
+    chart.configure_mesh().draw().unwrap();
+    chart
+        .draw_series(LineSeries::new(points, BLACK.stroke_width(1)))
+        .unwrap();
+    root.present().unwrap();
 }

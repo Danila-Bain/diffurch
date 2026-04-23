@@ -24,3 +24,4 @@ impl<T: RealField + Float, R: std::ops::RangeBounds<T>> IntegrationInterval<T> f
         }
     }
 }
+

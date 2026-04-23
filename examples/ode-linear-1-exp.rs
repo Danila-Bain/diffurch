@@ -10,11 +10,11 @@ fn main() {
         // .rk(diffurch::RK::rktp64()) // the default
         .interval(interval.clone())
         .initial(1.)
-        .equation(|s| k * s.y)
+        .equation(|s| k * s.p)
         .stepsize(1.)
-        .on_step(|s| points.push((s.t, *s.y)))
+        .on_step(|s| points.push((s.t, *s.p)))
         .on_step(|s| {
-            let (t, x) = (s.t, s.y);
+            let (t, x) = (s.t, s.p);
             let err = x - true_solution(t);
             let rel_err = err / x;
             print!("t={t:<2.0}, ");

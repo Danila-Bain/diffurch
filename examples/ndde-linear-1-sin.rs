@@ -4,35 +4,34 @@
 use diffurch::*;
 
 fn main() {
-    let k: f64 = 1.;
-    let tau: f64 = 0.5;
+    //     let k: f64 = 1.;
+    //     let tau: f64 = 0.5;
 
-    let a = -k * (k * tau).tan();
-    let b = 1. / (k * tau).cos();
+    //     let a = -k * (k * tau).tan();
+    //     let b = 1. / (k * tau).cos();
 
+    //     let sol = |t: f64| (k * t).sin();
 
-    let sol = |t: f64| (k * t).sin();
+    //     let mut t = Vec::new();
+    //     let mut x = Vec::new();
 
-    let mut t = Vec::new();
-    let mut x = Vec::new();
+    //     Solver::new()
+    //         .equation(state_fn!(|t, [x], [x_]| [a * x + b * x_.d(t - tau)]))
+    //         .initial((|t: f64| [(k * t).sin()], |t: f64| [k * (k * t).cos()]))
+    //         .interval(0. .. 110.)
+    //         .rk(&rk::RK98)
+    //         .stepsize(0.1)
+    //         .on_step(
+    //             event!(|t, [x]| [t, x])
+    //                 .to_vecs([&mut t, &mut x])
+    //                 .separated_by(0.05),
+    //         )
+    //         .on_step(event!(|t, [x]| [t, x, x - sol(t)]).to_std())
+    //         .run();
 
-    Solver::new()
-        .equation(state_fn!(|t, [x], [x_]| [a * x + b * x_.d(t - tau)]))
-        .initial((|t: f64| [(k * t).sin()], |t: f64| [k * (k * t).cos()]))
-        .interval(0. .. 110.)
-        .rk(&rk::RK98)
-        .stepsize(0.1)
-        .on_step(
-            event!(|t, [x]| [t, x])
-                .to_vecs([&mut t, &mut x])
-                .separated_by(0.05),
-        )
-        .on_step(event!(|t, [x]| [t, x, x - sol(t)]).to_std())
-        .run();
-
-    let mut plot = pgfplots::axis::plot::Plot2D::new();
-    plot.coordinates = (0..t.len()).map(|i| (t[i], x[i]).into()).collect();
-    pgfplots::Picture::from(plot)
-        .show_pdf(pgfplots::Engine::PdfLatex)
-        .unwrap();
+    //     let mut plot = pgfplots::axis::plot::Plot2D::new();
+    //     plot.coordinates = (0..t.len()).map(|i| (t[i], x[i]).into()).collect();
+    //     pgfplots::Picture::from(plot)
+    //         .show_pdf(pgfplots::Engine::PdfLatex)
+    //         .unwrap();
 }

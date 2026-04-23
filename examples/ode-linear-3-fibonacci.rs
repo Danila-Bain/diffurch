@@ -1,6 +1,4 @@
-#![allow(incomplete_features)]
-#![feature(generic_const_exprs)]
-use diffurch::*;
+use diffurch::{Periodic, Solver, StateRef};
 use nalgebra::{Vector3, matrix};
 
 // Solving linear 3-dimensional system, which produces consecutive
@@ -18,13 +16,12 @@ fn main() {
 
     Solver::new::<f64, Vector3<f64>>()
         .initial([0., 1., 0.]) // [f_0, f_1, 0.]
-        .equation(|&StateRef { y, .. }| a * y)
+        .equation(|&StateRef { p: y, .. }| a * y)
         .interval(0. ..50.)
-        .stepsize(0.1) 
-        .on_loc(
-            Periodic::new(1.),
-            |&StateRef { t, y: v, .. }| println!("f_{:02} = {:14.2}", t, v.x),
-        ) 
+        .stepsize(0.1)
+        .on_loc(Periodic::new(1.), |s| {
+            println!("f_{:02} = {:14.2}", s.t, s.p.x)
+        })
         .run();
 }
 
