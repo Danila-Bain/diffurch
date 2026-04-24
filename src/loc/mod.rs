@@ -112,7 +112,7 @@ impl<
     L,
 > Loc<T, Y, S, I, IC, F, D, L>
 {
-    pub fn using<LL>(self, l: LL) -> Loc<T, Y, S, I, IC, F, D, LL> {
+    pub fn located_using<LL>(self, l: LL) -> Loc<T, Y, S, I, IC, F, D, LL> {
         Loc {
             function: self.function,
             detection: self.detection,
@@ -138,6 +138,48 @@ pub trait LocMaker {
     ) -> Self::LocOutput<T, Y, S, I, IC, F>;
 }
 
+macro_rules! impl_loc_marker {
+    ($fn:ident, $type:ty, $detection:ident, $location:ident) => {
+        impl LocMaker for detect::$detection {
+            type LocOutput<T, Y, const S: usize, const I: usize, IC, F> = Loc<
+                T,
+                Y,
+                S,
+                I,
+                IC,
+                StateFn<T, Y, Self::FunctionOutput<T>, F>,
+                detect::$detection,
+                locate::$location,
+            >;
+            type FunctionOutput<T> = $type;
+
+            fn make<
+                T: RealField + Copy,
+                Y: RealVectorSpace<T>,
+                const S: usize,
+                const I: usize,
+                IC: InitialCondition<T, Y>,
+                F: FnMut(&StateRef<T, Y, S, I, IC>) -> Self::FunctionOutput<T>,
+            >(
+                f: F,
+            ) -> Self::LocOutput<T, Y, S, I, IC, F> {
+                Loc::$fn(f)
+            }
+        }
+    };
+}
+
+impl_loc_marker!(zero, T, Zero, Bisection);
+impl_loc_marker!(below_zero, T, BelowZero, Bisection);
+impl_loc_marker!(above_zero, T, AboveZero, Bisection);
+impl_loc_marker!(positive, T, Positive, StepBegin);
+impl_loc_marker!(negative, T, Negative, StepBegin);
+impl_loc_marker!(switch, bool, Switch, Bisection);
+impl_loc_marker!(switch_true, bool, SwitchTrue, Bisection);
+impl_loc_marker!(switch_false, bool, SwitchFalse, Bisection);
+impl_loc_marker!(is_true, bool, IsTrue, StepBegin);
+impl_loc_marker!(is_false, bool, IsFalse, StepBegin);
+
 impl LocMaker for detect::All {
     type LocOutput<T, Y, const S: usize, const I: usize, IC, F> =
         Loc<T, Y, S, I, IC, (), detect::All, locate::StepEnd>;
@@ -155,65 +197,5 @@ impl LocMaker for detect::All {
         _: F,
     ) -> Self::LocOutput<T, Y, S, I, IC, F> {
         Loc::all()
-    }
-}
-
-
-impl LocMaker for detect::Zero {
-    type LocOutput<T, Y, const S: usize, const I: usize, IC, F> =
-        Loc<T, Y, S, I, IC, StateFn<T, Y, T, F>, detect::Zero, locate::Bisection>;
-    type FunctionOutput<T> = T;
-
-    fn make<
-        T: RealField + Copy,
-        Y: RealVectorSpace<T>,
-        const S: usize,
-        const I: usize,
-        IC: InitialCondition<T, Y>,
-        F: FnMut(&StateRef<T, Y, S, I, IC>) -> Self::FunctionOutput<T>,
-    >(
-        f: F,
-    ) -> Self::LocOutput<T, Y, S, I, IC, F> {
-        Loc::zero(f)
-    }
-}
-
-
-impl LocMaker for detect::BelowZero {
-    type LocOutput<T, Y, const S: usize, const I: usize, IC, F> =
-        Loc<T, Y, S, I, IC, StateFn<T, Y, T, F>, detect::BelowZero, locate::Bisection>;
-    type FunctionOutput<T> = T;
-
-    fn make<
-        T: RealField + Copy,
-        Y: RealVectorSpace<T>,
-        const S: usize,
-        const I: usize,
-        IC: InitialCondition<T, Y>,
-        F: FnMut(&StateRef<T, Y, S, I, IC>) -> Self::FunctionOutput<T>,
-    >(
-        f: F,
-    ) -> Self::LocOutput<T, Y, S, I, IC, F> {
-        Loc::below_zero(f)
-    }
-}
-
-
-impl LocMaker for detect::AboveZero {
-    type LocOutput<T, Y, const S: usize, const I: usize, IC, F> =
-        Loc<T, Y, S, I, IC, StateFn<T, Y, T, F>, detect::AboveZero, locate::Bisection>;
-    type FunctionOutput<T> = T;
-
-    fn make<
-        T: RealField + Copy,
-        Y: RealVectorSpace<T>,
-        const S: usize,
-        const I: usize,
-        IC: InitialCondition<T, Y>,
-        F: FnMut(&StateRef<T, Y, S, I, IC>) -> Self::FunctionOutput<T>,
-    >(
-        f: F,
-    ) -> Self::LocOutput<T, Y, S, I, IC, F> {
-        Loc::above_zero(f)
     }
 }

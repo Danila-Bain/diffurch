@@ -1,4 +1,3 @@
-
 fn main() {
     let k = f32::ln(2.);
     let interval = 0. ..16.;
@@ -9,7 +8,7 @@ fn main() {
     diffurch::Solver::new::<f32, f32>()
         // .rk(diffurch::RK::rktp64()) // the default
         .interval(interval.clone())
-        .initial(1.)
+        .initial(1f32)
         .equation(|s| k * s.p)
         .stepsize(1.)
         .on_step(|s| points.push((s.t, *s.p)))

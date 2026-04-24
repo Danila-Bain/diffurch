@@ -6,19 +6,24 @@ pub mod loc;
 pub mod rk;
 pub mod solver;
 pub mod state;
-pub mod traits;
 pub mod stepsize;
+pub mod traits;
 
 mod util;
 
-pub use loc::{Loc, periodic::Periodic, Filter};
+pub use initial_condition::InitFn;
+pub use loc::{Filter, Loc, periodic::Periodic};
 pub use solver::Solver;
 pub use state::{StateFn, StateRef, StateRefMut};
-pub use initial_condition::InitFn;
-pub use stepsize::{AutomaticStepsize};
+pub use stepsize::AutomaticStepsize;
 
 pub use rk::*;
 pub type RK<T, const S: usize, const I: usize> = ButcherTableu<T, S, I>;
 
 // pub mod callback;
 // pub mod filter;
+
+pub use loc::detect::{
+    AboveZero, All, BelowZero, IsFalse, IsTrue, Negative, Positive, Switch, SwitchFalse,
+    SwitchTrue, Zero,
+};
