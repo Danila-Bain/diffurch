@@ -9,84 +9,84 @@ use impl_tools::autoimpl;
 
 #[autoimpl(Clone where T: Clone)]
 #[autoimpl(Copy where T: Copy)]
-#[autoimpl(Debug where T: std::fmt::Debug, Y: std::fmt::Debug)]
+#[autoimpl(Debug where T: std::fmt::Debug, P: std::fmt::Debug)]
 pub struct StateRef<
     's,
     T: RealField + Copy,
-    Y: RealVectorSpace<T>,
+    P: RealVectorSpace<T>,
     const S: usize,
     const I: usize,
-    IC: InitialCondition<T, Y>,
+    IC: InitialCondition<T, P>,
 > {
     /// Time of a state
     pub t: T,
     /// Position of a state
-    pub p: &'s Y,
+    pub p: &'s P,
 
     /// Derivative of a state
-    pub d: &'s Y,
+    pub d: &'s P,
 
     /// Time of a state at the begining of the step
     pub t_prev: T,
 
-    pub p_prev: &'s Y,
+    pub p_prev: &'s P,
 
-    history: &'s StateHistory<T, Y, S, I, IC>,
+    history: &'s StateHistory<T, P, S, I, IC>,
 }
 
 impl<
     's,
     T: RealField + Copy,
-    Y: RealVectorSpace<T>,
+    P: RealVectorSpace<T>,
     const S: usize,
     const I: usize,
-    IC: InitialCondition<T, Y>,
-> StateRef<'s, T, Y, S, I, IC>
+    IC: InitialCondition<T, P>,
+> StateRef<'s, T, P, S, I, IC>
 {
-    pub fn p(&self, t: T) -> Y {
+    pub fn p(&self, t: T) -> P {
         self.history.eval::<0>(t)
     }
-    pub fn d(&self, t: T) -> Y {
+    pub fn d(&self, t: T) -> P {
         self.history.eval::<1>(t)
     }
 }
 
-#[autoimpl(Debug where T: std::fmt::Debug, Y: std::fmt::Debug)]
+#[autoimpl(Debug where T: std::fmt::Debug, P: std::fmt::Debug)]
 pub struct StateRefMut<
     's,
     T: RealField + Copy,
-    Y: RealVectorSpace<T>,
+    P: RealVectorSpace<T>,
     const S: usize,
     const I: usize,
-    IC: InitialCondition<T, Y>,
+    IC: InitialCondition<T, P>,
 > {
     /// Reference to time of a state
     pub t: &'s mut T,
     /// Reference to position of a state
-    pub p: &'s mut Y,
+    pub p: &'s mut P,
 
-    pub d: &'s Y,
+    pub d: &'s P,
 
     pub t_prev: T,
 
-    pub p_prev: &'s Y,
+    pub p_prev: &'s P,
 
-    history: &'s mut StateHistory<T, Y, S, I, IC>,
+    history: &'s mut StateHistory<T, P, S, I, IC>,
 }
 
 impl<
     's,
     T: RealField + Copy,
-    Y: RealVectorSpace<T>,
+    P: RealVectorSpace<T>,
     const S: usize,
     const I: usize,
-    IC: InitialCondition<T, Y>,
-> StateRefMut<'s, T, Y, S, I, IC>
+    IC: InitialCondition<T, P>,
+> StateRefMut<'s, T, P, S, I, IC>
 {
-    pub fn p(&self, t: T) -> Y {
+    pub fn p(&self, t: T) -> P {
         self.history.eval::<0>(t)
     }
-    pub fn d(&self, t: T) -> Y {
+    pub fn d(&self, t: T) -> P {
         self.history.eval::<1>(t)
     }
     pub fn stop_integration(&mut self)
@@ -98,15 +98,15 @@ impl<
 }
 
 #[allow(unused)]
-pub struct StateFn<T, Y, Output, F, const MUT: bool = false> {
+pub struct StateFn<T, P, Output, F, const MUT: bool = false> {
     f: F,
-    _phantom_f: std::marker::PhantomData<fn(&T, &Y) -> Output>,
+    _phantom_f: std::marker::PhantomData<fn(&T, &P) -> Output>,
 }
 
-impl<T, Y, Output, F> StateFn<T, Y, Output, F, false> {
+impl<T, P, Output, F> StateFn<T, P, Output, F, false> {
     pub fn new<const S: usize, const I: usize, IC>(f: F) -> Self
     where
-        F: FnMut(&StateRef<T, Y, S, I, IC>) -> Output,
+        F: FnMut(&StateRef<T, P, S, I, IC>) -> Output,
     {
         Self {
             f,
@@ -115,10 +115,10 @@ impl<T, Y, Output, F> StateFn<T, Y, Output, F, false> {
     }
 }
 
-impl<T, Y, Output, F> StateFn<T, Y, Output, F, true> {
+impl<T, P, Output, F> StateFn<T, P, Output, F, true> {
     pub fn new_mut<const S: usize, const I: usize, IC>(f: F) -> Self
     where
-        F: FnMut(&mut StateRefMut<T, Y, S, I, IC>) -> Output,
+        F: FnMut(&mut StateRefMut<T, P, S, I, IC>) -> Output,
     {
         Self {
             f,
@@ -128,46 +128,46 @@ impl<T, Y, Output, F> StateFn<T, Y, Output, F, true> {
 }
 
 // abstract F parameter away
-pub trait EvalStateFn<
+pub trait EvalState<
     T: RealField + Copy,
-    Y: RealVectorSpace<T>,
+    P: RealVectorSpace<T>,
     const S: usize,
     const I: usize,
-    IC: InitialCondition<T, Y>,
+    IC: InitialCondition<T, P>,
     Output,
 >
 {
-    fn eval_curr(&mut self, state: &State<T, Y, S, I, IC>) -> Output;
-    fn eval_prev(&mut self, state: &State<T, Y, S, I, IC>) -> Output;
-    fn eval_at(&mut self, state: &State<T, Y, S, I, IC>, t: T) -> Output;
+    fn eval_curr(&mut self, state: &State<T, P, S, I, IC>) -> Output;
+    fn eval_prev(&mut self, state: &State<T, P, S, I, IC>) -> Output;
+    fn eval_at(&mut self, state: &State<T, P, S, I, IC>, t: T) -> Output;
 }
 
 impl<
     T: RealField + Copy,
-    Y: RealVectorSpace<T>,
+    P: RealVectorSpace<T>,
     const S: usize,
     const I: usize,
-    IC: InitialCondition<T, Y>,
-> EvalStateFn<T, Y, S, I, IC, ()> for ()
+    IC: InitialCondition<T, P>,
+> EvalState<T, P, S, I, IC, ()> for ()
 {
-    fn eval_curr(&mut self, _: &State<T, Y, S, I, IC>) -> () {}
+    fn eval_curr(&mut self, _: &State<T, P, S, I, IC>) {}
 
-    fn eval_prev(&mut self, _: &State<T, Y, S, I, IC>) -> () {}
+    fn eval_prev(&mut self, _: &State<T, P, S, I, IC>) {}
 
-    fn eval_at(&mut self, _: &State<T, Y, S, I, IC>, _: T) -> () {}
+    fn eval_at(&mut self, _: &State<T, P, S, I, IC>, _: T) {}
 }
 
 impl<
     T: RealField + Copy,
-    Y: RealVectorSpace<T>,
+    P: RealVectorSpace<T>,
     const S: usize,
     const I: usize,
-    IC: InitialCondition<T, Y>,
+    IC: InitialCondition<T, P>,
     Output,
-    F: FnMut(&StateRef<T, Y, S, I, IC>) -> Output,
-> EvalStateFn<T, Y, S, I, IC, Output> for StateFn<T, Y, Output, F, false>
+    F: FnMut(&StateRef<T, P, S, I, IC>) -> Output,
+> EvalState<T, P, S, I, IC, Output> for StateFn<T, P, Output, F, false>
 {
-    fn eval_curr(&mut self, state: &State<T, Y, S, I, IC>) -> Output {
+    fn eval_curr(&mut self, state: &State<T, P, S, I, IC>) -> Output {
         (self.f)(&StateRef {
             t: state.t_curr,
             t_prev: state.t_prev,
@@ -177,7 +177,7 @@ impl<
             history: &state.history,
         })
     }
-    fn eval_prev(&mut self, state: &State<T, Y, S, I, IC>) -> Output {
+    fn eval_prev(&mut self, state: &State<T, P, S, I, IC>) -> Output {
         (self.f)(&StateRef {
             t: state.t_prev,
             t_prev: state.t_prev,
@@ -187,7 +187,7 @@ impl<
             history: &state.history,
         })
     }
-    fn eval_at(&mut self, state: &State<T, Y, S, I, IC>, t: T) -> Output {
+    fn eval_at(&mut self, state: &State<T, P, S, I, IC>, t: T) -> Output {
         let y = &state.eval::<0>(t);
         let dy = &state.eval::<1>(t);
         (self.f)(&StateRef {
@@ -200,40 +200,40 @@ impl<
         })
     }
 }
-pub trait EvalMutStateFn<
+pub trait EvalMutState<
     T: RealField + Copy,
-    Y: RealVectorSpace<T>,
+    P: RealVectorSpace<T>,
     const S: usize,
     const I: usize,
-    IC: InitialCondition<T, Y>,
+    IC: InitialCondition<T, P>,
     Output,
 >
 {
-    fn eval_mut(&mut self, state: &mut State<T, Y, S, I, IC>) -> Output;
+    fn eval_mut(&mut self, state: &mut State<T, P, S, I, IC>) -> Output;
 }
 
 impl<
     T: RealField + Copy,
-    Y: RealVectorSpace<T>,
+    P: RealVectorSpace<T>,
     const S: usize,
     const I: usize,
-    IC: InitialCondition<T, Y>,
-> EvalMutStateFn<T, Y, S, I, IC, ()> for ()
+    IC: InitialCondition<T, P>,
+> EvalMutState<T, P, S, I, IC, ()> for ()
 {
-    fn eval_mut(&mut self, _: &mut State<T, Y, S, I, IC>) -> () {}
+    fn eval_mut(&mut self, _: &mut State<T, P, S, I, IC>) {}
 }
 
 impl<
     T: RealField + Copy,
-    Y: RealVectorSpace<T>,
+    P: RealVectorSpace<T>,
     const S: usize,
     const I: usize,
-    IC: InitialCondition<T, Y>,
+    IC: InitialCondition<T, P>,
     Output,
-    F: FnMut(&mut StateRefMut<T, Y, S, I, IC>) -> Output,
-> EvalMutStateFn<T, Y, S, I, IC, Output> for StateFn<T, Y, Output, F, true>
+    F: FnMut(&mut StateRefMut<T, P, S, I, IC>) -> Output,
+> EvalMutState<T, P, S, I, IC, Output> for StateFn<T, P, Output, F, true>
 {
-    fn eval_mut(&mut self, state: &mut State<T, Y, S, I, IC>) -> Output {
+    fn eval_mut(&mut self, state: &mut State<T, P, S, I, IC>) -> Output {
         (self.f)(&mut StateRefMut {
             t: &mut state.t_curr,
             t_prev: state.t_prev,
@@ -247,49 +247,49 @@ impl<
 
 impl<
     T: RealField + Copy,
-    Y: RealVectorSpace<T>,
+    P: RealVectorSpace<T>,
     const S: usize,
     const I: usize,
-    IC: InitialCondition<T, Y>,
+    IC: InitialCondition<T, P>,
     Output,
-    F: FnMut(&StateRef<T, Y, S, I, IC>) -> Output,
-> EvalMutStateFn<T, Y, S, I, IC, Output> for StateFn<T, Y, Output, F, false>
+    F: FnMut(&StateRef<T, P, S, I, IC>) -> Output,
+> EvalMutState<T, P, S, I, IC, Output> for StateFn<T, P, Output, F, false>
 {
-    fn eval_mut<'a>(&mut self, state: &mut State<T, Y, S, I, IC>) -> Output {
+    fn eval_mut<'a>(&mut self, state: &mut State<T, P, S, I, IC>) -> Output {
         self.eval_curr(state)
     }
 }
 
 hlist2_trait_macro::TraitHList! {
     pub EvalStateFnHList for
-        trait EvalStateFn<
+        trait EvalState<
             T: RealField + Copy,
-            Y: RealVectorSpace<T>,
+            P: RealVectorSpace<T>,
             const S: usize,
             const I: usize,
-            IC: InitialCondition<T, Y>,
+            IC: InitialCondition<T, P>,
             Output,
         > {
         fn eval_curr(
             &mut self,
-            state: &State<T, Y, S, I, IC>,
+            state: &State<T, P, S, I, IC>,
         ) -> Output;
     }
 }
 
 hlist2_trait_macro::TraitHList! {
     pub EvalMutStateFnHList for
-        trait EvalMutStateFn<
+        trait EvalMutState<
             T: RealField + Copy,
-            Y: RealVectorSpace<T>,
+            P: RealVectorSpace<T>,
             const S: usize,
             const I: usize,
-            IC: InitialCondition<T, Y>,
+            IC: InitialCondition<T, P>,
             Output,
         > {
         fn eval_mut(
             &mut self,
-            state: &mut State<T, Y, S, I, IC>,
+            state: &mut State<T, P, S, I, IC>,
         ) -> Output;
     }
 }

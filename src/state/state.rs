@@ -2,7 +2,7 @@ use impl_tools::autoimpl;
 use nalgebra::RealField;
 
 use crate::{
-    initial_condition::InitialCondition, state::state_fn::EvalStateFn, traits::RealVectorSpace,
+    initial_condition::InitialCondition, state::state_fn::EvalState, traits::RealVectorSpace,
 };
 use std::collections::VecDeque;
 
@@ -91,7 +91,7 @@ impl<
         }
     }
 
-    pub fn make_step(&mut self, rhs: &mut impl EvalStateFn<T, Y, S, I, IC, Y>, t_step: T) {
+    pub fn make_step(&mut self, rhs: &mut impl EvalState<T, Y, S, I, IC, Y>, t_step: T) {
         if self.t_prev != self.t_curr {
             self.k_curr[0] = self.d_curr;
         } else {

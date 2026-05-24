@@ -51,7 +51,7 @@ fn lorenz_lyapunov_exponents() {
                     variation: df * p.variation,
                 }
             })
-            .on_loc_mut(
+            .on_mut(
                 Periodic {
                     period: 0.5,
                     offset: 0.,

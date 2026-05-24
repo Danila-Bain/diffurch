@@ -1,4 +1,4 @@
-use diffurch::{Solver, loc::detect::AboveZero};
+use diffurch::{Locator, Solver};
 
 use nalgebra::{Vector4, vector};
 
@@ -7,16 +7,18 @@ fn main() {
 
     let mut counter = 0;
 
+    type Loc = Locator<f64, Vector4<f64>>;
+
     Solver::new::<f64, Vector4<f64>>()
         .initial([0., 0.1, 0.3, 0.4])
         .equation(|s| vector![s.p[2], s.p[3], 0., 0.])
         .interval(0. ..)
         .stepsize(0.5)
-        .on_mut::<AboveZero>(
-            |s| {
+        .on_mut(
+            Loc::above_zero(|s| {
                 let v = s.p;
                 v.x.powi(2) + v.y.powi(2) - v.y.powi(3) / 3. - 1.
-            },
+            }),
             |s| {
                 let v = &mut s.p;
                 let x_normal = 2. * v.x;

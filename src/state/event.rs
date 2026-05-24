@@ -1,6 +1,6 @@
 use nalgebra::RealField;
 
-use crate::{initial_condition::InitialCondition, state::EvalMutStateFn, traits::RealVectorSpace};
+use crate::{initial_condition::InitialCondition, state::EvalMutState, traits::RealVectorSpace};
 
 pub struct StopIntegration();
 
@@ -10,7 +10,7 @@ impl<
     const S: usize,
     const I: usize,
     IC: InitialCondition<T, Y>,
-> EvalMutStateFn<T, Y, S, I, IC, ()> for StopIntegration
+> EvalMutState<T, Y, S, I, IC, ()> for StopIntegration
 {
     fn eval_mut(&mut self, state: &mut super::State<T, Y, S, I, IC>) {
         state.make_zero_step();

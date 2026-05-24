@@ -1,21 +1,23 @@
-use diffurch::{Solver, loc::detect::Zero};
+use diffurch::{Locator, Solver};
+use nalgebra::{Vector2, vector};
 
 fn main() {
     let mut points = vec![];
     let interval = 0.5..10.5;
     let solution = |t: f64| {
-        nalgebra::vector![
+        vector![
             (t - t.floor()) * (t - t.ceil()) * ((t * 0.5).fract() - 0.5).signum(),
             ((t * 0.5).fract() - 0.5).signum() * (t - t.ceil() + t - t.floor()),
         ]
     };
 
-    Solver::new::<f64, nalgebra::Vector2<f64>>()
+    type Loc = Locator<f64, Vector2<f64>>;
+    Solver::new::<f64, Vector2<f64>>()
         .initial([0.25, 0.])
-        .equation(|s| nalgebra::vector![s.p.y, -2. * s.p_prev.x.signum()])
+        .equation(|s| vector![s.p.y, -2. * s.p_prev.x.signum()])
         .interval(interval.clone())
         .stepsize(0.09)
-        .on::<Zero>(|s| s.p.x, |_| {})
+        .on(Loc::zero(|s| s.p.x), |_| {})
         .on_step(|s| {
             points.push((s.t, s.p.x));
             dbg!(s.t, (s.p - solution(s.t)).abs());

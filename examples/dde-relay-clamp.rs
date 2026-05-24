@@ -1,6 +1,4 @@
-#![allow(incomplete_features)]
-#![feature(generic_const_exprs)]
-use diffurch::{loc::detect::Zero, *};
+use diffurch::*;
 
 fn main() {
     /* Parameters */
@@ -19,6 +17,8 @@ fn main() {
 
     let interval = 0. ..100. * T;
 
+    type Loc = Locator<f64, nalgebra::Vector2<f64>>;
+
     Solver::new::<f64, nalgebra::Vector2<f64>>()
         .initial([1., -alpha * v0])
         .equation(|s| {
@@ -32,7 +32,7 @@ fn main() {
             t.push(s.t);
             x.push(s.p.x);
         })
-        .on::<Zero>(|s| s.p(s.t - T).x.abs() - 1., |_| {})
+        .on(Loc::zero(|s| s.p(s.t - T).x.abs() - 1.), |_| {})
         .run();
 
     let points = t.into_iter().zip(x);

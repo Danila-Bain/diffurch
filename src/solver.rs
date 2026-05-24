@@ -4,29 +4,28 @@ use nalgebra::RealField;
 use replace::replace_ident;
 
 use crate::{
-    Loc, StateRef,
+    Locator,
     initial_condition::InitialCondition,
     loc::{
-        LocMaker,
+        Locate, LocatorStateFn,
         loc_callback::LocCallback,
-        locate::{Bisection, Locate},
+        location_method::Bisection,
         propagation::{Propagation, Propagator},
     },
     rk::ButcherTableu,
-    state::EvalStateFn,
     stepsize::{StepStatus, StepsizeController},
     traits::RealVectorSpace,
 };
 
 macro_rules! SolverType {
-    () => {Solver<T, Y, S, I, Equation, Initial, Interval, Stepsize, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc> };
+    () => {Solver<T, P, S, I, Equation, Initial, Interval, Stepsize, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc> };
     ($arg:ident => $replacement:ty) => {
-        replace_ident!($arg, $replacement, Solver<T, Y, S, I, Equation, Initial, Interval, Stepsize, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>)
+        replace_ident!($arg, $replacement, Solver<T, P, S, I, Equation, Initial, Interval, Stepsize, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>)
     };
     ($arg1:ident => $replacement1:ty, $arg2:ident => $replacement2:ty) => {
         replace_ident!($arg1, $replacement1,
             replace_ident!($arg2, $replacement2,
-                Solver<T, Y, S, I, Equation, Initial, Interval, Stepsize, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>
+                Solver<T, P, S, I, Equation, Initial, Interval, Stepsize, EventsOnStep, EventsOnStart, EventsOnStop, EventsOnLoc>
             )
         )
     };
@@ -50,7 +49,7 @@ macro_rules! solver_set {
 
 pub struct Solver<
     T = f64,
-    Y = f64,
+    P = f64,
     const S: usize = 0,
     const I: usize = 0,
     Equation = (),
@@ -73,12 +72,12 @@ pub struct Solver<
     pub events_on_start: EventsOnStart,
     pub events_on_stop: EventsOnStop,
     pub events_on_loc: EventsOnLoc,
-    pub _phantom_y: std::marker::PhantomData<Y>,
+    pub _phantom_y: std::marker::PhantomData<P>,
 }
 
 impl Solver {
-    pub fn new<T: RealField + Copy, Y: RealVectorSpace<T>>()
-    -> Solver<T, Y, 7, 5, (), (), (), T, Nil, Nil, Nil> {
+    pub fn new<T: RealField + Copy, P: RealVectorSpace<T>>()
+    -> Solver<T, P, 7, 5, (), (), (), T, Nil, Nil, Nil> {
         Solver {
             equation: (),
             initial: (),
@@ -97,7 +96,7 @@ impl Solver {
 }
 impl<
     T: RealField + Copy,
-    Y: RealVectorSpace<T>,
+    P: RealVectorSpace<T>,
     const S: usize,
     const I: usize,
     Equation,
@@ -132,10 +131,10 @@ impl<
     }
 
     #[allow(unused_parens)]
-    pub fn equation<F: FnMut(&crate::StateRef<T, Y, S, I, Initial>) -> Y>(
+    pub fn equation<F: FnMut(&crate::StateRef<T, P, S, I, Initial>) -> P>(
         self,
-        new_equation: F, // crate::state::StateFn<T, Y, Y, F>,
-    ) -> SolverType!(Equation => (crate::state::StateFn<T, Y, Y, F>)) {
+        new_equation: F,
+    ) -> SolverType!(Equation => (crate::state::StateFn<T, P, P, F>)) {
         solver_set!(self, equation: crate::StateFn::new(new_equation))
     }
 
@@ -161,118 +160,72 @@ impl<
     }
 
     #[allow(unused_parens)]
-    pub fn on_step<C: FnMut(&crate::StateRef<T, Y, S, I, Initial>)>(
+    pub fn on_step<C: FnMut(&crate::StateRef<T, P, S, I, Initial>)>(
         self,
         callback: C,
-    ) -> SolverType!(EventsOnStep => EventsOnStep::Output::<(crate::state::StateFn<T, Y, (), C>)>)
+    ) -> SolverType!(EventsOnStep => EventsOnStep::Output::<(crate::state::StateFn<T, P, (), C>)>)
     {
         solver_set!(self, events_on_step: events_on_step.append(crate::StateFn::new(callback)))
     }
 
     #[allow(unused_parens)]
-    pub fn on_stop<C: FnMut(&crate::StateRef<T, Y, S, I, Initial>)>(
+    pub fn on_stop<C: FnMut(&crate::StateRef<T, P, S, I, Initial>)>(
         self,
         callback: C,
-    ) -> SolverType!(EventsOnStop => EventsOnStop::Output::<(crate::state::StateFn<T, Y, (), C>)>)
+    ) -> SolverType!(EventsOnStop => EventsOnStop::Output::<(crate::state::StateFn<T, P, (), C>)>)
     {
         solver_set!(self, events_on_stop: events_on_stop.append(crate::StateFn::new(callback)))
     }
 
     #[allow(unused_parens)]
-    pub fn on_start<C: FnMut(&crate::StateRef<T, Y, S, I, Initial>)>(
+    pub fn on_start<C: FnMut(&crate::StateRef<T, P, S, I, Initial>)>(
         self,
         callback: C,
-    ) -> SolverType!(EventsOnStart => EventsOnStart::Output::<(crate::state::StateFn<T, Y, (), C>)>)
+    ) -> SolverType!(EventsOnStart => EventsOnStart::Output::<(crate::state::StateFn<T, P, (), C>)>)
     {
         solver_set!(self, events_on_start: events_on_start.append(crate::StateFn::new(callback)))
     }
 
     #[allow(unused_parens)]
-    pub fn on_loc<
-        // LocF: FnMut(&crate::StateRef<T, Y, S, I, Initial>) -> Output,
-        // Output,
-        // LocLocate,
-        // LocDetect,
-        LocF: Locate<T, Y, S, I, Initial>,
-        CallbackF: FnMut(&crate::StateRef<T, Y, S, I, Initial>),
+    pub fn on<
+        LocF: Locate<T, P, S, I, Initial>,
+        CallbackF: FnMut(&crate::StateRef<T, P, S, I, Initial>),
     >(
         self,
         loc: LocF,
         callback: CallbackF,
-    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<LocF, (crate::state::StateFn<T, Y, (), CallbackF>)>>))
+    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<LocF, (crate::state::StateFn<T, P, (), CallbackF>)>>))
     where
-        Initial: InitialCondition<T, Y>,
+        Initial: InitialCondition<T, P>,
     {
         solver_set!(self, events_on_loc: events_on_loc.append(LocCallback(loc, crate::StateFn::new(callback))))
     }
 
     #[allow(unused_parens)]
-    pub fn on_loc_mut<L, C: FnMut(&mut crate::StateRefMut<T, Y, S, I, Initial>)>(
+    pub fn on_mut<
+        LocF: Locate<T, P, S, I, Initial>,
+        C: FnMut(&mut crate::StateRefMut<T, P, S, I, Initial>),
+    >(
         self,
-        loc: L,
+        loc: LocF,
         callback: C,
-    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<L, (crate::state::StateFn<T, Y, (), C, true>)>>))
+    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<LocF, (crate::state::StateFn<T, P, (), C, true>)>>))
+    where
+        Initial: InitialCondition<T, P>,
     {
         solver_set!(self, events_on_loc: events_on_loc.append(LocCallback(loc, crate::StateFn::new_mut(callback))))
     }
 
     #[allow(unused_parens)]
-    pub fn on<
-        DetectionLocation: LocMaker,
-       
-    >(
-        self,
-        loc_fn: impl FnMut(&StateRef<T, Y, S, I, Initial>) -> DetectionLocation::FunctionOutput<T>,
-        callback: impl FnMut(&crate::StateRef<T, Y, S, I, Initial>),
-    ) -> SolverType!(EventsOnLoc => (
-        EventsOnLoc::Output::<LocCallback<DetectionLocation::LocOutput<T, Y, S, I, Initial, impl FnMut(&StateRef<T, Y, S, I, Initial>) -> DetectionLocation::FunctionOutput<T>>, 
-        (crate::state::StateFn<T, Y, (), impl FnMut(&crate::StateRef<T, Y, S, I, Initial>)>)>>))
-    where
-        Initial: InitialCondition<T, Y>,
-    {
-        solver_set!(
-        self,
-        events_on_loc:
-            events_on_loc.append(
-                LocCallback(DetectionLocation::make::<T,Y,S,I,Initial,_>(loc_fn), crate::StateFn::new(callback))
-                )
-            )
-    }
-
-
-    #[allow(unused_parens)]
-    pub fn on_mut<
-        DetectionLocation: LocMaker,
-       
-    >(
-        self,
-        loc_fn: impl FnMut(&StateRef<T, Y, S, I, Initial>) -> DetectionLocation::FunctionOutput<T>,
-        callback: impl FnMut(&mut crate::StateRefMut<T, Y, S, I, Initial>),
-    ) -> SolverType!(EventsOnLoc => (
-        EventsOnLoc::Output::<LocCallback<DetectionLocation::LocOutput<T, Y, S, I, Initial, impl FnMut(&StateRef<T, Y, S, I, Initial>) -> DetectionLocation::FunctionOutput<T>>, 
-        (crate::state::StateFn<T, Y, (), impl FnMut(&mut crate::StateRefMut<T, Y, S, I, Initial>), true>)>>))
-    where
-        Initial: InitialCondition<T, Y>,
-    {
-        solver_set!(
-        self,
-        events_on_loc:
-            events_on_loc.append(
-                LocCallback(DetectionLocation::make::<T,Y,S,I,Initial,_>(loc_fn), crate::StateFn::new_mut(callback))
-                )
-            )
-    }
-
-    #[allow(unused_parens)]
-    pub fn with_delayed_argument<Delayed: FnMut(&crate::StateRef<T, Y, S, I, Initial>) -> T>(
+    pub fn with_delayed_argument<Delayed: FnMut(&crate::StateRef<T, P, S, I, Initial>) -> T>(
         self,
         delayed: Delayed,
         smoothing_order: usize,
-    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<Loc<T, Y, S, I, Initial, Propagator<T, crate::state::StateFn<T, Y, T, Delayed, false>>, Propagation, Bisection>>))
+    ) -> SolverType!( EventsOnLoc => (EventsOnLoc::Output::<LocatorStateFn<T, P, T, Propagator<T, crate::state::StateFn<T, P, T, Delayed, false>>, Propagation, Bisection>>))
     where
-        Initial: InitialCondition<T, Y>,
+        Initial: InitialCondition<T, P>,
     {
-        solver_set!(self, events_on_loc: events_on_loc.append(Loc::propagated_discontinuity(delayed, smoothing_order)))
+        solver_set!(self, events_on_loc: events_on_loc.append(Locator::<T, P>::propagated_discontinuity(delayed, smoothing_order)))
     }
 
     #[allow(unused_parens)]
@@ -280,39 +233,25 @@ impl<
         mut self,
         delay: T,
         smoothing_order: usize,
-    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<Loc<T, Y, S, I, Initial, Propagator<T, impl EvalStateFn<T, Y, S, I, Initial, T>>, Propagation, Bisection>>))
+    ) -> SolverType!( EventsOnLoc => (EventsOnLoc::Output::<LocatorStateFn<T, P, T, Propagator<T, crate::state::StateFn<T, P, T, impl FnMut(&crate::StateRef<T, P, S, I, Initial>) -> T, false>>, Propagation, Bisection>>))
     where
-        Initial: InitialCondition<T, Y>,
+        Initial: InitialCondition<T, P>,
     {
         self.max_delay = self.max_delay.max(delay);
         self.with_delayed_argument(move |s| s.t - delay, smoothing_order)
     }
 
-    // #[allow(unused_parens)]
-    // pub fn with_delay<Delay: Fn(&crate::StateRef<T, Y, S, I, Initial>) -> T>(
-    //     self,
-    //     delay: Delay,
-    //     smoothing_order: usize,
-    // ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<Loc<T, Y, S, I, Initial, Propagator<T, impl FnMut(&crate::StateRef<T, Y, S, I, Initial>) -> T>, Propagation, Bisection>, ()>>))
-    // where
-    //     Initial: InitialCondition<T, Y>,
-    // {
-    //     self.with_delayed_argument(move |s| s.t - delay(s), smoothing_order)
-    // }
-
-
-
     pub fn run(mut self)
     where
-        Equation: crate::state::EvalStateFn<T, Y, S, I, Initial, Y>,
+        Equation: crate::state::EvalState<T, P, S, I, Initial, P>,
         Interval: crate::interval::IntegrationInterval<T>,
-        Initial: crate::initial_condition::InitialCondition<T, Y>,
-        Stepsize: StepsizeController<T, Y>,
-        EventsOnStart: crate::state::EvalMutStateFnHList<T, Y, S, I, Initial, ()>,
-        EventsOnStep: crate::state::EvalMutStateFnHList<T, Y, S, I, Initial, ()>,
-        EventsOnStop: crate::state::EvalMutStateFnHList<T, Y, S, I, Initial, ()>,
-        EventsOnLoc: crate::loc::loc_hlist::HListLocateEarliest<T, Y, S, I, Initial>
-            + crate::state::EvalMutStateFnHList<T, Y, S, I, Initial, ()>,
+        Initial: crate::initial_condition::InitialCondition<T, P>,
+        Stepsize: StepsizeController<T, P>,
+        EventsOnStart: crate::state::EvalMutStateFnHList<T, P, S, I, Initial, ()>,
+        EventsOnStep: crate::state::EvalMutStateFnHList<T, P, S, I, Initial, ()>,
+        EventsOnStop: crate::state::EvalMutStateFnHList<T, P, S, I, Initial, ()>,
+        EventsOnLoc: crate::loc::loc_hlist::HListLocateEarliest<T, P, S, I, Initial>
+            + crate::state::EvalMutStateFnHList<T, P, S, I, Initial, ()>,
     {
         let t_init = self.interval.start_bound();
         let t_end = self.interval.end_bound();

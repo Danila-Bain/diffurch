@@ -15,7 +15,7 @@ fn linear_1_const() {
             .initial(1.)
             .interval(0. ..tmax)
             .equation(|state| state.p * eigenvalue)
-            .on_loc_mut(
+            .on_mut(
                 Periodic {
                     period: 0.3,
                     offset: 0.,
@@ -53,7 +53,7 @@ fn linear_1_sin() {
             .initial(1.)
             .interval(0. ..tmax)
             .equation(|s| (1. + f64::sin(s.t)) * eigenvalue * s.p)
-            .on_loc_mut(
+            .on_mut(
                 Periodic {
                     period: 1.3,
                     offset: 0.,
@@ -116,7 +116,7 @@ fn linear_const_3_real() {
             ])
             .interval(0. ..tmax)
             .equation(|s| a_matrix * s.p)
-            .on_loc_mut(
+            .on_mut(
                 Periodic {
                     period: 1.,
                     offset: 0.,
@@ -194,7 +194,7 @@ fn linear_const_3_complex() {
             ])
             .interval(0. ..tmax)
             .equation(|s| a_matrix * s.p)
-            .on_loc_mut(
+            .on_mut(
                 Periodic {
                     period: 1.,
                     offset: 0.,
@@ -281,7 +281,7 @@ fn lorenz_lyapunov_exponents() {
                 diff.fixed_columns_mut::<3>(1).copy_from(&(df * var));
                 diff
             })
-            .on_loc_mut(
+            .on_mut(
                 Periodic {
                     period: 0.5,
                     offset: 0.,

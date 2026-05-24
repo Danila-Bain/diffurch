@@ -19,7 +19,7 @@ fn main() {
         .equation(|&StateRef { p: y, .. }| a * y)
         .interval(0. ..50.)
         .stepsize(0.1)
-        .on_loc(Periodic::new(1.), |s| {
+        .on(Periodic::new(1.), |s| {
             println!("f_{:02} = {:14.2}", s.t, s.p.x)
         })
         .run();

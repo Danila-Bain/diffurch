@@ -14,16 +14,16 @@ pub struct ButcherTableu<T, const S: usize, const I: usize = S> {
 }
 
 impl<T: RealField + Copy, const S: usize, const I: usize> ButcherTableu<T, S, I> {
-    pub fn dense_output<const D: usize, Y: RealVectorSpace<T>>(
+    pub fn dense_output<const D: usize, P: RealVectorSpace<T>>(
         &self,
-        y_prev: &Y,
+        y_prev: &P,
         t_step: T,
         theta: T,
-        k: &[Y; S],
-    ) -> Y {
+        k: &[P; S],
+    ) -> P {
         match D {
             0 => {
-                let mut delta = Y::zero();
+                let mut delta = P::zero();
                 for i in 0..S {
                     let mut b_i = T::zero();
                     for j in 0..I {
@@ -31,10 +31,10 @@ impl<T: RealField + Copy, const S: usize, const I: usize> ButcherTableu<T, S, I>
                     }
                     delta += k[i] * b_i;
                 }
-                return *y_prev + delta * t_step;
+                *y_prev + delta * t_step
             }
             1 => {
-                let mut delta = Y::zero();
+                let mut delta = P::zero();
                 for i in 0..S {
                     let mut b_i = T::zero();
                     for j in 1..I {
@@ -43,7 +43,7 @@ impl<T: RealField + Copy, const S: usize, const I: usize> ButcherTableu<T, S, I>
                     }
                     delta += k[i] * b_i;
                 }
-                return delta;
+                delta
             }
             _ => {
                 unimplemented!()

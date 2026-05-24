@@ -1,8 +1,5 @@
 use derive_state::State;
-use diffurch::{
-    loc::detect::{BelowZero, Zero},
-    *,
-};
+use diffurch::*;
 
 fn main() {
     let k = 0.90;
@@ -18,21 +15,21 @@ fn main() {
     }
 
     let interval = 0. ..8.58;
+
+    type Loc = Locator<f64, State>;
+
     Solver::new::<f64, State>()
         .initial(State { x: 1., dx: -0.01 })
         .equation(|s| State { x: s.p.dx, dx: -g })
         .interval(interval.clone())
         .stepsize(0.005)
         .on_step(|s| points.push((s.t, s.p.x)))
-        .on::<Zero>(|s| s.p.dx, |_| {})
-        .on_mut::<BelowZero>(
-            |s| s.p.x,
-            |s| {
-                s.p.x = 0.;
-                s.p.dx = k * s.p.dx.abs();
-                dbg!(*s.t);
-            },
-        )
+        .on(Loc::zero(|s| s.p.dx), |_| {})
+        .on_mut(Loc::below_zero(|s| s.p.x), |s| {
+            s.p.x = 0.;
+            s.p.dx = k * s.p.dx.abs();
+            dbg!(*s.t);
+        })
         .run();
 
     use plotters::prelude::*;
