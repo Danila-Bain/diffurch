@@ -70,7 +70,7 @@ impl<
     Location,
 > Locate<T, P, S, I, IC> for LocatorStateFn<T, P, Output, F, Detection, Location>
 where
-    Location: location_method::LocationMethod<Output<T, P, S, I, IC> = Output>,
+    Location: location_method::LocationMethod<T, P, S, I, IC, F>,
     Self: Detect<T, P, S, I, IC>,
 {
     fn locate(&mut self, state: &State<T, P, S, I, IC>) -> T {
@@ -99,7 +99,7 @@ pub mod detection_method {
     }
 
     macro_rules! impl_detection_method(
-        ($type:ty, $detect:ident, |$curr:ident $(, $prev:ident)?| $body:expr) => {
+        ($type:ty, $detect:ident, |$($curr:ident $(, $prev:ident)?)?| $body:expr) => {
             pub struct $detect;
             impl DetectionMethod for $detect {
                 type Output<T, P, const S: usize, const I: usize, IC> = $type;
@@ -112,11 +112,11 @@ pub mod detection_method {
                     F: EvalState<T, P, S, I, IC, Self::Output<T, P, S, I, IC>>,
                 >(
                     &mut self,
-                    f: &mut F,
-                    state: &State<T, P, S, I, IC>,
+                    __f: &mut F,
+                    __state: &State<T, P, S, I, IC>,
                 ) -> bool {
-                    let $curr = f.eval_curr(state);
-                    $(let $prev = f.eval_prev(state);)?
+                    $(let $curr = __f.eval_curr(__state);
+                    $(let $prev = __f.eval_prev(__state);)?)?
                     $body
                 }
             }
@@ -139,26 +139,23 @@ pub mod detection_method {
     impl_detection_method!(bool, SwitchFalse, |curr, prev| !curr && prev);
     impl_detection_method!(bool, IsTrue, |curr| curr);
     impl_detection_method!(bool, IsFalse, |curr| !curr);
+    impl_detection_method!(bool, Step, |/*do not confuce with `||`*/| true);
 }
 
 pub mod location_method {
 
     use super::*;
 
-    pub trait LocationMethod {
-        type Output<T, P, const S: usize, const I: usize, IC>;
-        fn locate<
-            T: RealField + Copy,
-            P: RealVectorSpace<T>,
-            const S: usize,
-            const I: usize,
-            IC: InitialCondition<T, P>,
-            F: EvalState<T, P, S, I, IC, Self::Output<T, P, S, I, IC>>,
-        >(
-            &mut self,
-            f: &mut F,
-            state: &State<T, P, S, I, IC>,
-        ) -> T;
+    pub trait LocationMethod<
+        T: RealField + Copy,
+        P: RealVectorSpace<T>,
+        const S: usize,
+        const I: usize,
+        IC: InitialCondition<T, P>,
+        F,
+    >
+    {
+        fn locate(&mut self, f: &mut F, state: &State<T, P, S, I, IC>) -> T;
     }
 
     /// Use the previous step time as the location of event
@@ -178,18 +175,17 @@ pub mod location_method {
     pub struct RegulaFalsi;
 
     macro_rules! impl_locate(
-    ($locate:ident, $(Output = $fn_output:ty,)? |$f:ident, $state:ident| $body:expr) => {
-        impl LocationMethod for $locate {
-            #[allow(unused_parens)]
-            type Output<T, P, const S: usize, const I: usize, IC> = ($($fn_output)?);
-            fn locate<
-                T: RealField + Copy,
-                P: RealVectorSpace<T>,
-                const S: usize,
-                const I: usize,
-                IC: InitialCondition<T, P>,
-                F: $(EvalState<T, P, S, I, IC, $fn_output>)?,
-            >(
+        ($locate:ident, $(Output = $fn_output:ty,)? |$f:ident, $state:ident| $body:expr) => {
+        impl<
+            T: RealField + Copy,
+            P: RealVectorSpace<T>,
+            const S: usize,
+            const I: usize,
+            IC: InitialCondition<T, P>,
+            F $(: EvalState<T, P, S, I, IC, $fn_output>)?,
+        > LocationMethod<T,P, S, I, IC, F> for $locate
+         {
+            fn locate(
                 &mut self,
                 $f: &mut F,
                 $state: &State<T, P, S, I, IC>,
@@ -897,7 +893,7 @@ macro_rules! loc_constructor {
         ) -> LocatorStateFn<
             T,
             P,
-            T,
+            $type,
             StateFn<T, P, $type, F, false>,
             detection_method::$detection,
             location_method::$location,
@@ -924,6 +920,22 @@ impl<T: RealField + Copy, P: RealVectorSpace<T>> Locator<T, P> {
     loc_constructor! {switch_false, bool, SwitchFalse, BisectionBool}
     loc_constructor! {is_true,      bool, IsTrue,      StepEnd}
     loc_constructor! {is_false,     bool, IsFalse,     StepEnd}
+
+    pub fn step<const S: usize, const I: usize, IC: InitialCondition<T, P>>() -> LocatorStateFn<
+        T,
+        P,
+        bool,
+        StateFn<T, P, bool, impl FnMut(&StateRef<T, P, S, I, IC>) -> bool, false>,
+        detection_method::Step,
+        location_method::StepEnd,
+    > {
+        LocatorStateFn {
+            f: StateFn::new(|_| true),
+            detection: detection_method::Step,
+            location: location_method::StepEnd,
+            _phantom: PhantomData,
+        }
+    }
 
     pub fn propagated_discontinuity<
         const S: usize,
