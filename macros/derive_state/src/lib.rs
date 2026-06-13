@@ -2,11 +2,11 @@ use itertools::Itertools;
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
-    ConstParam, Data, DeriveInput, Fields, GenericParam, Index, LifetimeParam, Token, TypeParam,
-    parse_macro_input, parse2, punctuated::Punctuated, spanned::Spanned,
+    ConstParam, Data, DeriveInput, Fields, GenericParam, Ident, Index, LifetimeParam, Meta, Token,
+    TypeParam, parse_macro_input, parse2, punctuated::Punctuated, spanned::Spanned,
 };
 
-#[proc_macro_derive(State)]
+#[proc_macro_derive(State, attributes(state))]
 pub fn my_derive_state(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
     let struct_name = derive_input.ident;
@@ -32,6 +32,7 @@ pub fn my_derive_state(input: TokenStream) -> TokenStream {
 
     struct FieldInfo {
         ty: syn::Type,
+        is_discrete: bool,
         decl: proc_macro2::TokenStream,
         path: proc_macro2::TokenStream,
     }
@@ -54,7 +55,22 @@ pub fn my_derive_state(input: TokenStream) -> TokenStream {
                 }
             };
 
-            FieldInfo { ty, decl, path }
+            let is_discrete = f.attrs.iter().any(|attr| {
+                let Meta::List(ref meta_list) = attr.meta else {
+                    return false;
+                };
+
+                meta_list.path.is_ident("state")
+                    && parse2::<Ident>(meta_list.tokens.clone())
+                        .is_ok_and(|ident| ident.to_string() == "discrete")
+            });
+
+            FieldInfo {
+                is_discrete,
+                ty,
+                decl,
+                path,
+            }
         })
         .collect();
 
@@ -71,9 +87,9 @@ pub fn my_derive_state(input: TokenStream) -> TokenStream {
         }
     }
 
-    let field_elementary_types: Vec<_> = fields
+    let field_elementary_types: Vec<_> = fields_info
         .iter()
-        .cloned()
+        .filter(|f| !f.is_discrete)
         .flat_map(|f| get_elementary_types(&f.ty))
         .unique()
         .collect();
@@ -146,12 +162,25 @@ pub fn my_derive_state(input: TokenStream) -> TokenStream {
         }
         let added_fields: Vec<_> = fields_info
             .iter()
-            .map(|FieldInfo { ty, decl, path }| {
-                let added = add_elements(&ty, quote! {self.#path}, quote! {rhs.#path});
-                quote! {
-                    #decl #added
-                }
-            })
+            .map(
+                |FieldInfo {
+                     ty,
+                     is_discrete,
+                     decl,
+                     path,
+                 }| {
+                    if *is_discrete {
+                        quote! {
+                            #decl self.#path
+                        }
+                    } else {
+                        let added = add_elements(&ty, quote! {self.#path}, quote! {rhs.#path});
+                        quote! {
+                            #decl #added
+                        }
+                    }
+                },
+            )
             .collect();
         let add_constructor = constructor(added_fields);
         quote! {
@@ -197,12 +226,25 @@ pub fn my_derive_state(input: TokenStream) -> TokenStream {
         }
         let substracted_fields: Vec<_> = fields_info
             .iter()
-            .map(|FieldInfo { ty, decl, path }| {
-                let sub = substract_elements(&ty, quote! {self.#path}, quote! {rhs.#path});
-                quote! {
-                    #decl #sub
-                }
-            })
+            .map(
+                |FieldInfo {
+                     ty,
+                     is_discrete,
+                     decl,
+                     path,
+                 }| {
+                    if *is_discrete {
+                        quote! {
+                            #decl self.#path
+                        }
+                    } else {
+                        let sub = substract_elements(&ty, quote! {self.#path}, quote! {rhs.#path});
+                        quote! {
+                            #decl #sub
+                        }
+                    }
+                },
+            )
             .collect();
         let sub_constructor = constructor(substracted_fields);
         quote! {
@@ -251,7 +293,8 @@ pub fn my_derive_state(input: TokenStream) -> TokenStream {
         }
         let add_assigned_fields: Vec<_> = fields_info
             .iter()
-            .map(|FieldInfo { ty, decl: _, path }| {
+            .filter(|f| !f.is_discrete)
+            .map(|FieldInfo { ty, path, .. }| {
                 add_assign_elements(ty, quote! {self.#path}, quote! {rhs.#path})
             })
             .collect();
@@ -292,12 +335,25 @@ pub fn my_derive_state(input: TokenStream) -> TokenStream {
         }
         let multiplied_fields: Vec<_> = fields_info
             .iter()
-            .map(|FieldInfo { ty, decl, path }| {
-                let multiplied = multiply_elements(&ty, quote! {self.#path}, quote! {rhs});
-                quote! {
-                    #decl #multiplied
-                }
-            })
+            .map(
+                |FieldInfo {
+                     ty,
+                     decl,
+                     is_discrete,
+                     path,
+                 }| {
+                    if *is_discrete {
+                        quote! {
+                            #decl self.#path
+                        }
+                    } else {
+                        let multiplied = multiply_elements(&ty, quote! {self.#path}, quote! {rhs});
+                        quote! {
+                            #decl #multiplied
+                        }
+                    }
+                },
+            )
             .collect();
         let mul_constructor = constructor(multiplied_fields);
         let mut generic_where_extended = generic_where.clone().unwrap_or(syn::WhereClause {
@@ -350,12 +406,25 @@ pub fn my_derive_state(input: TokenStream) -> TokenStream {
         }
         let divided_fields: Vec<_> = fields_info
             .iter()
-            .map(|FieldInfo { ty, decl, path }| {
-                let divided = divide_elements(&ty, quote! {self.#path}, quote! {rhs});
-                quote! {
-                    #decl #divided
-                }
-            })
+            .map(
+                |FieldInfo {
+                     ty,
+                     decl,
+                     path,
+                     is_discrete,
+                 }| {
+                    if *is_discrete {
+                        quote! {
+                            #decl self.#path
+                        }
+                    } else {
+                        let divided = divide_elements(&ty, quote! {self.#path}, quote! {rhs});
+                        quote! {
+                            #decl #divided
+                        }
+                    }
+                },
+            )
             .collect();
         let div_constructor = constructor(divided_fields);
         let mut generic_where_extended = generic_where.clone().unwrap_or(syn::WhereClause {
@@ -407,12 +476,25 @@ pub fn my_derive_state(input: TokenStream) -> TokenStream {
         }
         let negated_fields: Vec<_> = fields_info
             .iter()
-            .map(|FieldInfo { ty, decl, path }| {
-                let divided = negate_elements(&ty, quote! {self.#path});
-                quote! {
-                    #decl #divided
-                }
-            })
+            .map(
+                |FieldInfo {
+                     ty,
+                     decl,
+                     is_discrete,
+                     path,
+                 }| {
+                    if *is_discrete {
+                        quote! {
+                            #decl self.#path
+                        }
+                    } else {
+                        let negated = negate_elements(&ty, quote! {self.#path});
+                        quote! {
+                            #decl #negated
+                        }
+                    }
+                },
+            )
             .collect();
         let neg_constructor = constructor(negated_fields);
         quote! {
