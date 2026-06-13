@@ -31,6 +31,7 @@ impl<T: Copy, P> StepsizeController<T, P> for T {
     }
 }
 
+#[derive(Clone, Default, Debug)]
 pub struct AutomaticStepsize<T, P> {
     pub stepsize: T,
     pub stepsize_range: std::ops::Range<T>,

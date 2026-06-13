@@ -91,7 +91,7 @@ impl<
     }
     pub fn stop_integration(&mut self)
     where
-        T: num::Float,
+        T: num_traits::Float,
     {
         *self.t = T::infinity();
     }

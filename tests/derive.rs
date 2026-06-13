@@ -1,7 +1,6 @@
 use derive_state::State;
-use diffurch::*;
-use nalgebra::*;
-use num::Float;
+use diffurch::Solver;
+use nalgebra::Vector2;
 
 #[test]
 fn simple_struct() {
@@ -29,7 +28,7 @@ fn simple_struct() {
             assert!(diff.y.x.abs() < 0.001);
             assert!(diff.y.y.abs() < 0.001);
         })
-        .run()
+        .run();
 }
 
 #[test]
@@ -48,13 +47,13 @@ fn simple_tuple() {
             assert!(diff.1.x.abs() < 0.001);
             assert!(diff.1.y.abs() < 0.001);
         })
-        .run()
+        .run();
 }
 
 #[test]
 fn generic_simple_tuple() {
     #[derive(State)]
-    struct State<T: Float>(T)
+    struct State<T: num_traits::Float>(T)
     where
         T: std::ops::AddAssign + std::fmt::Debug;
 
@@ -146,5 +145,5 @@ fn nested_tuples() {
             assert!(diff.2.1.0.abs() < 1e-10);
             assert!(diff.2.1.1.abs() < 1e-10);
         })
-        .run()
+        .run();
 }

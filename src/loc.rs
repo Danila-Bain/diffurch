@@ -287,7 +287,7 @@ pub mod location_method {
 pub mod periodic {
 
     use super::*;
-    use num::Float;
+    use num_traits::Float;
 
     pub struct Periodic<T> {
         pub period: T,
