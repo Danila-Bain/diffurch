@@ -141,9 +141,6 @@ impl<
     pub fn make_zero_step(&mut self) {
         self.t_prev = self.t_curr;
         self.p_prev = self.p_curr;
-        self.k_curr = [Y::zero(); S];
-        // self.dy_curr = Y::zero();
-        // self.dy_curr = self.dy_curr;
     }
 
     pub fn undo_step(&mut self) {

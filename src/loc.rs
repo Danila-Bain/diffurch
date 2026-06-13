@@ -1,6 +1,7 @@
 use crate::StateFn;
 use crate::StateRef;
 use crate::initial_condition::InitialCondition;
+use crate::state::EvalMutState;
 use crate::state::EvalState;
 use crate::state::State;
 use crate::traits::RealVectorSpace;
@@ -124,13 +125,13 @@ pub mod detection_method {
     );
 
     impl_detection_method!(T, Zero, |curr, prev| {
-        curr >= T::zero() && prev < T::zero() || curr <= T::zero() && prev > T::zero()
+        curr > T::zero() && prev <= T::zero() || curr <= T::zero() && prev > T::zero()
     });
     impl_detection_method!(T, AboveZero, |curr, prev| {
-        curr >= T::zero() && prev < T::zero()
+        curr > T::zero() && prev <= T::zero()
     });
     impl_detection_method!(T, BelowZero, |curr, prev| {
-        curr <= T::zero() && prev > T::zero()
+        curr < T::zero() && prev >= T::zero()
     });
     impl_detection_method!(T, Positive, |curr| curr >= T::zero());
     impl_detection_method!(T, Negative, |curr| curr <= T::zero());
@@ -253,6 +254,7 @@ pub mod location_method {
             m = T::from_f64(0.5).unwrap() * (l + r);
             w = (r - l).abs();
         }
+
         T::max(l, r)
     });
     impl_locate!(RegulaFalsi, Output = T, |f, state| {
@@ -918,8 +920,8 @@ impl<T: RealField + Copy, P: RealVectorSpace<T>> Locator<T, P> {
     loc_constructor! {switch,       bool, Switch,      BisectionBool}
     loc_constructor! {switch_true,  bool, SwitchTrue,  BisectionBool}
     loc_constructor! {switch_false, bool, SwitchFalse, BisectionBool}
-    loc_constructor! {is_true,      bool, IsTrue,      StepEnd}
-    loc_constructor! {is_false,     bool, IsFalse,     StepEnd}
+    loc_constructor! {is_true,      bool, IsTrue,      BisectionBool}
+    loc_constructor! {is_false,     bool, IsFalse,     BisectionBool}
 
     pub fn step<const S: usize, const I: usize, IC: InitialCondition<T, P>>() -> LocatorStateFn<
         T,
@@ -962,5 +964,89 @@ impl<T: RealField + Copy, P: RealVectorSpace<T>> Locator<T, P> {
             location: location_method::Bisection,
             _phantom: std::marker::PhantomData,
         }
+    }
+}
+
+pub struct DedupLocF<T, L> {
+    pub last_call: Option<T>,
+    pub loc_f: L,
+}
+
+impl<
+    T: RealField + Copy,
+    P: RealVectorSpace<T>,
+    const S: usize,
+    const I: usize,
+    IC: InitialCondition<T, P>,
+    L: Detect<T, P, S, I, IC>,
+> Detect<T, P, S, I, IC> for DedupLocF<T, L>
+{
+    fn detect(&mut self, state: &State<T, P, S, I, IC>) -> bool {
+        self.last_call
+            .is_none_or(|last_call| state.t_prev > last_call)
+            && self.detect(state)
+    }
+}
+impl<
+    T: RealField + Copy,
+    P: RealVectorSpace<T>,
+    const S: usize,
+    const I: usize,
+    IC: InitialCondition<T, P>,
+    L: Locate<T, P, S, I, IC>,
+> Locate<T, P, S, I, IC> for DedupLocF<T, L>
+{
+    fn locate(&mut self, state: &State<T, P, S, I, IC>) -> T {
+        self.loc_f.locate(state)
+    }
+    fn detect_and_locate(&mut self, state: &State<T, P, S, I, IC>) -> Option<T> {
+        if self
+            .last_call
+            .is_none_or(|last_call| state.t_prev > last_call)
+        {
+            self.loc_f.detect_and_locate(state)
+        } else {
+            None
+        }
+    }
+}
+impl<
+    T: RealField + Copy,
+    P: RealVectorSpace<T>,
+    const S: usize,
+    const I: usize,
+    IC: InitialCondition<T, P>,
+    Output,
+    L: EvalMutState<T, P, S, I, IC, Output>,
+> EvalMutState<T, P, S, I, IC, Output> for DedupLocF<T, L>
+{
+    fn eval_mut(&mut self, state: &mut State<T, P, S, I, IC>) -> Output {
+        self.last_call = Some(state.t_curr);
+        self.loc_f.eval_mut(state)
+    }
+}
+impl<
+    T: RealField + Copy,
+    P: RealVectorSpace<T>,
+    const S: usize,
+    const I: usize,
+    IC: InitialCondition<T, P>,
+    Output,
+    L: EvalState<T, P, S, I, IC, Output>,
+> EvalState<T, P, S, I, IC, Output> for DedupLocF<T, L>
+{
+    fn eval_curr(&mut self, state: &State<T, P, S, I, IC>) -> Output {
+        self.last_call = Some(state.t_curr);
+        self.loc_f.eval_curr(state)
+    }
+
+    fn eval_prev(&mut self, state: &State<T, P, S, I, IC>) -> Output {
+        self.last_call = Some(state.t_prev);
+        self.loc_f.eval_prev(state)
+    }
+
+    fn eval_at(&mut self, state: &State<T, P, S, I, IC>, t: T) -> Output {
+        self.last_call = Some(t);
+        self.loc_f.eval_at(state, t)
     }
 }

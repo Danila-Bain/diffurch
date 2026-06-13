@@ -6,6 +6,7 @@ use replace::replace_ident;
 use crate::{
     Locator,
     initial_condition::InitialCondition,
+    loc::DedupLocF,
     loc::{
         Locate, LocatorStateFn,
         loc_callback::LocCallback,
@@ -185,6 +186,14 @@ impl<
     {
         solver_set!(self, events_on_start: events_on_start.append(crate::StateFn::new(callback)))
     }
+    #[allow(unused_parens)]
+    pub fn on_start_mut<C: FnMut(&mut crate::StateRefMut<T, P, S, I, Initial>)>(
+        self,
+        callback: C,
+    ) -> SolverType!(EventsOnStart => EventsOnStart::Output::<(crate::state::StateFn<T, P, (), C, true>)>)
+    {
+        solver_set!(self, events_on_start: events_on_start.append(crate::StateFn::new_mut(callback)))
+    }
 
     #[allow(unused_parens)]
     pub fn on<
@@ -194,11 +203,16 @@ impl<
         self,
         loc: LocF,
         callback: CallbackF,
-    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<LocF, (crate::state::StateFn<T, P, (), CallbackF>)>>))
+    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<DedupLocF<T, LocCallback<LocF, (crate::state::StateFn<T, P, (), CallbackF>)>>>))
     where
         Initial: InitialCondition<T, P>,
     {
-        solver_set!(self, events_on_loc: events_on_loc.append(LocCallback(loc, crate::StateFn::new(callback))))
+        solver_set!(self, events_on_loc: events_on_loc.append(
+            DedupLocF {
+                last_call: None,
+                loc_f: LocCallback(loc, crate::StateFn::new(callback))
+            }
+        ))
     }
 
     #[allow(unused_parens)]
@@ -209,11 +223,16 @@ impl<
         self,
         loc: LocF,
         callback: C,
-    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<LocCallback<LocF, (crate::state::StateFn<T, P, (), C, true>)>>))
+    ) -> SolverType!(EventsOnLoc => (EventsOnLoc::Output::<DedupLocF<T, LocCallback<LocF, (crate::state::StateFn<T, P, (), C, true>)>>>))
     where
         Initial: InitialCondition<T, P>,
     {
-        solver_set!(self, events_on_loc: events_on_loc.append(LocCallback(loc, crate::StateFn::new_mut(callback))))
+        solver_set!(self, events_on_loc: events_on_loc.append(
+            DedupLocF {
+                last_call: None,
+                loc_f: LocCallback(loc, crate::StateFn::new_mut(callback)),
+            })
+        )
     }
 
     #[allow(unused_parens)]
@@ -241,7 +260,7 @@ impl<
         self.with_delayed_argument(move |s| s.t - delay, smoothing_order)
     }
 
-    pub fn run(mut self)
+    pub fn run(mut self) -> crate::state::State<T, P, S, I, Initial>
     where
         Equation: crate::state::EvalState<T, P, S, I, Initial, P>,
         Interval: crate::interval::IntegrationInterval<T>,
@@ -272,15 +291,13 @@ impl<
 
         while state.t_curr < t_end {
             state.make_step(&mut rhs, stepsize.get().min(t_end - state.t_curr));
-
-            // WHO ADDS PROPAGATED DISCONTINUITY TO THE DISCONTINUITY LIST???
             while stepsize.update(&state.e_curr) == StepStatus::Rejected {
                 state.undo_step();
                 state.make_step(&mut rhs, stepsize.get().min(t_end - state.t_curr));
             }
 
             if let Some((index, time)) = self.events_on_loc.locate_earliest(&state)
-                && time > state.t_prev
+                && time >= state.t_prev
             {
                 state.undo_step();
                 state.make_step(&mut rhs, time - state.t_curr);
@@ -292,5 +309,7 @@ impl<
             self.events_on_step.eval_mut(&mut state);
         }
         self.events_on_stop.eval_mut(&mut state);
+
+        state
     }
 }
