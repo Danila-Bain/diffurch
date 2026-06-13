@@ -2,11 +2,11 @@ use nalgebra::RealField;
 
 use crate::traits::RealVectorSpace;
 
-pub trait StepsizeController<T, Y> {
+pub trait StepsizeController<T, P> {
     fn init(&mut self);
     fn get(&self) -> T;
     fn set(&mut self, new_stepsize: T);
-    fn update(&mut self, error: &Y) -> StepStatus;
+    fn update(&mut self, error: &P) -> StepStatus;
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -15,7 +15,7 @@ pub enum StepStatus {
     Accepted,
 }
 
-impl<T: Copy, Y> StepsizeController<T, Y> for T {
+impl<T: Copy, P> StepsizeController<T, P> for T {
     fn init(&mut self) {}
 
     fn get(&self) -> T {
@@ -26,28 +26,28 @@ impl<T: Copy, Y> StepsizeController<T, Y> for T {
         *self = new_stepsize;
     }
 
-    fn update(&mut self, _: &Y) -> StepStatus {
+    fn update(&mut self, _: &P) -> StepStatus {
         StepStatus::Accepted
     }
 }
 
-pub struct AutomaticStepsize<T, Y> {
+pub struct AutomaticStepsize<T, P> {
     pub stepsize: T,
     pub stepsize_range: std::ops::Range<T>,
-    pub atol: Y,
-    pub rtol: Y,
+    pub atol: P,
+    pub rtol: P,
     pub order: u32,
     pub fac: T,
     pub fac_range: std::ops::Range<T>,
     pub initial_stepsize: Option<T>,
 }
 
-impl<T, Y> AutomaticStepsize<T, Y> {}
+impl<T, P> AutomaticStepsize<T, P> {}
 
-impl<T: RealField + Copy, Y: RealVectorSpace<T>> StepsizeController<T, Y>
-    for AutomaticStepsize<T, Y>
+impl<T: RealField + Copy, P: RealVectorSpace<T>> StepsizeController<T, P>
+    for AutomaticStepsize<T, P>
 where
-    for<'a> &'a Y: IntoIterator<Item = &'a T>,
+    for<'a> &'a P: IntoIterator<Item = &'a T>,
 {
     fn init(&mut self) {
         self.stepsize = self.initial_stepsize.unwrap_or(T::from_f64(0.001).unwrap())
@@ -60,7 +60,7 @@ where
     fn set(&mut self, new_stepsize: T) {
         self.stepsize = new_stepsize
     }
-    fn update(&mut self, error: &Y) -> StepStatus {
+    fn update(&mut self, error: &P) -> StepStatus {
         let err = error
             .into_iter()
             .zip(&self.atol)
